@@ -80,18 +80,15 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      resizeToAvoidBottomInset: true,
-      body: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.backgroundLevel1,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.backgroundLevel1,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
-        child: DraggableScrollableSheet(
+      ),
+      child: DraggableScrollableSheet(
         initialChildSize: 0.9,
         maxChildSize: 0.95,
         minChildSize: 0.3,
@@ -130,15 +127,10 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
               
               // Content
               Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                  ),
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                    child: Column(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Cuartos
@@ -217,18 +209,6 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                                 labelText: 'Precio mínimo',
                                 prefixText: '\$ ',
                               ),
-                              onTap: () {
-                                // Scroll para mostrar el campo cuando se toque
-                                Future.delayed(const Duration(milliseconds: 300), () {
-                                  if (_minPriceController.selection.baseOffset != -1) {
-                                    Scrollable.ensureVisible(
-                                      context,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  }
-                                });
-                              },
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -240,18 +220,6 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                                 labelText: 'Precio máximo',
                                 prefixText: '\$ ',
                               ),
-                              onTap: () {
-                                // Scroll para mostrar el campo cuando se toque
-                                Future.delayed(const Duration(milliseconds: 300), () {
-                                  if (_maxPriceController.selection.baseOffset != -1) {
-                                    Scrollable.ensureVisible(
-                                      context,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  }
-                                });
-                              },
                             ),
                           ),
                         ],
@@ -290,29 +258,16 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                                 labelText: 'Área mínima',
                                 suffixText: 'm²',
                               ),
-                              onTap: () {
-                                // Scroll para mostrar el campo cuando se toque
-                                Future.delayed(const Duration(milliseconds: 300), () {
-                                  if (_minAreaController.selection.baseOffset != -1) {
-                                    Scrollable.ensureVisible(
-                                      context,
-                                      duration: const Duration(milliseconds: 300),
-                                      curve: Curves.easeInOut,
-                                    );
-                                  }
-                                });
-                              },
                             ),
                           ),
                           const SizedBox(width: 16),
                         ],
                       ),
                       
-                      const SizedBox(height: 32),
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.4),
                     ],
                   ),
                 ),
-              ),
               ),
               
               // Actions
@@ -340,7 +295,6 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
           );
         },
       ),
-    ),
     );
   }
 
@@ -566,18 +520,6 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                   )
                 : const Icon(Icons.location_city),
           ),
-          onTap: () {
-            // Asegurar que el campo sea visible cuando se toque
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (focusNode.hasFocus) {
-                Scrollable.ensureVisible(
-                  focusNode.context!,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                );
-              }
-            });
-          },
           onChanged: (value) {
             // Sincronizar con nuestro controlador
             _ciudadController.text = value;
