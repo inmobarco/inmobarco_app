@@ -119,3 +119,8 @@ END
 
 /////////////////////////////////////////////////////////////////////////////
 #endif    // not APSTUDIO_INVOKED
+
+STRINGTABLE
+BEGIN
+    IDS_APP_TITLE "Inmobarco"  // Cambiar aquí
+END

@@ -24,7 +24,11 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     
     // Cargar datos iniciales
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PropertyProvider>().refresh();
+      final provider = context.read<PropertyProvider>();
+      // Solo hacer refresh si no hay propiedades cargadas desde caché
+      if (provider.properties.isEmpty) {
+        provider.refresh();
+      }
     });
   }
 
@@ -48,6 +52,15 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
       appBar: AppBar(
         title: const Text('Inmobarco'),
         actions: [
+          // Botón de información del caché
+          Consumer<PropertyProvider>(
+            builder: (context, provider, child) {
+              return IconButton(
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => _showCacheInfo(context),
+              );
+            },
+          ),
           Consumer<PropertyProvider>(
             builder: (context, provider, child) {
               return Stack(
@@ -77,14 +90,48 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
       ),
       body: Column(
         children: [
+          // Indicador de carga desde caché
+          Consumer<PropertyProvider>(
+            builder: (context, provider, child) {
+              if (provider.isLoadingFromCache) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  color: AppColors.primaryColor.withValues(alpha: 0.1),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        'Cargando desde caché...',
+                        style: TextStyle(
+                          color: AppColors.primaryColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
           // Barra de búsqueda
-          _buildSearchBar(),
+          //_buildSearchBar(),
           
           // Lista de propiedades
           Expanded(
             child: Consumer<PropertyProvider>(
               builder: (context, provider, child) {
-                if (provider.isLoading && provider.properties.isEmpty) {
+                if (provider.isLoading && provider.properties.isEmpty && !provider.isLoadingFromCache) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: AppColors.primaryColor,
@@ -96,7 +143,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                   return _buildErrorWidget(provider.error!);
                 }
 
-                if (provider.properties.isEmpty) {
+                if (provider.properties.isEmpty && !provider.isLoadingFromCache) {
                   return _buildEmptyWidget();
                 }
 
@@ -253,6 +300,64 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => const PropertyFilterScreen(),
     );
+  }
+
+  void _showCacheInfo(BuildContext context) async {
+    final provider = context.read<PropertyProvider>();
+    final cacheInfo = await provider.getCacheInfo();
+    if (!mounted) return;
+
+    showDialog(
+      // ignore: use_build_context_synchronously
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Información del Caché'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Propiedades en caché: ${cacheInfo['propertiesCount']}'),
+            const SizedBox(height: 8),
+            if (cacheInfo['hasCache'])
+              Text('Última actualización: ${_formatDate(cacheInfo['lastUpdate'])}')
+            else
+              const Text('Sin caché disponible'),
+            const SizedBox(height: 8),
+            if (cacheInfo['hasCache'])
+              Text('Antigüedad: ${cacheInfo['cacheAgeHours'].toStringAsFixed(1)} horas'),
+          ],
+        ),
+        actions: [
+          if (cacheInfo['hasCache'])
+            TextButton(
+              onPressed: () async {
+                // Capturar referencias antes del async
+                final navigator = Navigator.of(dialogContext);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                
+                await provider.clearCache();
+                navigator.pop();
+                
+                if (mounted) {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(content: Text('Caché limpiado')),
+                  );
+                }
+              },
+              child: const Text('Limpiar Caché'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Desconocida';
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   void _navigateToDetail(String propertyId) {

@@ -4,7 +4,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/encription.dart';
-import 'data/services/arrendasoft_api_service.dart';
+import 'core/services/global_data_service.dart';
+import 'data/services/wasi_api_service.dart';
 import 'ui/providers/property_provider.dart';
 import 'ui/screens/property_list_screen.dart';
 
@@ -16,6 +17,9 @@ void main() async {
   
   // Inicializar encriptación
   propertyEncryption.init();
+  
+  // Inicializar datos globales (ciudades, etc.)
+  await GlobalDataService().initialize();
   
   runApp(const InmobarcoApp());
 }
@@ -29,8 +33,9 @@ class InmobarcoApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (context) => PropertyProvider(
-            apiService: ArrendasoftApiService(
-              apiKey: AppConstants.defaultApiKey,
+            apiService: WasiApiService(
+              apiToken: AppConstants.wasiApiToken,
+              companyId: AppConstants.wasiApiId,
             ),
           ),
         ),

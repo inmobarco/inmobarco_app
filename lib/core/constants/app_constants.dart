@@ -1,12 +1,36 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/global_data_service.dart';
 
 class AppConstants {
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';
   static String get arrendasoftApiBaseUrl => dotenv.env['ARRENDASOFT_API_BASE_URL'] ?? 'https://api.arrendasoft.co/v2';
+  static String get wasiApiBaseUrl => dotenv.env['WASI_API_URL'] ?? 'https://api.wasi.co/v1';
   
   // API Configuration - loaded from .env
   static String get defaultApiKey => dotenv.env['ARRENDASOFT_API_KEY'] ?? '';
+  static String get wasiApiToken => dotenv.env['WASI_API_TOKEN'] ?? '';
+  static String get wasiApiId => dotenv.env['WASI_API_ID'] ?? '';
+  
+  // Global Data Access - Ciudades disponibles globalmente
+  static GlobalDataService get globalData => GlobalDataService();
+  static List<Map<String, dynamic>> get cities {
+    try {
+      return GlobalDataService().cities;
+    } catch (e) {
+      debugPrint('Error accediendo a ciudades: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
+  static List<String> get cityNames {
+    try {
+      return GlobalDataService().cityNames;
+    } catch (e) {
+      debugPrint('Error accediendo a nombres de ciudades: $e');
+      return <String>[];
+    }
+  }
   
   // Paginación
   static const int defaultPageSize = 20;

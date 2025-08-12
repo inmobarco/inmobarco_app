@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Property ID Encryption/Decryption Class - Dart version
@@ -32,7 +33,7 @@ class PropertyEncryption {
       return true;
       
     } catch (error) {
-      print('❌ Failed to initialize encryption: $error');
+      debugPrint('❌ Failed to initialize encryption: $error');
       return _initializationFailed();
     }
   }
@@ -54,7 +55,7 @@ class PropertyEncryption {
 
   /// Handle initialization failure
   bool _initializationFailed() {
-    print('❌ Invalid encryption configuration. Please set proper encryption keys.');
+    debugPrint('❌ Invalid encryption configuration. Please set proper encryption keys.');
     _initialized = false;
     _keyWithSalt = null;
     return false;
@@ -70,7 +71,7 @@ class PropertyEncryption {
       final String encrypted = _xorTransform(id, _keyWithSalt!);
       return _encodeToUrlSafe(encrypted);
     } catch (error) {
-      print('❌ Encryption failed: $error');
+      debugPrint('❌ Encryption failed: $error');
       return null;
     }
   }
@@ -86,7 +87,7 @@ class PropertyEncryption {
       final String encrypted = _decodeFromUrlSafe(encryptedId);
       return _xorTransform(encrypted, _keyWithSalt!);
     } catch (error) {
-      print('❌ Decryption failed: $error');
+      debugPrint('❌ Decryption failed: $error');
       return null;
     }
   }
@@ -131,7 +132,7 @@ class PropertyEncryption {
   /// Check if the encryption is properly initialized
   bool _isInitialized(String operation) {
     if (!_initialized) {
-      print('❌ Encryption not initialized. Cannot $operation property ID.');
+      debugPrint('❌ Encryption not initialized. Cannot $operation property ID.');
       return false;
     }
     return true;
@@ -162,7 +163,7 @@ class PropertyEncryption {
     final String? encryptedId = encrypt(propertyId);
     
     if (encryptedId == null) {
-      print('❌ Cannot generate URL: encryption failed for property ID: $propertyId');
+      debugPrint('❌ Cannot generate URL: encryption failed for property ID: $propertyId');
       return null;
     }
     
@@ -179,7 +180,7 @@ class PropertyEncryption {
       final Uri newUri = uri.replace(queryParameters: queryParams);
       return newUri.toString();
     } catch (error) {
-      print('❌ Failed to generate property URL: $error');
+      debugPrint('❌ Failed to generate property URL: $error');
       return null;
     }
   }
@@ -206,18 +207,18 @@ class PropertyEncryption {
           _cachedPropertyId = decryptedId;
           return decryptedId;
         } else {
-          print('❌ Failed to decrypt property ID: $idParam');
+          debugPrint('❌ Failed to decrypt property ID: $idParam');
           _cachedPropertyId = null;
           return null;
         }
       } else {
         // Reject non-encrypted IDs
-        print('❌ Property ID must be encrypted. Non-encrypted IDs are not allowed: $idParam');
+        debugPrint('❌ Property ID must be encrypted. Non-encrypted IDs are not allowed: $idParam');
         _cachedPropertyId = null;
         return null;
       }
     } catch (error) {
-      print('❌ Failed to extract property ID from URL: $error');
+      debugPrint('❌ Failed to extract property ID from URL: $error');
       _cachedPropertyId = null;
       return null;
     }

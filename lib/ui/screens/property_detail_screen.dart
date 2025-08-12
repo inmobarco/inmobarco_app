@@ -25,6 +25,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   String? error;
   PageController? _pageController;
   bool _showApartmentInfo = false;
+  int _currentImageIndex = 0;
 
   @override
   void initState() {
@@ -49,6 +50,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           isLoading = false;
           if (apartment != null && apartment!.imagenes.isNotEmpty) {
             _pageController = PageController();
+            // Precargar todas las imágenes
+            _preloadImages();
           }
         });
       }
@@ -59,6 +62,20 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           isLoading = false;
         });
       }
+    }
+  }
+
+  // Precargar todas las imágenes en segundo plano
+  void _preloadImages() {
+    if (apartment == null || apartment!.imagenes.isEmpty) return;
+    
+    for (String imageUrl in apartment!.imagenes) {
+      precacheImage(
+        CachedNetworkImageProvider(imageUrl),
+        context,
+      ).catchError((error) {
+        debugPrint('Error precargando imagen: $error');
+      });
     }
   }
 
@@ -157,34 +174,49 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           PageView.builder(
             controller: _pageController,
             itemCount: apartment!.imagenes.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentImageIndex = index;
+              });
+            },
             itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: apartment!.imagenes[index],
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: AppColors.backgroundLevel2,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primaryColor,
+              return Hero(
+                tag: 'property-image-$index',
+                child: GestureDetector(
+                  //onTap: () => _showFullScreenImage(index),
+                  child: CachedNetworkImage(
+                    imageUrl: apartment!.imagenes[index],
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: AppColors.backgroundLevel2,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppColors.backgroundLevel2,
-                  child: const Center(
-                    child: Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: AppColors.textColor2,
+                    errorWidget: (context, url, error) => Container(
+                      color: AppColors.backgroundLevel2,
+                      child: const Center(
+                        child: Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: AppColors.textColor2,
+                        ),
+                      ),
                     ),
+                    // Configuración de caché mejorada
+                    cacheKey: apartment!.imagenes[index],
+                    memCacheWidth: 800, // Limitar el ancho en memoria
+                    memCacheHeight: 600, // Limitar la altura en memoria
                   ),
                 ),
               );
             },
           ),
           
-          // Indicador de página
+          // Indicadores de página mejorados
           if (apartment!.imagenes.length > 1)
             Positioned(
               bottom: 16,
@@ -192,20 +224,92 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: apartment!.imagenes.asMap().entries.map((entry) {
-                  return Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.white.withValues(alpha: 0.8),
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(15),
                     ),
-                  );
-                }).toList(),
+                    child: Text(
+                      '${_currentImageIndex + 1} / ${apartment!.imagenes.length}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+
+          // Controles de navegación
+          if (apartment!.imagenes.length > 1) ...[
+            // Botón anterior
+            if (_currentImageIndex > 0)
+              Positioned(
+                left: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_left, color: Colors.white),
+                      onPressed: () {
+                        _pageController?.previousPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            
+            // Botón siguiente
+            if (_currentImageIndex < apartment!.imagenes.length - 1)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.chevron_right, color: Colors.white),
+                      onPressed: () {
+                        _pageController?.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ],
+      ),
+    );
+  }
+
+  // Mostrar imagen en pantalla completa
+  void _showFullScreenImage(int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _FullScreenImageGallery(
+          images: apartment!.imagenes,
+          initialIndex: initialIndex,
+        ),
       ),
     );
   }
@@ -228,7 +332,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           const SizedBox(height: 8),
 
           // Título
-          if (apartment!.titulo.isNotEmpty)
+          if (apartment!.reference.isNotEmpty)
             GestureDetector(
               onTap: () {
                 setState(() {
@@ -247,7 +351,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     Expanded(
                       child: _showApartmentInfo
                           ? Text(
-                              '${apartment!.titulo} - ID: ${apartment!.id}',
+                              '${apartment!.reference} - ID: ${apartment!.id}',
                               style: Theme.of(context).textTheme.headlineMedium,
                             )
                           : Text(
@@ -351,12 +455,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         value: '${apartment!.area.toStringAsFixed(0)} m²',
                       ),
                     ),
-                  if (apartment!.estrato.isNotEmpty)
+                  if (apartment!.estrato > 0)
                     Expanded(
                       child: _buildFeatureItem(
                         icon: Icons.apartment,
                         label: 'Estrato',
-                        value: apartment!.estratoTexto,
+                        value: apartment!.estrato.toString(),
                       ),
                     ),
                 ],
@@ -509,10 +613,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     if (apartment == null) return;
 
     // Encriptar el ID del apartamento
-    final String? encryptedId = propertyEncryption.encrypt(apartment!.codigo);
+    final String? encryptedId = propertyEncryption.encrypt(apartment!.id);
     final String propertyUrl = encryptedId != null 
         ? 'https://ficha.inmobarco.com/?id=$encryptedId'
-        : 'https://ficha.inmobarco.com/?id=${apartment!.codigo}'; // Fallback si falla la encriptación
+        : 'https://ficha.inmobarco.com/?id=${apartment!.id}'; // Fallback si falla la encriptación
 
     final shareText = '''
 🏠 ${apartment!.titulo.isNotEmpty ? apartment!.titulo : 'Propiedad Disponible'}
@@ -522,15 +626,82 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 🛁 Baños: ${apartment!.banos}
 📍 Ubicación: ${apartment!.ubicacion}
 
-Ver más detalles: $propertyUrl
-
-#Inmobarco #PropiedadesEnArriendo
-    ''';
+Ver más detalles: $propertyUrl''';
     ShareParams shareParams = ShareParams(
           text: shareText,
           subject: 'Propiedad en Inmobarco',
           sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
     );
     SharePlus.instance.share(shareParams);
+  }
+}
+
+// Widget para mostrar galería en pantalla completa
+class _FullScreenImageGallery extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+
+  const _FullScreenImageGallery({
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        title: Text('${_currentIndex + 1} de ${widget.images.length}'),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return Hero(
+            tag: 'property-image-$index',
+            child: InteractiveViewer(
+              child: CachedNetworkImage(
+                imageUrl: widget.images[index],
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.error, color: Colors.white, size: 48),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }

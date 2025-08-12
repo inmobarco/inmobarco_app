@@ -1,67 +1,61 @@
 class PropertyFilter {
   final int? minCuartos;
-  final int? maxCuartos;
   final int? minBanos;
-  final int? maxBanos;
+  final int? minGarages;
   final double? minPrecio;
   final double? maxPrecio;
   final String? municipio;
-  final String? estrato;
   final double? minArea;
-  final double? maxArea;
+  final bool? forRent;
+  final bool? forSale;
 
   PropertyFilter({
     this.minCuartos,
-    this.maxCuartos,
     this.minBanos,
-    this.maxBanos,
     this.minPrecio,
     this.maxPrecio,
     this.municipio,
-    this.estrato,
     this.minArea,
-    this.maxArea,
+    this.forRent,
+    this.forSale,
+    this.minGarages
   });
 
   PropertyFilter copyWith({
     int? minCuartos,
-    int? maxCuartos,
     int? minBanos,
-    int? maxBanos,
+    int? minGarages,
     double? minPrecio,
     double? maxPrecio,
     String? municipio,
-    String? estrato,
     double? minArea,
-    double? maxArea,
+    bool? forRent,
+    bool? forSale,
     bool clearMunicipio = false,
-    bool clearEstrato = false,
   }) {
     return PropertyFilter(
       minCuartos: minCuartos ?? this.minCuartos,
-      maxCuartos: maxCuartos ?? this.maxCuartos,
       minBanos: minBanos ?? this.minBanos,
-      maxBanos: maxBanos ?? this.maxBanos,
+      minGarages: minGarages ?? this.minGarages,
       minPrecio: minPrecio ?? this.minPrecio,
       maxPrecio: maxPrecio ?? this.maxPrecio,
       municipio: clearMunicipio ? null : (municipio ?? this.municipio),
-      estrato: clearEstrato ? null : (estrato ?? this.estrato),
+      forRent: forRent ?? this.forRent,
+      forSale: forSale ?? this.forSale,
       minArea: minArea ?? this.minArea,
-      maxArea: maxArea ?? this.maxArea,
     );
   }
 
   bool get hasActiveFilters {
     return minCuartos != null ||
-        maxCuartos != null ||
         minBanos != null ||
-        maxBanos != null ||
         minPrecio != null ||
         maxPrecio != null ||
         municipio != null ||
-        estrato != null ||
         minArea != null ||
-        maxArea != null;
+        forRent != null ||
+        forSale != null ||
+        minGarages != null;
   }
 
   PropertyFilter clear() {
@@ -71,15 +65,14 @@ class PropertyFilter {
   Map<String, dynamic> toJson() {
     return {
       'min_cuartos': minCuartos,
-      'max_cuartos': maxCuartos,
       'min_banos': minBanos,
-      'max_banos': maxBanos,
       'min_precio': minPrecio,
       'max_precio': maxPrecio,
       'municipio': municipio,
-      'estrato': estrato,
       'min_area': minArea,
-      'max_area': maxArea,
+      'for_rent': forRent,
+      'for_sale': forSale,
+      'min_garages': minGarages,
     };
   }
 }

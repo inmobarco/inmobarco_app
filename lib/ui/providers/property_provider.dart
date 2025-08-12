@@ -1,32 +1,55 @@
 import 'package:flutter/foundation.dart';
 import '../../domain/models/apartment.dart';
 import '../../domain/models/property_filter.dart';
-import '../../data/services/arrendasoft_api_service.dart';
+import '../../data/services/wasi_api_service.dart';
+import '../../data/services/cache_service.dart';
+import '../../core/constants/app_constants.dart';
 
 class PropertyProvider extends ChangeNotifier {
-  final ArrendasoftApiService _apiService;
+  final WasiApiService _apiService;
   
   List<Apartment> _properties = [];
-  List<String> _municipios = [];
-  List<String> _estratos = [];
   PropertyFilter _currentFilter = PropertyFilter();
   bool _isLoading = false;
   String? _error;
   bool _hasMoreData = true;
   int _currentPage = 1;
+  bool _isLoadingFromCache = false;
 
-  PropertyProvider({required ArrendasoftApiService apiService}) 
-      : _apiService = apiService;
+  PropertyProvider({required WasiApiService apiService}) 
+      : _apiService = apiService {
+    _loadFromCache(); // Cargar caché al inicializar
+  }
 
   // Getters
   List<Apartment> get properties => _properties;
-  List<String> get municipios => _municipios;
-  List<String> get estratos => _estratos;
+  List<Map<String, dynamic>> get cities => AppConstants.cities; // Usar datos globales
   PropertyFilter get currentFilter => _currentFilter;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasMoreData => _hasMoreData;
   bool get hasActiveFilters => _currentFilter.hasActiveFilters;
+  bool get isLoadingFromCache => _isLoadingFromCache;
+
+  /// Carga propiedades desde caché al inicializar
+  Future<void> _loadFromCache() async {
+    _isLoadingFromCache = true;
+    notifyListeners();
+
+    try {
+      final cachedProperties = await CacheService.loadProperties();
+      if (cachedProperties != null && cachedProperties.isNotEmpty) {
+        _properties = cachedProperties;
+        _hasMoreData = false; // No intentar cargar más hasta hacer refresh
+        debugPrint('📦 ${cachedProperties.length} propiedades cargadas desde caché');
+      }
+    } catch (e) {
+      debugPrint('❌ Error cargando caché: $e');
+    }
+
+    _isLoadingFromCache = false;
+    notifyListeners();
+  }
 
   /// Carga las propiedades iniciales
   Future<void> loadProperties({bool refresh = false}) async {
@@ -54,10 +77,12 @@ class PropertyProvider extends ChangeNotifier {
         _properties.addAll(newProperties);
       }
 
-      if (newProperties.isEmpty || newProperties.length < 20) {
-        _hasMoreData = false;
-      } else {
-        _currentPage++;
+      _currentPage++;
+      _hasMoreData = newProperties.length >= 20;
+
+      // Guardar en caché si es la primera página o refresh
+      if (_currentPage == 2 || refresh) {
+        await CacheService.saveProperties(_properties);
       }
 
       notifyListeners();
@@ -77,42 +102,42 @@ class PropertyProvider extends ChangeNotifier {
   /// Actualiza los filtros y recarga las propiedades
   Future<void> updateFilter(PropertyFilter newFilter) async {
     _currentFilter = newFilter;
-    await loadProperties(refresh: true);
+    _currentPage = 1;
+    _hasMoreData = true;
+    _properties.clear();
+    
+    // Guardar filtros aplicados
+    await CacheService.saveFilter(newFilter.toJson());
+    
+    await loadProperties();
   }
 
   /// Limpia los filtros
   Future<void> clearFilters() async {
     _currentFilter = PropertyFilter();
-    await loadProperties(refresh: true);
-  }
-
-  /// Carga los municipios disponibles
-  Future<void> loadMunicipios() async {
-    try {
-      _municipios = await _apiService.getMunicipios();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading municipios: $e');
-    }
-  }
-
-  /// Carga los estratos disponibles
-  Future<void> loadEstratos() async {
-    try {
-      _estratos = await _apiService.getEstratos();
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading estratos: $e');
-    }
+    _currentPage = 1;
+    _hasMoreData = true;
+    _properties.clear();
+    
+    // Limpiar filtros guardados
+    await CacheService.saveFilter({});
+    
+    await loadProperties();
   }
 
   /// Obtiene una propiedad por ID
   Future<Apartment?> getPropertyById(String id) async {
     try {
+      // Buscar primero en la lista local/caché
+      final localProperty = _properties.where((p) => p.id == id).firstOrNull;
+      if (localProperty != null) {
+        return localProperty;
+      }
+
+      // Si no está en la lista local, buscar en la API
       return await _apiService.getPropertyById(id);
     } catch (e) {
-      _setError(e.toString());
-      return null;
+      throw Exception('Error obteniendo propiedad: $e');
     }
   }
 
@@ -120,13 +145,14 @@ class PropertyProvider extends ChangeNotifier {
   List<Apartment> searchProperties(String query) {
     if (query.isEmpty) return _properties;
     
-    final lowercaseQuery = query.toLowerCase();
-    return _properties.where((property) {
-      return property.titulo.toLowerCase().contains(lowercaseQuery) ||
-             property.barrio.toLowerCase().contains(lowercaseQuery) ||
-             property.municipio.toLowerCase().contains(lowercaseQuery) ||
-             property.codigo.toLowerCase().contains(lowercaseQuery);
-    }).toList();
+    final searchTerm = query.toLowerCase();
+    return _properties.where((apartment) =>
+      apartment.titulo.toLowerCase().contains(searchTerm) ||
+      apartment.barrio.toLowerCase().contains(searchTerm) ||
+      apartment.municipio.toLowerCase().contains(searchTerm) ||
+      apartment.direccion.toLowerCase().contains(searchTerm) ||
+      apartment.reference.toLowerCase().contains(searchTerm)
+    ).toList();
   }
 
   void _setLoading(bool loading) {
@@ -139,12 +165,21 @@ class PropertyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Refresca todos los datos
+  /// Refresca todos los datos desde la API
   Future<void> refresh() async {
-    await Future.wait([
-      loadProperties(refresh: true),
-      loadMunicipios(),
-      loadEstratos(),
-    ]);
+    debugPrint('🔄 Refrescando datos desde la API...');
+    await loadProperties(refresh: true);
+  }
+
+  /// Obtiene información del caché
+  Future<Map<String, dynamic>> getCacheInfo() async {
+    return await CacheService.getCacheInfo();
+  }
+
+  /// Limpia el caché manualmente
+  Future<void> clearCache() async {
+    await CacheService.clearCache();
+    _properties.clear();
+    notifyListeners();
   }
 }

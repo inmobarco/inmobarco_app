@@ -1,14 +1,14 @@
 class Apartment {
   final String id;
-  final String codigo;
   final String titulo;
-  final double precio;
+  final String reference;
+  final double rentPrice;
+  final double salePrice;
   final int cuartos;
   final int banos;
   final String barrio;
   final String municipio;
-  final String estrato;
-  final String estratoTexto;
+  final int estrato;
   final double area;
   final String estado;
   final String estadoTexto;
@@ -16,7 +16,6 @@ class Apartment {
   final String descripcion;
   final String direccion;
   final String claseInmueble;
-  final String tipoServicio;
   final String asesor;
   final String departamento;
   final String coordenadas;
@@ -24,15 +23,15 @@ class Apartment {
 
   Apartment({
     required this.id,
-    required this.codigo,
     required this.titulo,
-    required this.precio,
+    required this.reference,
+    required this.rentPrice,
+    required this.salePrice,
     required this.cuartos,
     required this.banos,
     required this.barrio,
     required this.municipio,
     required this.estrato,
-    required this.estratoTexto,
     required this.area,
     required this.estado,
     required this.estadoTexto,
@@ -40,7 +39,6 @@ class Apartment {
     required this.descripcion,
     required this.direccion,
     required this.claseInmueble,
-    required this.tipoServicio,
     required this.asesor,
     required this.departamento,
     required this.coordenadas,
@@ -48,6 +46,39 @@ class Apartment {
   });
 
   factory Apartment.fromJson(Map<String, dynamic> json) {
+    // Verificar si es data de WASI API o data de caché
+    bool isFromCache = json.containsKey('rentPrice') && json.containsKey('salePrice');
+    
+    if (isFromCache) {
+      // Data desde caché (formato simplificado)
+      return Apartment(
+        id: json['id']?.toString() ?? '',
+        titulo: json['titulo']?.toString() ?? '',
+        reference: json['reference']?.toString() ?? '',
+        rentPrice: (json['rentPrice'] ?? 0).toDouble(),
+        salePrice: (json['salePrice'] ?? 0).toDouble(),
+        cuartos: json['cuartos'] ?? 0,
+        banos: json['banos'] ?? 0,
+        barrio: json['barrio']?.toString() ?? '',
+        municipio: json['municipio']?.toString() ?? '',
+        estrato: json['estrato'] ?? 0,
+        area: (json['area'] ?? 0).toDouble(),
+        estado: json['estado']?.toString() ?? '1',
+        estadoTexto: json['estado_texto']?.toString() ?? 'Activa',
+        imagenes: List<String>.from(json['imagenes'] ?? []),
+        descripcion: json['descripcion']?.toString() ?? '',
+        direccion: json['direccion']?.toString() ?? '',
+        claseInmueble: json['clase_inmueble']?.toString() ?? '',
+        asesor: json['asesor']?.toString() ?? '',
+        departamento: json['departamento']?.toString() ?? '',
+        coordenadas: json['coordenadas']?.toString() ?? '',
+        caracteristicas: List<Map<String, dynamic>>.from(
+          json['caracteristicas']?.map((x) => Map<String, dynamic>.from(x)) ?? []
+        ),
+      );
+    }
+    
+    // Data desde API original (formato API legacy - Arrendasoft)
     // Extraer cuartos y baños de las características
     final caracteristicasList = (json['caracteristicas'] as List<dynamic>?) ?? [];
     int cuartos = 0;
@@ -71,26 +102,17 @@ class Apartment {
         .where((url) => url.isNotEmpty)
         .toList();
 
-    // Determinar precio según tipo de servicio
-    double precioFinal = 0;
-    final tipoServicio = json['tipo_servicio']?.toString().toLowerCase() ?? '';
-    if (tipoServicio.contains('arriendo')) {
-      precioFinal = _parseDouble(json['valor_arriendo1']);
-    } else if (tipoServicio.contains('venta')) {
-      precioFinal = _parseDouble(json['valor_venta1']);
-    }
-
     return Apartment(
       id: json['codigo']?.toString() ?? '',
-      codigo: json['codigo']?.toString() ?? '',
       titulo: json['titulo']?.toString() ?? '',
-      precio: precioFinal,
+      reference: json['registration_number']?.toString() ?? '',
+      rentPrice: _parseDouble(json['rent_price']),
+      salePrice: _parseDouble(json['sale_price']),
       cuartos: cuartos,
       banos: banos,
       barrio: json['barrio']?.toString() ?? '',
       municipio: json['municipio']?.toString() ?? '',
-      estrato: json['estrato']?.toString() ?? '',
-      estratoTexto: json['estrato_texto']?.toString() ?? '',
+      estrato: int.tryParse(json['estrato']?.toString() ?? '0') ?? 0,
       area: _parseDouble(json['area']),
       estado: json['estado']?.toString() ?? '',
       estadoTexto: json['estado_texto']?.toString() ?? '',
@@ -98,7 +120,6 @@ class Apartment {
       descripcion: json['observaciones']?.toString() ?? json['titulo']?.toString() ?? '',
       direccion: json['direccion']?.toString() ?? '',
       claseInmueble: json['clase_inmueble']?.toString() ?? '',
-      tipoServicio: json['tipo_servicio']?.toString() ?? '',
       asesor: json['asesor']?.toString() ?? '',
       departamento: json['departamento']?.toString() ?? '',
       coordenadas: json['coordenadas']?.toString() ?? '',
@@ -117,10 +138,24 @@ class Apartment {
   }
 
   String get priceFormatted {
-    return '\$${precio.toStringAsFixed(0).replaceAllMapped(
+    String formatedRent = '\$${rentPrice.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',
     )}';
+    String formatedSale = '\$${salePrice.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]},',
+    )}';
+    if (rentPrice > 0 && salePrice > 0) {
+      return '$formatedRent / $formatedSale';
+    }
+    if (rentPrice > 0) {
+      return formatedRent;
+    }
+    if (salePrice > 0) {
+      return formatedSale;
+    }
+    return '';
   }
 
   String get ubicacion => '$barrio, $municipio';
@@ -130,15 +165,15 @@ class Apartment {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'codigo': codigo,
       'titulo': titulo,
-      'precio': precio,
+      'reference': reference,
+      'rentPrice': rentPrice,
+      'salePrice': salePrice,
       'cuartos': cuartos,
       'banos': banos,
       'barrio': barrio,
       'municipio': municipio,
       'estrato': estrato,
-      'estrato_texto': estratoTexto,
       'area': area,
       'estado': estado,
       'estado_texto': estadoTexto,
@@ -146,7 +181,6 @@ class Apartment {
       'descripcion': descripcion,
       'direccion': direccion,
       'clase_inmueble': claseInmueble,
-      'tipo_servicio': tipoServicio,
       'asesor': asesor,
       'departamento': departamento,
       'coordenadas': coordenadas,
