@@ -34,7 +34,7 @@ class WasiApiService {
   Future<List<Apartment>> getActiveProperties({
     PropertyFilter? filter,
     int page = 1,
-    int limit = 20,
+    int limit = 100,
   }) async {
     try {
       final queryParams = <String, dynamic>{
