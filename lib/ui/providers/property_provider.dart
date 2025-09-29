@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import '../../domain/models/apartment.dart';
 import '../../domain/models/property_filter.dart';
 import '../../data/services/wasi_api_service.dart';
@@ -7,6 +8,8 @@ import '../../core/constants/app_constants.dart';
 
 class PropertyProvider extends ChangeNotifier {
   final WasiApiService _apiService;
+  // Tamaño de página (mantener sincronizado con el parámetro limit al pedir a la API)
+  static const int _pageSize = 100; // Requisito: almacenar hasta 100 propiedades en caché
   
   List<Apartment> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
@@ -15,6 +18,10 @@ class PropertyProvider extends ChangeNotifier {
   bool _hasMoreData = true;
   int _currentPage = 1;
   bool _isLoadingFromCache = false;
+  String _searchQuery = '';
+  Timer? _searchDebounceTimer;
+
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 350); // Ajustable
 
   PropertyProvider({required WasiApiService apiService}) 
       : _apiService = apiService {
@@ -23,6 +30,12 @@ class PropertyProvider extends ChangeNotifier {
 
   // Getters
   List<Apartment> get properties => _properties;
+  // Lista visible (aplica filtro de búsqueda por registration_number/reference si existe query)
+  List<Apartment> get filteredProperties {
+    if (_searchQuery.isEmpty) return _properties;
+    final q = _searchQuery.toLowerCase();
+    return _properties.where((p) => p.reference.toLowerCase().contains(q)).toList();
+  }
   List<Map<String, dynamic>> get cities => AppConstants.cities; // Usar datos globales
   PropertyFilter get currentFilter => _currentFilter;
   bool get isLoading => _isLoading;
@@ -68,7 +81,7 @@ class PropertyProvider extends ChangeNotifier {
       final newProperties = await _apiService.getActiveProperties(
         filter: _currentFilter,
         page: _currentPage,
-        limit: 20,
+        limit: _pageSize,
       );
 
       if (refresh) {
@@ -78,11 +91,14 @@ class PropertyProvider extends ChangeNotifier {
       }
 
       _currentPage++;
-      _hasMoreData = newProperties.length >= 20;
+      // Si recibimos menos elementos que el tamaño de página asumimos que no hay más datos.
+      _hasMoreData = newProperties.length == _pageSize;
 
-      // Guardar en caché si es la primera página o refresh
-      if (_currentPage == 2 || refresh) {
-        await CacheService.saveProperties(_properties);
+      // Guardar en caché sólo después de completar la primera página (ya en _properties) o en refresh.
+      // _currentPage se incrementó, así que cuando era página 1 ahora vale 2.
+      if (_currentPage == 2) {
+        // Persistimos únicamente la primera página (hasta 100 propiedades) como snapshot rápido de arranque.
+        await CacheService.saveProperties(_properties.take(_pageSize).toList());
       }
 
       notifyListeners();
@@ -143,16 +159,46 @@ class PropertyProvider extends ChangeNotifier {
 
   /// Busca propiedades en la lista actual
   List<Apartment> searchProperties(String query) {
-    if (query.isEmpty) return _properties;
-    
-    final searchTerm = query.toLowerCase();
-    return _properties.where((apartment) =>
-      apartment.titulo.toLowerCase().contains(searchTerm) ||
-      apartment.barrio.toLowerCase().contains(searchTerm) ||
-      apartment.municipio.toLowerCase().contains(searchTerm) ||
-      apartment.direccion.toLowerCase().contains(searchTerm) ||
-      apartment.reference.toLowerCase().contains(searchTerm)
-    ).toList();
+    // Compatibilidad: delega a la lógica específica por reference
+    return _properties.where((p) => p.reference.toLowerCase().contains(query.toLowerCase())).toList();
+  }
+
+  /// Limpia la búsqueda activa
+  void clearSearchQuery() {
+    if (_searchQuery.isEmpty) return;
+    _searchQuery = '';
+    _searchDebounceTimer?.cancel();
+    notifyListeners();
+  }
+
+  /// Actualiza el texto de búsqueda con debounce para evitar rebuild en cada pulsación
+  void updateSearchQuery(String query) {
+    final trimmed = query.trim();
+
+    // Si se limpia el texto, aplicar inmediatamente y cancelar timer
+    if (trimmed.isEmpty) {
+      if (_searchQuery.isNotEmpty) {
+        _searchQuery = '';
+        _searchDebounceTimer?.cancel();
+        notifyListeners();
+      }
+      return;
+    }
+
+    // Si no cambia realmente el contenido, no reprogramar
+    if (trimmed == _searchQuery) return;
+
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      _searchQuery = trimmed;
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    super.dispose();
   }
 
   void _setLoading(bool loading) {

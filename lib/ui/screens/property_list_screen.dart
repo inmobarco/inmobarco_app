@@ -125,12 +125,15 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
           ),
 
           // Barra de búsqueda
-          //_buildSearchBar(),
+          _buildSearchBar(),
           
           // Lista de propiedades
           Expanded(
             child: Consumer<PropertyProvider>(
               builder: (context, provider, child) {
+                final visibleList = provider.filteredProperties;
+                final isFiltering = _searchController.text.trim().isNotEmpty;
+
                 if (provider.isLoading && provider.properties.isEmpty && !provider.isLoadingFromCache) {
                   return const Center(
                     child: CircularProgressIndicator(
@@ -152,10 +155,11 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                   color: AppColors.primaryColor,
                   child: ListView.builder(
                     controller: _scrollController,
-                    itemCount: provider.properties.length + 
-                               (provider.hasMoreData ? 1 : 0),
+                    itemCount: isFiltering
+                        ? visibleList.length
+                        : provider.properties.length + (provider.hasMoreData ? 1 : 0),
                     itemBuilder: (context, index) {
-                      if (index == provider.properties.length) {
+                      if (!isFiltering && index == provider.properties.length) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
                           child: Center(
@@ -166,7 +170,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                         );
                       }
 
-                      final apartment = provider.properties[index];
+                      final apartment = isFiltering ? visibleList[index] : provider.properties[index];
                       return PropertyCard(
                         apartment: apartment,
                         onTap: () => _navigateToDetail(apartment.id),
@@ -186,34 +190,39 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       color: AppColors.backgroundLevel1,
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Buscar por título, barrio, municipio...',
-          prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, color: AppColors.textColor2),
-                  onPressed: () {
-                    _searchController.clear();
-                    // TODO: Implementar búsqueda
-                  },
-                )
-              : null,
-          filled: true,
-          fillColor: AppColors.backgroundLevel2,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(25),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-        ),
-        onChanged: (value) {
-          setState(() {});
-          // TODO: Implementar búsqueda en tiempo real
+      child: Consumer<PropertyProvider>(
+        builder: (context, provider, _) {
+          return TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar por número de registro...',
+              prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: AppColors.textColor2),
+                      onPressed: () {
+                        _searchController.clear();
+                        provider.clearSearchQuery();
+                        setState(() {}); // Actualiza visibilidad del botón
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.backgroundLevel2,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(25),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+            onChanged: (value) {
+              provider.updateSearchQuery(value);
+              setState(() {}); // solo para refrescar suffixIcon
+            },
+          );
         },
       ),
     );

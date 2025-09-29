@@ -20,14 +20,14 @@ class WasiApiService {
     };
     
     // Interceptor para logging (opcional)
-    _dio.interceptors.add(
+    /*_dio.interceptors.add(
       LogInterceptor(
         requestBody: true,
         responseBody: true,
         error: true,
         logPrint: (obj) => debugPrint('[WASI API] $obj'),
       ),
-    );
+    );*/
   }
 
   /// Obtiene la lista de propiedades activas
@@ -55,7 +55,7 @@ class WasiApiService {
         _applyApiFilters(queryParams, filter);
       }
 
-      final response = await _dio.get('/property/search', queryParameters: queryParams);
+  final response = await _dio.get('/property/search', queryParameters: queryParams);
       
       if (response.statusCode == 200) {
         final responseData = response.data;
@@ -63,6 +63,7 @@ class WasiApiService {
         if (responseData['status'] != 'success') {
           throw Exception('Error en respuesta de WASI: ${responseData['status']}');
         }
+
 
         // Obtener las propiedades del response
         List<dynamic> properties = [];
