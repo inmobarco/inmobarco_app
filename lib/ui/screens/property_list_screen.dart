@@ -5,6 +5,7 @@ import '../widgets/property_card.dart';
 import '../../core/theme/app_colors.dart';
 import 'property_detail_screen.dart';
 import 'property_filter_screen.dart';
+import 'add_apartment_screen.dart';
 
 class PropertyListScreen extends StatefulWidget {
   const PropertyListScreen({super.key});
@@ -52,6 +53,18 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
       appBar: AppBar(
         title: const Text('Inmobarco'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Nuevo Apartamento',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AddApartmentScreen(),
+                ),
+              );
+            },
+          ),
           // Botón de información del caché
           Consumer<PropertyProvider>(
             builder: (context, provider, child) {

@@ -150,6 +150,37 @@ class WasiApiService {
     }
   }
 
+  /// Obtiene la lista de zonas (barrios) para una ciudad específica
+  Future<List<Map<String, dynamic>>> getZonesByCity(String cityId) async {
+    try {
+      if (cityId.isEmpty) return [];
+      final queryParams = <String, dynamic>{
+        'wasi_token': apiToken,
+        'id_company': companyId,
+      };
+      final response = await _dio.get('/location/zones-from-city/$cityId', queryParameters: queryParams);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data['status'] == 'success') {
+          List<Map<String, dynamic>> zones = [];
+          data.forEach((key, value) {
+            if (key != 'status' && value is Map<String, dynamic>) {
+              zones.add({
+                'id': value['id_zone']?.toString() ?? '',
+                'name': value['name']?.toString() ?? '',
+              });
+            }
+          });
+          return zones.where((z) => z['name'].isNotEmpty).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error obteniendo zonas para ciudad $cityId: $e');
+      return [];
+    }
+  }
+
   /// Aplica filtros a los parámetros de la API
   void _applyApiFilters(Map<String, dynamic> queryParams, PropertyFilter filter) {
     // Filtro por cuartos
@@ -259,9 +290,10 @@ class WasiApiService {
       
       // Imagen principal
       if (json['main_image'] != null) {
-        final mainImage = json['main_image']['url_original'] ?? 
-                         json['main_image']['url_big'] ?? 
-                         json['main_image']['url'];
+        final mainImage = json['main_image']['url_big'] ??
+                         json['main_image']['url_medium'] ??
+                         json['main_image']['url'] ??
+                         json['main_image']['url_original'];
         if (mainImage != null) {
           imagenes.add(mainImage.toString());
         }
@@ -273,9 +305,10 @@ class WasiApiService {
           if (gallery is Map<String, dynamic>) {
             gallery.forEach((key, value) {
               if (key != 'id' && value is Map<String, dynamic>) {
-                final imageUrl = value['url_original'] ?? 
-                               value['url_big'] ?? 
-                               value['url'];
+                final imageUrl = value['url_big'] ??
+                               value['url_medium'] ??
+                               value['url'] ??
+                               value['url_original'];
                 if (imageUrl != null && !imagenes.contains(imageUrl.toString())) {
                   imagenes.add(imageUrl.toString());
                 }

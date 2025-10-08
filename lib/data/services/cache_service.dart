@@ -10,6 +10,7 @@ class CacheService {
   static const String _lastUpdateKey = 'last_update_timestamp';
   static const String _filterKey = 'cached_filter';
   static const String _propertiesFileName = 'properties_cache.json'; // Archivo persistente para búsquedas
+  static const String _addApartmentDraftFileName = 'add_apartment_draft.json'; // Borrador formulario nuevo apartamento
   
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
@@ -185,6 +186,41 @@ class CacheService {
       return {'path': null, 'sizeKB': '0.0'};
     } catch (e) {
       return {'path': null, 'sizeKB': '0.0'};
+    }
+  }
+
+  // ================== Borrador formulario Agregar Apartamento ==================
+  static Future<void> saveAddApartmentDraft(Map<String, dynamic> data) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      await file.writeAsString(jsonEncode(data), flush: true);
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar borrador de apartamento: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> loadAddApartmentDraft() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+      return jsonDecode(content) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar borrador de apartamento: $e');
+      return null;
+    }
+  }
+
+  static Future<void> clearAddApartmentDraft() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('⚠️ No se pudo borrar borrador de apartamento: $e');
     }
   }
 

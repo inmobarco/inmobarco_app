@@ -68,8 +68,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   // Precargar todas las imágenes en segundo plano
   void _preloadImages() {
     if (apartment == null || apartment!.imagenes.isEmpty) return;
-    
-    for (String imageUrl in apartment!.imagenes) {
+    const int maxPreloadCount = 3;
+    final imagesToPreload = apartment!.imagenes.take(maxPreloadCount);
+
+    for (String imageUrl in imagesToPreload) {
       precacheImage(
         CachedNetworkImageProvider(imageUrl),
         context,
@@ -183,7 +185,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
               return Hero(
                 tag: 'property-image-$index',
                 child: GestureDetector(
-                  //onTap: () => _showFullScreenImage(index),
+                  onTap: () => _showFullScreenImage(index),
                   child: CachedNetworkImage(
                     imageUrl: apartment!.imagenes[index],
                     width: double.infinity,
