@@ -140,12 +140,79 @@ class WasiApiService {
               });
             }
           });
-          return cities.where((city) => city['name'].isNotEmpty).toList();
+          final sanitized = cities
+              .where((city) => (city['name'] as String).isNotEmpty)
+              .toList();
+          return AppConstants.filterAllowedCities(sanitized);
         }
       }
       return [];
     } catch (e) {
       debugPrint('Error obteniendo ciudades: $e');
+      return [];
+    }
+  }
+
+  /// Obtiene la lista completa de características disponibles en WASI
+  Future<List<Map<String, dynamic>>> getFeatures() async {
+    try {
+      final queryParams = <String, dynamic>{
+        'wasi_token': apiToken,
+        'id_company': companyId,
+      };
+
+      final response = await _dio.get('/feature/all', queryParameters: queryParams);
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic> && data['status'] == 'success') {
+          final List<Map<String, dynamic>> features = [];
+
+          data.forEach((key, value) {
+            if (key == 'status') return;
+
+            if (value is List) {
+              for (final item in value) {
+                if (item is Map<String, dynamic>) {
+                  final id = item['id_feature'] ?? item['id'] ?? item['id_feature_type'];
+                  final dynamic rawName = item['nombre'] ?? item['name'] ?? item['label'];
+                  final name = (rawName ?? '').toString().trim();
+                  if (name.isEmpty) continue;
+
+                  final category = (item['type'] ?? key).toString().toLowerCase();
+                  features.add({
+                    'id': (id ?? '').toString(),
+                    'name': name,
+                    'category': category,
+                    'own': item['own'] ?? false,
+                    'raw': item,
+                  });
+                }
+              }
+            } else if (value is Map<String, dynamic>) {
+              final id = value['id_feature'] ?? value['id'] ?? value['id_feature_type'];
+              final dynamic rawName = value['nombre'] ?? value['name'] ?? value['label'];
+              final name = (rawName ?? '').toString().trim();
+              if (name.isEmpty) return;
+
+              final category = (value['type'] ?? key).toString().toLowerCase();
+              features.add({
+                'id': (id ?? '').toString(),
+                'name': name,
+                'category': category,
+                'own': value['own'] ?? false,
+                'raw': value,
+              });
+            }
+          });
+
+          return features;
+        }
+      }
+
+      return [];
+    } catch (e) {
+      debugPrint('Error obteniendo características: $e');
       return [];
     }
   }

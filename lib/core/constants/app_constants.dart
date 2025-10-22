@@ -12,12 +12,38 @@ class AppConstants {
   static String get defaultApiKey => dotenv.env['ARRENDASOFT_API_KEY'] ?? '';
   static String get wasiApiToken => dotenv.env['WASI_API_TOKEN'] ?? '';
   static String get wasiApiId => dotenv.env['WASI_API_ID'] ?? '';
+
+  // City allowlist
+  static const Set<String> allowedCityIds = {
+    '291', // Medellín
+    '496', // Bello
+    '698', // Envigado
+    '416', // Itagüí
+    '389', // Copacabana (example)
+  };
+
+  static bool isCityAllowed(String? cityId) {
+    if (allowedCityIds.isEmpty) return true;
+    if (cityId == null || cityId.isEmpty) return false;
+    return allowedCityIds.contains(cityId);
+  }
+
+  static List<Map<String, dynamic>> filterAllowedCities(List<Map<String, dynamic>> cities) {
+    if (cities.isEmpty) return const <Map<String, dynamic>>[];
+    if (allowedCityIds.isEmpty) {
+      return List<Map<String, dynamic>>.from(cities);
+    }
+    return cities
+        .where((city) => isCityAllowed(city['id']?.toString()))
+        .map((city) => Map<String, dynamic>.from(city))
+        .toList();
+  }
   
   // Global Data Access - Ciudades disponibles globalmente
   static GlobalDataService get globalData => GlobalDataService();
   static List<Map<String, dynamic>> get cities {
     try {
-      return GlobalDataService().cities;
+      return filterAllowedCities(GlobalDataService().cities);
     } catch (e) {
       debugPrint('Error accediendo a ciudades: $e');
       return <Map<String, dynamic>>[];
@@ -25,7 +51,10 @@ class AppConstants {
   }
   static List<String> get cityNames {
     try {
-      return GlobalDataService().cityNames;
+      return cities
+          .map((city) => city['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
     } catch (e) {
       debugPrint('Error accediendo a nombres de ciudades: $e');
       return <String>[];
@@ -64,4 +93,22 @@ class AppConstants {
   static const String networkErrorMessage = 'Error de conexión. Verifica tu conexión a internet';
   static const String noDataMessage = 'No hay datos disponibles';
   static const String noPropertiesMessage = 'No se encontraron propiedades';
+
+  // Features
+  static List<Map<String, dynamic>> get features {
+    try {
+      return List<Map<String, dynamic>>.from(GlobalDataService().features);
+    } catch (e) {
+      debugPrint('Error accediendo a características: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
+  static List<String> get featureNames {
+    try {
+      return GlobalDataService().featureNames;
+    } catch (e) {
+      debugPrint('Error accediendo a nombres de características: $e');
+      return <String>[];
+    }
+  }
 }

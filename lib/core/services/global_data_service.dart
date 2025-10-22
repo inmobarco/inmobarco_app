@@ -8,11 +8,13 @@ class GlobalDataService {
   GlobalDataService._internal();
 
   List<Map<String, dynamic>> _cities = [];
+  List<Map<String, dynamic>> _features = [];
   bool _isLoading = false;
   bool _isInitialized = false;
 
   // Getter para acceder a las ciudades desde cualquier parte
   List<Map<String, dynamic>> get cities => _cities;
+  List<Map<String, dynamic>> get features => _features;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
 
@@ -42,11 +44,20 @@ class GlobalDataService {
       
       // Cargar ciudades
       debugPrint('🏙️ Cargando ciudades...');
-      _cities = await apiService.getCities();
+  final fetchedCities = await apiService.getCities();
+  _cities = AppConstants.filterAllowedCities(fetchedCities);
       
       debugPrint('✅ Ciudades cargadas: ${_cities.length}');
       if (_cities.isNotEmpty) {
         debugPrint('📍 Primera ciudad: ${_cities.first}');
+      }
+
+      // Cargar características
+      debugPrint('🧩 Cargando características...');
+      _features = await apiService.getFeatures();
+      debugPrint('✅ Características cargadas: ${_features.length}');
+      if (_features.isNotEmpty) {
+        debugPrint('🔖 Primera característica: ${_features.first['name']} (${_features.first['category']})');
       }
       
       _isInitialized = true;
@@ -56,6 +67,7 @@ class GlobalDataService {
       debugPrint('Stack trace: $stackTrace');
       // En caso de error, inicializar con lista vacía
       _cities = [];
+      _features = [];
       _isInitialized = false; // Permitir reintento
     } finally {
       _isLoading = false;
@@ -91,5 +103,26 @@ class GlobalDataService {
     return cityNames.where((cityName) {
       return cityName.toLowerCase().contains(query.toLowerCase());
     }).toList();
+  }
+
+  /// Obtiene los nombres de características disponibles
+  List<String> get featureNames {
+    return _features
+        .map((feature) => feature['name']?.toString() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
+
+  /// Filtra características por texto
+  List<Map<String, dynamic>> filterFeatures(String query) {
+    if (query.isEmpty) {
+      return List<Map<String, dynamic>>.from(_features);
+    }
+
+    final lowerQuery = query.toLowerCase();
+    return _features
+        .where((feature) => feature['name']?.toString().toLowerCase().contains(lowerQuery) ?? false)
+        .map((feature) => Map<String, dynamic>.from(feature))
+        .toList();
   }
 }

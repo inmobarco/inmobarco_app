@@ -13,7 +13,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Cargar variables de entorno
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "assets/config/.env");
   
   // Inicializar encriptación
   propertyEncryption.init();

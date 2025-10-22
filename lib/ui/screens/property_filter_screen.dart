@@ -475,126 +475,49 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
       );
     }
 
-    // Extraer solo los nombres de las ciudades para el autocompletado
-    final cityNames = globalCities
-        .where((city) => city['name'] != null)
-        .map((city) => city['name'] as String)
-        .toList();
+  final cityNames = globalCities
+    .map((city) => city['name']?.toString())
+    .whereType<String>()
+    .where((name) => name.isNotEmpty)
+    .toList();
 
-    return Autocomplete<String>(
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) {
-          return cityNames; // Mostrar todas las ciudades si no hay texto
-        }
-        return cityNames.where((String option) {
-          return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
-        });
-      },
-      displayStringForOption: (String option) => option,
-      fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, 
-                        FocusNode focusNode, VoidCallback onFieldSubmitted) {
-        // Sincronizar con nuestro controlador personalizado
-        if (_ciudadController.text != textEditingController.text) {
-          textEditingController.text = _ciudadController.text;
-          textEditingController.selection = TextSelection.fromPosition(
-            TextPosition(offset: textEditingController.text.length),
-          );
-        }
-        
-        return TextFormField(
-          controller: textEditingController,
-          focusNode: focusNode,
-          decoration: InputDecoration(
-            labelText: 'Escribir ciudad',
-            hintText: 'Ej: Medellín, Bello, Envigado...',
-            suffixIcon: _selectedCiudad != null
-                ? IconButton(
-                    icon: const Icon(Icons.clear, size: 20),
-                    onPressed: () {
-                      textEditingController.clear();
-                      _ciudadController.clear();
-                      setState(() {
-                        _selectedCiudad = null;
-                      });
-                    },
-                  )
-                : const Icon(Icons.location_city),
-          ),
+    // Asegurar que el valor seleccionado siga siendo válido
+    if (_selectedCiudad != null && !cityNames.contains(_selectedCiudad)) {
+      _selectedCiudad = null;
+      _ciudadController.clear();
+    }
+
+    return InputDecorator(
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        labelText: 'Seleccione ciudad',
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedCiudad,
+          hint: const Text('Seleccione ciudad'),
+          items: cityNames
+              .map(
+                (name) => DropdownMenuItem<String>(
+                  value: name,
+                  child: Text(name),
+                ),
+              )
+              .toList(),
           onChanged: (value) {
-            // Sincronizar con nuestro controlador
-            _ciudadController.text = value;
-            
-            // Actualizar la selección mientras escribe
-            if (cityNames.contains(value)) {
-              setState(() {
-                _selectedCiudad = value;
-              });
-            } else if (value.isEmpty) {
-              setState(() {
-                _selectedCiudad = null;
-              });
-            }
+            setState(() {
+              _selectedCiudad = value;
+              if (value == null || value.isEmpty) {
+                _ciudadController.clear();
+              } else {
+                _ciudadController.text = value;
+              }
+            });
           },
-        );
-      },
-      optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, 
-                          Iterable<String> options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4.0,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              constraints: const BoxConstraints(maxHeight: 200),
-              width: MediaQuery.of(context).size.width - 32, // Ancho ajustado al contenedor padre
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final String option = options.elementAt(index);
-                  return InkWell(
-                    onTap: () => onSelected(option),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: AppColors.textColor2.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.location_city,
-                            size: 16,
-                            color: AppColors.textColor2,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              option,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-      onSelected: (String selection) {
-        _ciudadController.text = selection; // Sincronizar con nuestro controlador
-        setState(() {
-          _selectedCiudad = selection;
-        });
-      },
+        ),
+      ),
     );
   }
 
