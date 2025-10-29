@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -20,6 +19,59 @@ class _WebhookResult {
     this.isConnectionError = false,
     this.message,
   });
+}
+
+String _formatWithThousandsSeparator(String digits) {
+  if (digits.isEmpty) {
+    return '';
+  }
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    buffer.write(digits[i]);
+    final remaining = digits.length - i - 1;
+    if (remaining > 0 && remaining % 3 == 0) {
+      buffer.write('.');
+    }
+  }
+  return buffer.toString();
+}
+
+class _ThousandsSeparatorFormatter extends TextInputFormatter {
+  const _ThousandsSeparatorFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      return const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+    }
+
+    final formatted = _formatWithThousandsSeparator(digits);
+    var selectionEnd = newValue.selection.end;
+    if (selectionEnd < 0) {
+      selectionEnd = 0;
+    } else if (selectionEnd > newValue.text.length) {
+      selectionEnd = newValue.text.length;
+    }
+    final digitsToRight = newValue.text
+        .substring(selectionEnd)
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .length;
+    var selectionIndex = formatted.length - digitsToRight;
+    if (selectionIndex < 0) {
+      selectionIndex = 0;
+    } else if (selectionIndex > formatted.length) {
+      selectionIndex = formatted.length;
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: selectionIndex),
+    );
+  }
 }
 
 class _ApartmentPhoto {
@@ -61,13 +113,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   final _adminPhoneController = TextEditingController();
   final _lodgePhoneController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
-  Uint8List? _photoBytes;
-  String? _photoFileName;
   Uint8List? _serviceRoomPhotoBytes;
   String? _serviceRoomPhotoFileName;
   Uint8List? _parkingLotPhotoBytes;
   String? _parkingLotPhotoFileName;
-  final List<_ApartmentPhoto> _additionalPhotos = <_ApartmentPhoto>[];
+  final List<_ApartmentPhoto> _photos = <_ApartmentPhoto>[];
   final Set<String> _selectedFeatureIds = <String>{};
   final Set<String> _pendingFeatureNames = <String>{};
   bool _hasVeredalWater = false;
@@ -79,6 +129,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   List<Map<String, dynamic>> _otherFeatures = [];
   bool _loadingFeatures = false;
   String _operation = 'alquiler'; // Control interno UI -> se mapea a for_rent / for_sale
+  String _statusOnPageId = '1'; // 1 Activo, 2 Inactivo
   // Condición de la propiedad (WASI: id_property_condition)
   String _propertyConditionId = '1'; // 1 Nuevo (default)
   static const List<Map<String, String>> _propertyConditions = [
@@ -86,6 +137,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     {'id': '2', 'label': 'Usado'},
     {'id': '3', 'label': 'Proyecto'},
     {'id': '4', 'label': 'En Construcción'},
+  ];
+
+  static const List<Map<String, String>> _statusOptions = [
+    {'id': '1', 'label': 'Activo'},
+    {'id': '2', 'label': 'Inactivo'},
   ];
 
   // Dropdowns numéricos
@@ -122,6 +178,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   static const String _fixedRegionId = '2'; // Antioquia
   static const String _webhookUrl = 'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/wasi';
   static const Set<String> _allowedImageExtensions = {'png', 'jpg', 'jpeg', 'gif'};
+  static const int _maxPhotoCount = 30;
 
   @override
   void initState() {
@@ -167,11 +224,18 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       } else if (draft['for_sale'] == true) {
         _operation = 'venta';
       }
+      final storedStatusOnPage = draft['id_status_on_page']?.toString();
+      if (storedStatusOnPage != null &&
+          _statusOptions.any((option) => option['id'] == storedStatusOnPage)) {
+        _statusOnPageId = storedStatusOnPage;
+      }
       if (draft['rent_price'] != null) _rentPriceController.text = draft['rent_price'].toString();
       if (_rentPriceController.text.isEmpty && draft['price'] != null) {
         _rentPriceController.text = draft['price'].toString();
       }
+      _applyThousandsFormat(_rentPriceController);
       if (draft['sale_price'] != null) _salePriceController.text = draft['sale_price'].toString();
+      _applyThousandsFormat(_salePriceController);
       if (draft['address'] != null) _addressController.text = draft['address'];
       if (draft['area'] != null) _areaController.text = draft['area'].toString();
       if (draft['observations'] != null) _observationsController.text = draft['observations'];
@@ -417,13 +481,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   void _loadPhotosFromDraft(Map<String, dynamic> draft) {
-    _photoBytes = null;
-    _photoFileName = null;
     _serviceRoomPhotoBytes = null;
     _serviceRoomPhotoFileName = null;
     _parkingLotPhotoBytes = null;
     _parkingLotPhotoFileName = null;
-    _additionalPhotos.clear();
+    _photos.clear();
+
+    var restoredFromTuples = false;
 
     final tuplePairs = _extractPhotoPairs(draft['photos']);
     if (tuplePairs.isNotEmpty) {
@@ -435,40 +499,40 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         nameList.add(pair.length > 1 ? pair[1] : '');
       }
       if (base64List.isNotEmpty) {
-        _restorePhotosFromLists(base64List, nameList);
-        return;
+        _addPhotosFromLists(base64List, nameList);
+        restoredFromTuples = _photos.isNotEmpty;
       }
     }
 
-    final photosList = _extractStringList(
-      draft['photos_base64'] ?? draft['photosBase64'],
-    );
-    final photoNamesList = _extractStringList(
-      draft['photos_file_names'] ?? draft['photosFileNames'] ?? draft['photoFileNames'],
-    );
+    if (!restoredFromTuples) {
+      final photosList = _extractStringList(
+        draft['photos_base64'] ?? draft['photosBase64'],
+      );
+      final photoNamesList = _extractStringList(
+        draft['photos_file_names'] ?? draft['photosFileNames'] ?? draft['photoFileNames'],
+      );
 
-    if (photosList.isNotEmpty) {
-      _restorePhotosFromLists(photosList, photoNamesList);
-      return;
-    }
-
-    final singlePhotoBase64 = draft['photo_base64'] ?? draft['photoBase64'];
-    if (singlePhotoBase64 is String && singlePhotoBase64.isNotEmpty) {
-      try {
-        _photoBytes = base64Decode(singlePhotoBase64);
-      } catch (e) {
-        debugPrint('Error decodificando foto principal del borrador: $e');
-        _photoBytes = null;
+      if (photosList.isNotEmpty) {
+        _addPhotosFromLists(photosList, photoNamesList);
+        restoredFromTuples = _photos.isNotEmpty;
       }
     }
 
-    final storedPhotoName = draft['_photo_file_name'] ?? draft['photoFileName'];
-    if (storedPhotoName is String && storedPhotoName.isNotEmpty) {
-      _photoFileName = storedPhotoName;
-    } else if (_photoBytes != null) {
-      _photoFileName ??= 'foto_principal.jpg';
-    } else {
-      _photoFileName = null;
+    if (!restoredFromTuples) {
+      final singlePhotoBase64 = draft['photo_base64'] ?? draft['photoBase64'];
+      final storedPhotoName = draft['_photo_file_name'] ?? draft['photoFileName'];
+      if (singlePhotoBase64 is String && singlePhotoBase64.isNotEmpty) {
+        try {
+          final bytes = base64Decode(singlePhotoBase64);
+          final rawName = storedPhotoName is String ? storedPhotoName.trim() : '';
+          final resolvedName = rawName.isEmpty ? 'foto_01.jpg' : rawName;
+          if (_photos.length < _maxPhotoCount) {
+            _photos.add(_ApartmentPhoto(bytes: bytes, fileName: resolvedName));
+          }
+        } catch (e) {
+          debugPrint('Error decodificando foto principal del borrador: $e');
+        }
+      }
     }
 
     final legacyAdditionalBase64 = _extractStringList(
@@ -479,7 +543,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
 
     if (legacyAdditionalBase64.isNotEmpty) {
-      _appendAdditionalPhotos(legacyAdditionalBase64, legacyAdditionalNames);
+      _addPhotosFromLists(legacyAdditionalBase64, legacyAdditionalNames);
     }
 
     _ApartmentPhoto? decodeAuxPhoto({
@@ -569,12 +633,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     return <String>[];
   }
 
-  void _restorePhotosFromLists(List<String> base64List, List<String> nameList) {
-    _photoBytes = null;
-    _photoFileName = null;
-
-    var mainSet = false;
-    for (var i = 0; i < base64List.length && i < 30; i++) {
+  void _addPhotosFromLists(List<String> base64List, List<String> nameList) {
+    for (var i = 0; i < base64List.length && _photos.length < _maxPhotoCount; i++) {
       final encoded = base64List[i];
       if (encoded.isEmpty) {
         continue;
@@ -582,34 +642,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       try {
         final bytes = base64Decode(encoded);
         final candidateName = (i < nameList.length) ? nameList[i].trim() : '';
-        final resolvedName = candidateName.isEmpty ? 'foto_${i + 1}.jpg' : candidateName;
-        if (!mainSet) {
-          _photoBytes = bytes;
-          _photoFileName = resolvedName;
-          mainSet = true;
-        } else if (_additionalPhotos.length < 29) {
-          _additionalPhotos.add(_ApartmentPhoto(bytes: bytes, fileName: resolvedName));
-        }
+        final resolvedName = candidateName.isEmpty
+            ? 'foto_${(_photos.length + 1).toString().padLeft(2, '0')}.jpg'
+            : candidateName;
+        _photos.add(_ApartmentPhoto(bytes: bytes, fileName: resolvedName));
       } catch (e) {
         debugPrint('Error decodificando foto del borrador (índice $i): $e');
-      }
-    }
-  }
-
-  void _appendAdditionalPhotos(List<String> base64List, List<String> nameList) {
-    for (var i = 0; i < base64List.length && _additionalPhotos.length < 29; i++) {
-      final encoded = base64List[i];
-      if (encoded.isEmpty) {
-        continue;
-      }
-      try {
-        final bytes = base64Decode(encoded);
-        final candidateName = (i < nameList.length) ? nameList[i].trim() : '';
-        final existingCount = (_photoBytes != null ? 1 : 0) + _additionalPhotos.length;
-        final resolvedName = candidateName.isEmpty ? 'foto_${existingCount + 1}.jpg' : candidateName;
-        _additionalPhotos.add(_ApartmentPhoto(bytes: bytes, fileName: resolvedName));
-      } catch (e) {
-        debugPrint('Error decodificando foto adicional del borrador: $e');
       }
     }
   }
@@ -795,8 +833,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     }
 
     if (internalNames.isEmpty && externalNames.isEmpty && _pendingFeatureNames.isNotEmpty) {
-      final pending = _pendingFeatureNames.toList()
-        ..sort((a, b) => _normalizeSortText(a).compareTo(_normalizeSortText(b)));
+      final pending = _pendingFeatureNames.toList();
+      pending.sort((a, b) => _normalizeSortText(a).compareTo(_normalizeSortText(b)));
       return [pending, <String>[]];
     }
 
@@ -804,10 +842,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       return _normalizeSortText(a).compareTo(_normalizeSortText(b));
     }
 
-    internalNames
-      ..sort(compareByNormalizedText);
-    externalNames
-      ..sort(compareByNormalizedText);
+    internalNames.sort(compareByNormalizedText);
+    externalNames.sort(compareByNormalizedText);
 
     return [internalNames, externalNames];
   }
@@ -951,23 +987,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   List<List<String>> _buildPhotoTuples() {
     final tuples = <List<String>>[];
-    var counter = 1;
-    if (_photoBytes != null) {
-      final fallbackName = 'foto_${counter.toString().padLeft(2, '0')}.jpg';
-      final name = (_photoFileName != null && _photoFileName!.trim().isNotEmpty)
-          ? _photoFileName!.trim()
-          : fallbackName;
-      tuples.add([base64Encode(_photoBytes!), name]);
-      counter++;
-    }
-    for (final photo in _additionalPhotos) {
-      final fallbackName = 'foto_${counter.toString().padLeft(2, '0')}.jpg';
+    for (var i = 0; i < _photos.length && i < _maxPhotoCount; i++) {
+      final photo = _photos[i];
+      final fallbackName = 'foto_${(i + 1).toString().padLeft(2, '0')}.jpg';
       final name = photo.fileName.trim().isNotEmpty ? photo.fileName.trim() : fallbackName;
       tuples.add([base64Encode(photo.bytes), name]);
-      counter++;
-      if (tuples.length >= 30) {
-        break;
-      }
     }
     return tuples;
   }
@@ -1032,15 +1056,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     }
   }
 
-  int get _remainingAdditionalPhotoSlots {
-    final remaining = 29 - _additionalPhotos.length;
+  int get _remainingPhotoSlots {
+    final remaining = _maxPhotoCount - _photos.length;
     return remaining < 0 ? 0 : remaining;
   }
 
-  Future<int> _pickAdditionalPhotos() async {
-    final remaining = _remainingAdditionalPhotoSlots;
+  Future<int> _pickPhotos() async {
+    final remaining = _remainingPhotoSlots;
     if (remaining <= 0) {
-      _showSnackBarMessage('Ya se cargaron las 29 fotos adicionales permitidas.');
+      _showSnackBarMessage('Ya se cargaron las $_maxPhotoCount fotos permitidas.');
       return 0;
     }
 
@@ -1072,32 +1096,32 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     if (newPhotos.isEmpty || !mounted) {
       if (limitApplied) {
-        _showSnackBarMessage('Se alcanzó el máximo de fotos adicionales permitidas.');
+        _showSnackBarMessage('Se alcanzó el máximo de fotos permitidas.');
       }
       return 0;
     }
 
     setState(() {
-      _additionalPhotos.addAll(newPhotos);
+      _photos.addAll(newPhotos);
     });
     await _autoSave();
 
     if (limitApplied) {
-      _showSnackBarMessage('Solo se agregaron ${newPhotos.length} fotos adicionales (límite alcanzado).');
+      _showSnackBarMessage('Solo se agregaron ${newPhotos.length} fotos (límite alcanzado).');
     }
 
     return newPhotos.length;
   }
 
-  Future<void> _removeAdditionalPhotoAt(int index) async {
-    if (index < 0 || index >= _additionalPhotos.length) return;
+  Future<void> _removePhotoAt(int index) async {
+    if (index < 0 || index >= _photos.length) return;
     setState(() {
-      _additionalPhotos.removeAt(index);
+      _photos.removeAt(index);
     });
     await _autoSave();
   }
 
-  Future<void> _openAdditionalPhotosManager() async {
+  Future<void> _openPhotosManager() async {
     if (_isSubmitting) return;
 
     await showModalBottomSheet<void>(
@@ -1107,14 +1131,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         return StatefulBuilder(
           builder: (ctx, setStateSheet) {
             Future<void> handleAddPhotos() async {
-              final added = await _pickAdditionalPhotos();
+              final added = await _pickPhotos();
               if (added > 0) {
                 setStateSheet(() {});
               }
             }
 
             Future<void> handleRemovePhoto(int index) async {
-              await _removeAdditionalPhotoAt(index);
+              await _removePhotoAt(index);
               setStateSheet(() {});
             }
 
@@ -1144,28 +1168,28 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       ElevatedButton.icon(
                         icon: const Icon(Icons.add),
                         label: const Text('Agregar fotos'),
-                        onPressed: _remainingAdditionalPhotoSlots <= 0 ? null : handleAddPhotos,
+                        onPressed: _remainingPhotoSlots <= 0 ? null : handleAddPhotos,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Fotos disponibles: ${_additionalPhotos.length} de 29',
+                        'Fotos cargadas: ${_photos.length} de $_maxPhotoCount',
                         style: Theme.of(ctx).textTheme.bodySmall,
                       ),
                       const SizedBox(height: 12),
                       Expanded(
-                        child: _additionalPhotos.isEmpty
+                        child: _photos.isEmpty
                             ? const Center(
-                                child: Text('No se han agregado fotos adicionales.'),
+                                child: Text('No se han agregado fotos.'),
                               )
                             : GridView.builder(
-                                itemCount: _additionalPhotos.length,
+                                itemCount: _photos.length,
                                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
                                   crossAxisSpacing: 8,
                                   mainAxisSpacing: 8,
                                 ),
                                 itemBuilder: (gridContext, index) {
-                                  final photo = _additionalPhotos[index];
+                                  final photo = _photos[index];
                                   return Stack(
                                     children: [
                                       Positioned.fill(
@@ -1203,7 +1227,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                         child: Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.5),
+                                            color: Colors.black.withValues(alpha: 0.5),
                                             borderRadius: BorderRadius.circular(6),
                                           ),
                                           child: Text(
@@ -1231,38 +1255,6 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
   }
 
-  Future<void> _pickPhoto() async {
-    try {
-      final XFile? file = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 85,
-      );
-      if (file == null) return;
-      final photo = await _readPhotoFromXFile(file);
-      if (photo == null || !mounted) return;
-      setState(() {
-        _photoBytes = photo.bytes;
-        _photoFileName = photo.fileName;
-      });
-      await _autoSave();
-    } catch (e) {
-      debugPrint('Error seleccionando foto: $e');
-    }
-  }
-
-  Future<void> _removePhoto() async {
-    if (_photoBytes == null && (_photoFileName == null || _photoFileName!.isEmpty)) {
-      return;
-    }
-    setState(() {
-      _photoBytes = null;
-      _photoFileName = null;
-    });
-    await _autoSave();
-  }
-
   void _resetFormState() {
     _formKey.currentState?.reset();
     _apartmentNumberController.clear();
@@ -1287,6 +1279,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _selectedCityId = null;
     _selectedZoneId = null;
     _operation = 'alquiler';
+  _statusOnPageId = '1';
     _propertyConditionId = '1';
     _bedrooms = '1';
     _bathrooms = '1';
@@ -1296,13 +1289,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   _hasGasInstallation = false;
   _hasLegalizacionEpm = false;
   _hasInternetOperators = false;
-    _photoBytes = null;
-    _photoFileName = null;
     _serviceRoomPhotoBytes = null;
     _serviceRoomPhotoFileName = null;
     _parkingLotPhotoBytes = null;
     _parkingLotPhotoFileName = null;
-    _additionalPhotos.clear();
+    _photos.clear();
     _lastSaved = null;
   }
 
@@ -1341,68 +1332,6 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
   }
 
-  Future<void> _onPhotoButtonPressed() async {
-    if (_photoBytes == null) {
-      await _pickPhoto();
-      return;
-    }
-
-    if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Foto del apartamento'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_photoFileName != null && _photoFileName!.isNotEmpty)
-                  Text(
-                    _photoFileName!,
-                    style: Theme.of(ctx).textTheme.bodyMedium,
-                  ),
-                if (_photoFileName != null && _photoFileName!.isNotEmpty)
-                  const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: Image.memory(
-                      _photoBytes!,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await _removePhoto();
-              },
-              child: const Text('Eliminar'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(ctx).pop();
-                await _pickPhoto();
-              },
-              child: const Text('Cambiar foto'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _autoSave() async {
     if (!mounted) return;
     // No guardar si formulario está completamente vacío
@@ -1419,11 +1348,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         _landlordNameController.text.isEmpty &&
         _landlordPhoneController.text.isEmpty &&
         (_keysController.text.trim().isEmpty || _keysController.text.trim().toUpperCase() == 'PORTERIA') &&
-        _adminMailController.text.isEmpty &&
-        _adminPhoneController.text.isEmpty &&
-        _lodgePhoneController.text.isEmpty &&
-        _photoBytes == null &&
-        _additionalPhotos.isEmpty &&
+  _adminMailController.text.isEmpty &&
+  _adminPhoneController.text.isEmpty &&
+  _lodgePhoneController.text.isEmpty &&
+  _photos.isEmpty &&
         !_hasVeredalWater &&
         !_hasGasInstallation &&
         !_hasLegalizacionEpm &&
@@ -1450,7 +1378,6 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       '_admin_mail_text': _adminMailController.text,
       '_admin_phone_text': _digitsOnly(_adminPhoneController.text),
       '_lodge_phone_text': _digitsOnly(_lodgePhoneController.text),
-      '_photo_file_name': _photoFileName,
       'photos': photoTuples,
       '_service_room_photo_file_name': _serviceRoomPhotoFileName,
       '_parking_lot_photo_file_name': _parkingLotPhotoFileName,
@@ -1474,6 +1401,22 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       digits = digits.substring(0, maxLength);
     }
     return digits;
+  }
+
+  void _applyThousandsFormat(TextEditingController controller) {
+    final digits = _digitsOnly(controller.text);
+    if (digits.isEmpty) {
+      controller.value = const TextEditingValue(
+        text: '',
+        selection: TextSelection.collapsed(offset: 0),
+      );
+      return;
+    }
+    final formatted = _formatWithThousandsSeparator(digits);
+    controller.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
   }
 
   List<String> _extractFeatures(String raw) {
@@ -1501,8 +1444,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Map<String, dynamic> _currentData() {
     final isForRent = _operation == 'alquiler';
-    final rentPrice = _numericString(_rentPriceController.text);
-    final salePrice = _numericString(_salePriceController.text);
+  final rentPrice = _digitsOnly(_rentPriceController.text);
+  final salePrice = _digitsOnly(_salePriceController.text);
     final area = _numericString(_areaController.text);
     final buildingDate = _digitsOnly(_buildingDateController.text, maxLength: 4);
   final apartmentNumber = _digitsOnly(_apartmentNumberController.text);
@@ -1545,13 +1488,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'id_property_type': _fixedPropertyTypeId,
       'id_country': _fixedCountryId,
       'id_region': _fixedRegionId,
-      'id_status_on_page': '1', // Fijo según requerimiento
       'id_availability': '1',   // Fijo según requerimiento (Disponible)
       'id_publish_on_map': '2', // Fijo según requerimiento
-      'title': 'Apartamento',
+      'title': 'Apartamento en ${cityName ?? 'Medellin'}',
       'registration_number': effectiveTitle,
       'portals': <String>[], // Fijo según requerimiento (Portal Inmuebles24)
       // Dinámicos
+      'id_status_on_page': _statusOnPageId,
       'id_property_condition': _propertyConditionId,
       'id_city': _selectedCityId,
       'id_zone': _selectedZoneId,
@@ -1571,7 +1514,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'bathrooms': _bathrooms,
       'garages': _garages,
       'stratum': _stratum,
-      'observations': 'Apartamento de prueba',
+      'observations': 'Apartamento en ${cityName ?? 'Medellin'}',
       'building_date': buildingDate,
       'service_room': serviceRoom.isEmpty ? null : serviceRoom,
     'service_room_photo': serviceRoomPhotoTuple,
@@ -1603,6 +1546,16 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Future<void> _onSavePressed() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_photos.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Agrega al menos una foto del apartamento.')));
+      return;
+    }
+    if (_userFirstName == null || _userFirstName!.trim().isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Completa los datos del asesor antes de captar.')));
+      return;
+    }
     if (_selectedCityId == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seleccione una ciudad')));
       return;
@@ -1771,48 +1724,108 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Tipo de negocio',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _operation,
-                            items: const [
-                              DropdownMenuItem(value: 'alquiler', child: Text('Alquiler')),
-                              DropdownMenuItem(value: 'venta', child: Text('Venta')),
-                            ],
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _operation = value);
-                            },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Tipo de negocio',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isDense: true,
+                                  value: _operation,
+                                  items: const [
+                                    DropdownMenuItem(value: 'alquiler', child: Text('Alquiler')),
+                                    DropdownMenuItem(value: 'venta', child: Text('Venta')),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(() => _operation = value);
+                                  },
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Disponibilidad',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isDense: true,
+                                  value: _statusOnPageId,
+                                  items: _statusOptions
+                                      .map(
+                                        (option) => DropdownMenuItem<String>(
+                                          value: option['id'],
+                                          child: Text(option['label'] ?? ''),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(() => _statusOnPageId = value);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
-                      // Condición de la propiedad
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Condición de la propiedad',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _propertyConditionId,
-                            isExpanded: true,
-                            items: _propertyConditions
-                                .map((c) => DropdownMenuItem(
-                                      value: c['id'],
-                                      child: Text('${c['id']}. ${c['label']}'),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              if (value == null) return;
-                              setState(() => _propertyConditionId = value);
-                            },
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Condición de la propiedad',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isDense: true,
+                                  value: _propertyConditionId,
+                                  isExpanded: true,
+                                  items: _propertyConditions
+                                      .map((c) => DropdownMenuItem(
+                                            value: c['id'],
+                                            child: Text('${c['id']}. ${c['label']}'),
+                                          ))
+                                      .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(() => _propertyConditionId = value);
+                                  },
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _buildingDateController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Año de construcción',
+                                border: OutlineInputBorder(),
+                                hintText: 'Ej: 2015',
+                              ),
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              validator: (v) {
+                                final raw = (v ?? '').trim();
+                                if (raw.isEmpty) return 'Ingrese el año de construcción';
+                                final digits = _digitsOnly(raw, maxLength: 4);
+                                if (digits.length != 4) return 'Ingrese un año válido (4 dígitos)';
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       // Ciudad
@@ -1825,6 +1838,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                             ? const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
                             : DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
+                                  isDense: true,
                                   value: _selectedCityId,
                                   isExpanded: true,
                                   hint: const Text('Seleccione ciudad'),
@@ -1847,32 +1861,60 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               ),
                       ),
                       const SizedBox(height: 16),
-                      // Zona
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Zona / Barrio',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: (_selectedCityId == null)
-                            ? const Text('Seleccione primero una ciudad')
-                            : _loadingZones
-                                ? const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
-                                : DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: _selectedZoneId,
-                                      isExpanded: true,
-                                      hint: const Text('Seleccione zona (opcional)'),
-                                      items: _zones
-                                          .map((z) => DropdownMenuItem(
-                                                value: z['id'] as String,
-                                                child: Text(z['name'] as String),
-                                              ))
-                                          .toList(),
-                                      onChanged: (value) {
-                                        setState(() => _selectedZoneId = value);
-                                      },
-                                    ),
-                                  ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Zona / Barrio',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: (_selectedCityId == null)
+                                  ? const Text('Seleccione primero una ciudad')
+                                  : _loadingZones
+                                      ? const SizedBox(
+                                          height: 40,
+                                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                        )
+                                      : DropdownButtonHideUnderline(
+                                          child: DropdownButton<String>(
+                                            isDense: true,
+                                            value: _selectedZoneId,
+                                            isExpanded: true,
+                                            hint: const Text('Seleccione zona (opcional)'),
+                                            items: _zones
+                                                .map((z) => DropdownMenuItem(
+                                                      value: z['id'] as String,
+                                                      child: Text(z['name'] as String),
+                                                    ))
+                                                .toList(),
+                                            onChanged: (value) {
+                                              setState(() => _selectedZoneId = value);
+                                            },
+                                          ),
+                                        ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: _stratum,
+                              decoration: const InputDecoration(
+                                labelText: 'Estrato',
+                                border: OutlineInputBorder(),
+                              ),
+                              isExpanded: true,
+                              items: List.generate(6, (index) {
+                                final value = (index + 1).toString();
+                                return DropdownMenuItem(value: value, child: Text(value));
+                              }),
+                              onChanged: (value) {
+                                if (value == null) return;
+                                setState(() => _stratum = value);
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -1895,13 +1937,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 labelText: 'Precio arriendo',
                                 border: OutlineInputBorder(),
                               ),
-                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                              inputFormatters: const [_ThousandsSeparatorFormatter()],
                               validator: (v) {
-                                final numeric = _numericString(v ?? '');
-                                if (_operation == 'alquiler' && numeric.isEmpty) {
+                                final digits = _digitsOnly(v ?? '');
+                                if (_operation == 'alquiler' && digits.isEmpty) {
                                   return 'Ingrese el precio de arriendo';
                                 }
-                                if (numeric.isEmpty && (v ?? '').trim().isNotEmpty) {
+                                if (digits.isEmpty && (v ?? '').trim().isNotEmpty) {
                                   return 'Solo números';
                                 }
                                 return null;
@@ -1917,13 +1959,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 labelText: 'Precio venta',
                                 border: OutlineInputBorder(),
                               ),
-                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                              inputFormatters: const [_ThousandsSeparatorFormatter()],
                               validator: (v) {
-                                final numeric = _numericString(v ?? '');
-                                if (_operation == 'venta' && numeric.isEmpty) {
+                                final digits = _digitsOnly(v ?? '');
+                                if (_operation == 'venta' && digits.isEmpty) {
                                   return 'Ingrese el precio de venta';
                                 }
-                                if (numeric.isEmpty && (v ?? '').trim().isNotEmpty) {
+                                if (digits.isEmpty && (v ?? '').trim().isNotEmpty) {
                                   return 'Solo números';
                                 }
                                 return null;
@@ -1931,21 +1973,6 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _areaController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Área (m²)',
-                          border: OutlineInputBorder(),
-                        ),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                        validator: (v) {
-                          final numeric = _numericString(v ?? '');
-                          if (numeric.isEmpty) return 'Ingrese el área';
-                          return null;
-                        },
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -2012,42 +2039,22 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: DropdownButtonFormField<String>(
-                              value: _stratum,
+                            child: TextFormField(
+                              controller: _areaController,
+                              keyboardType: TextInputType.number,
                               decoration: const InputDecoration(
-                                labelText: 'Estrato',
+                                labelText: 'Área (m²)',
                                 border: OutlineInputBorder(),
                               ),
-                              isExpanded: true,
-                              items: List.generate(6, (index) {
-                                final value = (index + 1).toString();
-                                return DropdownMenuItem(value: value, child: Text(value));
-                              }),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() => _stratum = value);
+                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                              validator: (v) {
+                                final numeric = _numericString(v ?? '');
+                                if (numeric.isEmpty) return 'Ingrese el área';
+                                return null;
                               },
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _buildingDateController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Año de construcción',
-                          border: OutlineInputBorder(),
-                          hintText: 'Ej: 2015',
-                        ),
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                        validator: (v) {
-                          final raw = (v ?? '').trim();
-                          if (raw.isEmpty) return 'Ingrese el año de construcción';
-                          final digits = _digitsOnly(raw, maxLength: 4);
-                          if (digits.length != 4) return 'Ingrese un año válido (4 dígitos)';
-                          return null;
-                        },
                       ),
                       const SizedBox(height: 16),
                       if (_loadingFeatures)
@@ -2099,43 +2106,43 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         maxLines: 4,
                       ),
                       const SizedBox(height: 16),
-                      OutlinedButton.icon(
-                        icon: Icon(_photoBytes == null ? Icons.add_a_photo : Icons.photo),
-                        label: Text(_photoBytes == null ? 'Agregar Foto Principal' : 'Ver / cambiar foto'),
-                        onPressed: _isSubmitting ? null : _onPhotoButtonPressed,
-                      ),
-                      if (_photoBytes != null) ...[
-                        const SizedBox(height: 8),
+                      if (_photos.isNotEmpty) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: AspectRatio(
                             aspectRatio: 4 / 3,
                             child: Image.memory(
-                              _photoBytes!,
+                              _photos.first.bytes,
                               fit: BoxFit.cover,
                             ),
                           ),
                         ),
-                        if (_photoFileName != null && _photoFileName!.isNotEmpty)
+                        if (_photos.first.fileName.isNotEmpty)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              _photoFileName!,
+                              _photos.first.fileName,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
-                      ],
                         const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text('Fotos del apartamento'),
-                          onPressed: _isSubmitting ? null : _openAdditionalPhotosManager,
+                      ] else ...[
+                        const Text(
+                          'Añade al menos una foto desde el gestor para continuar.',
+                          style: TextStyle(fontStyle: FontStyle.italic),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Fotos adicionales cargadas: ${_additionalPhotos.length} de 29',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.photo_library),
+                        label: const Text('Fotos del apartamento'),
+                        onPressed: _isSubmitting ? null : _openPhotosManager,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Fotos cargadas: ${_photos.length} de $_maxPhotoCount',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 24),
                       const Divider(),
                       Padding(
