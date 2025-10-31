@@ -6,11 +6,13 @@ import '../../core/theme/app_colors.dart';
 class PropertyCard extends StatelessWidget {
   final Apartment apartment;
   final VoidCallback onTap;
+  final bool isPublicNavigation;
 
   const PropertyCard({
     super.key,
     required this.apartment,
     required this.onTap,
+    this.isPublicNavigation = true,
   });
 
   @override
@@ -28,12 +30,37 @@ class PropertyCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Imagen principal
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-              child: _buildPropertyImage(),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                  child: _buildPropertyImage(),
+                ),
+                // Reference badge en esquina inferior izquierda si navegación es privada
+                if (!isPublicNavigation && apartment.reference.isNotEmpty)
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        apartment.reference,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             
             // Información del apartamento

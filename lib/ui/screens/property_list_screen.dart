@@ -21,6 +21,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
   String? _userFirstName;
   String? _userLastName;
   String? _userPhone;
+  bool _isPublicNavigation = true;
   
   @override
   void initState() {
@@ -52,29 +53,57 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     }
   }
 
+  void _toggleNavigationVisibility() {
+    setState(() {
+      _isPublicNavigation = !_isPublicNavigation;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: 120,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
-            child: TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      leadingWidth: 170,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+                onPressed: _showUserDialog,
+                child: Text(
+                  _userFirstName != null && _userFirstName!.trim().isNotEmpty
+                      ? _userFirstName!.trim()
+                      : 'Entrar',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
             ),
-            onPressed: _showUserDialog,
-            child: Text(
-              _userFirstName != null && _userFirstName!.trim().isNotEmpty
-                ? _userFirstName!.trim()
-                : 'Entrar',
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white),
+            const SizedBox(width: 8),
+            Material(
+              color: Colors.transparent,
+              shape: const CircleBorder(),
+              clipBehavior: Clip.antiAlias,
+              child: IconButton(
+                icon: Icon(
+                  _isPublicNavigation ? Icons.visibility : Icons.visibility_off,
+                  color: Colors.white,
+                ),
+                tooltip: _isPublicNavigation
+                    ? 'Navegación pública'
+                    : 'Navegación privada',
+                onPressed: _toggleNavigationVisibility,
+              ),
             ),
-          ),
+          ],
         ),
+      ),
         title: const Text('Inmobarco'),
         actions: [
           IconButton(
@@ -95,31 +124,6 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               return IconButton(
                 icon: const Icon(Icons.info_outline),
                 onPressed: () => _showCacheInfo(context),
-              );
-            },
-          ),
-          Consumer<PropertyProvider>(
-            builder: (context, provider, child) {
-              return Stack(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.filter_list),
-                    onPressed: () => _showFilterDialog(context),
-                  ),
-                  if (provider.hasActiveFilters)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.secondaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
               );
             },
           ),
@@ -210,6 +214,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                       final apartment = isFiltering ? visibleList[index] : provider.properties[index];
                       return PropertyCard(
                         apartment: apartment,
+                        isPublicNavigation: _isPublicNavigation,
                         onTap: () => _navigateToDetail(apartment.id),
                       );
                     },
@@ -370,36 +375,71 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
       color: AppColors.backgroundLevel1,
       child: Consumer<PropertyProvider>(
         builder: (context, provider, _) {
-          return TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              hintText: 'Buscar por número de registro...',
-              prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, color: AppColors.textColor2),
-                      onPressed: () {
-                        _searchController.clear();
-                        provider.clearSearchQuery();
-                        setState(() {}); // Actualiza visibilidad del botón
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.backgroundLevel2,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide.none,
+          final hasActiveFilters = provider.hasActiveFilters;
+          return Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por número de registro...',
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: AppColors.textColor2),
+                            onPressed: () {
+                              _searchController.clear();
+                              provider.clearSearchQuery();
+                              setState(() {}); // Actualiza visibilidad del botón
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: AppColors.backgroundLevel2,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    provider.updateSearchQuery(value);
+                    setState(() {}); // solo para refrescar suffixIcon
+                  },
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+              const SizedBox(width: 12),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Material(
+                    color: AppColors.primaryColor,
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.filter_list, color: Colors.white),
+                      tooltip: 'Filtros',
+                      onPressed: () => _showFilterDialog(context),
+                    ),
+                  ),
+                  if (hasActiveFilters)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppColors.secondaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ),
-            onChanged: (value) {
-              provider.updateSearchQuery(value);
-              setState(() {}); // solo para refrescar suffixIcon
-            },
+            ],
           );
         },
       ),
@@ -551,7 +591,10 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => PropertyDetailScreen(propertyId: propertyId),
+        builder: (context) => PropertyDetailScreen(
+          propertyId: propertyId,
+          isPublicNavigation: _isPublicNavigation,
+        ),
       ),
     );
   }

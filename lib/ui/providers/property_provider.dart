@@ -143,34 +143,20 @@ class PropertyProvider extends ChangeNotifier {
 
   /// Obtiene una propiedad por ID
   Future<Apartment?> getPropertyById(String id) async {
-    Apartment? localProperty;
     try {
+      // Buscar en la lista local
       final localIndex = _properties.indexWhere((p) => p.id == id);
       if (localIndex != -1) {
-        localProperty = _properties[localIndex];
+        // Retornar directamente desde cache/memoria sin llamar a la API
+        return _properties[localIndex];
       }
 
-      final needsDetailFetch = localProperty == null || localProperty.imagenes.length <= 1;
-
-      if (needsDetailFetch) {
-        final detailedProperty = await _apiService.getPropertyById(id);
-        if (localProperty != null) {
-          _properties[localIndex] = detailedProperty;
-          notifyListeners();
-        } else {
-          _properties.add(detailedProperty);
-          notifyListeners();
-        }
-        return detailedProperty;
-      }
-
-      return localProperty;
+      // Si no existe localmente, buscar en la API
+      final detailedProperty = await _apiService.getPropertyById(id);
+      _properties.add(detailedProperty);
+      notifyListeners();
+      return detailedProperty;
     } catch (e) {
-      if (localProperty != null) {
-        // Retornar lo que tengamos en caché si la petición detallada falla
-        debugPrint('⚠️ Error obteniendo detalle, usando versión local: $e');
-        return localProperty;
-      }
       throw Exception('Error obteniendo propiedad: $e');
     }
   }

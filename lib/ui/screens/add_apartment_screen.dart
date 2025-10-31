@@ -130,6 +130,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   bool _loadingFeatures = false;
   String _operation = 'alquiler'; // Control interno UI -> se mapea a for_rent / for_sale
   String _statusOnPageId = '1'; // 1 Activo, 2 Inactivo
+  bool _cooldownActive = false;
+  Timer? _cooldownTimer;
+  static const Duration _cooldownDuration = Duration(seconds: 30);
   // Condición de la propiedad (WASI: id_property_condition)
   String _propertyConditionId = '1'; // 1 Nuevo (default)
   static const List<Map<String, String>> _propertyConditions = [
@@ -977,6 +980,32 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _showSnackBarMessage('Formato de imagen no permitido. Usa archivos PNG, JPG, JPEG o GIF.');
   }
 
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _cooldownActive = true;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Datos enviados correctamente, por favor espere 30 segundos antes de volver a captar.',
+        ),
+        duration: Duration(seconds: 30),
+      ),
+    );
+    _cooldownTimer = Timer(_cooldownDuration, () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _cooldownActive = false;
+      });
+    });
+  }
+
   List<String>? _buildSinglePhotoTuple(Uint8List? bytes, String? fileName, String fallbackName) {
     if (bytes == null) {
       return null;
@@ -1295,6 +1324,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _parkingLotPhotoFileName = null;
     _photos.clear();
     _lastSaved = null;
+    _cooldownTimer?.cancel();
+    _cooldownActive = false;
   }
 
   Future<void> _confirmClearDraft() async {
@@ -1545,7 +1576,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   Future<void> _onSavePressed() async {
-    if (!_formKey.currentState!.validate()) return;
+    final isValid = _formKey.currentState!.validate();
+    if (!isValid) {
+      _showSnackBarMessage('Faltan campos obligatorios por completar.');
+      return;
+    }
     if (_photos.isEmpty) {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Agrega al menos una foto del apartamento.')));
@@ -1575,9 +1610,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         return;
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Datos enviados correctamente.')),
-      );
+      _startCooldown();
+      return;
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -1639,6 +1673,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
+    _cooldownTimer?.cancel();
   _apartmentNumberController.dispose();
   _unitNameController.dispose();
     _rentPriceController.dispose();
@@ -2382,7 +2417,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.save),
                           label: const Text('Captar!'),
-                          onPressed: _isSubmitting ? null : _onSavePressed,
+                          onPressed: (_isSubmitting || _cooldownActive) ? null : _onSavePressed,
                         ),
                       ),
                       if (_lastSaved != null) ...[

@@ -105,7 +105,9 @@ class Apartment {
     return Apartment(
       id: json['codigo']?.toString() ?? '',
       titulo: json['titulo']?.toString() ?? '',
-      reference: json['registration_number']?.toString() ?? '',
+      reference: (json['reference']?.toString() ?? '').isNotEmpty
+          ? json['reference']?.toString() ?? ''
+          : json['registration_number']?.toString() ?? '',
       rentPrice: _parseDouble(json['rent_price']),
       salePrice: _parseDouble(json['sale_price']),
       cuartos: cuartos,

@@ -43,7 +43,7 @@ class WasiApiService {
         //'for_sale': true, // Solo propiedades en venta
         'id_availability': '1', // Solo disponibles
         'scope': '1', // Solo propiedades propias
-        'short': true, 
+        'short': false, // Incluir galerías y características
         'skip': (page - 1) * limit,
         'take': limit,
         'order': 'desc',
@@ -432,7 +432,9 @@ class WasiApiService {
       return Apartment(
         id: json['id_property']?.toString() ?? '',
         titulo: json['title']?.toString() ?? 'Propiedad sin título',
-        reference: json['registration_number']?.toString() ?? 'Sin numero de apto',
+        reference: (json['reference']?.toString() ?? '').isNotEmpty 
+            ? json['reference']?.toString() ?? ''
+            : json['registration_number']?.toString() ?? '',
         rentPrice: rentPrice,
         salePrice: salePrice,
         cuartos: int.tryParse(json['bedrooms']?.toString() ?? '0') ?? 0,

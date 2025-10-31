@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../providers/property_provider.dart';
 import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
@@ -9,10 +12,12 @@ import '../../core/encription.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
+  final bool isPublicNavigation;
 
   const PropertyDetailScreen({
     super.key,
     required this.propertyId,
+    this.isPublicNavigation = true,
   });
 
   @override
@@ -26,6 +31,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   PageController? _pageController;
   bool _showApartmentInfo = false;
   int _currentImageIndex = 0;
+  bool _isDownloadingImages = false;
 
   @override
   void initState() {
@@ -322,13 +328,34 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Precio
-          Text(
-            apartment!.priceFormatted,
-            style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              color: AppColors.primaryColor,
-              fontWeight: FontWeight.bold,
-            ),
+          // Precio y botón de descarga
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  apartment!.priceFormatted,
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (apartment!.imagenes.isNotEmpty)
+                IconButton(
+                  icon: _isDownloadingImages
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryColor,
+                          ),
+                        )
+                      : const Icon(Icons.download, color: AppColors.primaryColor),
+                  tooltip: 'Descargar imágenes',
+                  onPressed: _isDownloadingImages ? null : _downloadAllImages,
+                ),
+            ],
           ),
 
           const SizedBox(height: 8),
@@ -635,6 +662,96 @@ Ver más detalles: $propertyUrl''';
           sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
     );
     SharePlus.instance.share(shareParams);
+  }
+
+  Future<void> _downloadAllImages() async {
+    if (apartment == null || apartment!.imagenes.isEmpty) return;
+
+    setState(() {
+      _isDownloadingImages = true;
+    });
+
+    try {
+      final dio = Dio();
+      
+      // Obtener directorio de descargas
+      Directory? downloadsDir;
+      if (Platform.isAndroid) {
+        downloadsDir = Directory('/storage/emulated/0/Download/Inmobarco');
+      } else if (Platform.isIOS) {
+        downloadsDir = await getApplicationDocumentsDirectory();
+      } else {
+        downloadsDir = await getDownloadsDirectory();
+      }
+
+      if (downloadsDir == null) {
+        throw Exception('No se pudo acceder al directorio de descargas');
+      }
+
+      // Crear carpeta si no existe
+      if (!await downloadsDir.exists()) {
+        await downloadsDir.create(recursive: true);
+      }
+
+      int successCount = 0;
+      int failCount = 0;
+
+      for (int i = 0; i < apartment!.imagenes.length; i++) {
+        try {
+          final imageUrl = apartment!.imagenes[i];
+          final fileName = '${apartment!.reference.replaceAll(' ', '_')}_${i + 1}.jpg';
+          final filePath = '${downloadsDir.path}/$fileName';
+
+          await dio.download(
+            imageUrl,
+            filePath,
+            options: Options(
+              headers: {
+                'User-Agent': 'Mozilla/5.0',
+              },
+            ),
+          );
+
+          successCount++;
+        } catch (e) {
+          debugPrint('Error descargando imagen ${i + 1}: $e');
+          failCount++;
+        }
+      }
+
+      if (mounted) {
+        final downloadPath = Platform.isAndroid 
+            ? 'Download/Inmobarco'
+            : downloadsDir.path;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failCount == 0
+                  ? '✓ ${successCount} imágenes descargadas en:\n$downloadPath'
+                  : '${successCount} descargadas, ${failCount} fallidas\nRuta: $downloadPath',
+            ),
+            backgroundColor: failCount == 0 ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al descargar imágenes: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingImages = false;
+        });
+      }
+    }
   }
 }
 
