@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import '../providers/property_provider.dart';
 import '../../domain/models/apartment.dart';
@@ -677,7 +678,8 @@ Ver más detalles: $propertyUrl''';
       // Obtener directorio de descargas
       Directory? downloadsDir;
       if (Platform.isAndroid) {
-        downloadsDir = Directory('/storage/emulated/0/Download/Inmobarco');
+        // Usar el directorio público de Pictures para que aparezca en la galería
+        downloadsDir = Directory('/storage/emulated/0/Pictures/Inmobarco');
       } else if (Platform.isIOS) {
         downloadsDir = await getApplicationDocumentsDirectory();
       } else {
@@ -696,6 +698,9 @@ Ver más detalles: $propertyUrl''';
       int successCount = 0;
       int failCount = 0;
 
+      // Canal para comunicación con código nativo Android
+      const platform = MethodChannel('com.inmobarco.app/media_scanner');
+
       for (int i = 0; i < apartment!.imagenes.length; i++) {
         try {
           final imageUrl = apartment!.imagenes[i];
@@ -712,6 +717,15 @@ Ver más detalles: $propertyUrl''';
             ),
           );
 
+          // Notificar al sistema Android sobre el nuevo archivo
+          if (Platform.isAndroid) {
+            try {
+              await platform.invokeMethod('scanFile', {'path': filePath});
+            } catch (e) {
+              debugPrint('Error escaneando archivo: $e');
+            }
+          }
+
           successCount++;
         } catch (e) {
           debugPrint('Error descargando imagen ${i + 1}: $e');
@@ -721,18 +735,18 @@ Ver más detalles: $propertyUrl''';
 
       if (mounted) {
         final downloadPath = Platform.isAndroid 
-            ? 'Download/Inmobarco'
+            ? 'Pictures/Inmobarco'
             : downloadsDir.path;
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               failCount == 0
-                  ? '✓ ${successCount} imágenes descargadas en:\n$downloadPath'
+                  ? '✓ ${successCount} imágenes descargadas en:\n$downloadPath\n\nYa disponibles en tu galería'
                   : '${successCount} descargadas, ${failCount} fallidas\nRuta: $downloadPath',
             ),
             backgroundColor: failCount == 0 ? Colors.green : Colors.orange,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 5),
           ),
         );
       }
