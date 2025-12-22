@@ -7,7 +7,7 @@ import 'core/encription.dart';
 import 'core/services/global_data_service.dart';
 import 'data/services/wasi_api_service.dart';
 import 'ui/providers/property_provider.dart';
-import 'ui/screens/property_list_screen.dart';
+import 'ui/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,7 +43,7 @@ class InmobarcoApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Inmobarco',
         theme: AppTheme.lightTheme,
-        home: const PropertyListScreen(),
+        home: const HomeScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );
