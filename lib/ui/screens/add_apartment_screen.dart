@@ -242,22 +242,27 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
           _statusOptions.any((option) => option['id'] == storedStatusOnPage)) {
         _statusOnPageId = storedStatusOnPage;
       }
-      if (draft['rent_price'] != null)
+      if (draft['rent_price'] != null) {
         _rentPriceController.text = draft['rent_price'].toString();
+      }
       if (_rentPriceController.text.isEmpty && draft['price'] != null) {
         _rentPriceController.text = draft['price'].toString();
       }
       _applyThousandsFormat(_rentPriceController);
-      if (draft['sale_price'] != null)
+      if (draft['sale_price'] != null) {
         _salePriceController.text = draft['sale_price'].toString();
+      }
       _applyThousandsFormat(_salePriceController);
       if (draft['address'] != null) _addressController.text = draft['address'];
-      if (draft['area'] != null)
+      if (draft['area'] != null) {
         _areaController.text = draft['area'].toString();
-      if (draft['observations'] != null)
+      }
+      if (draft['observations'] != null) {
         _observationsController.text = draft['observations'];
-      if (draft['building_date'] != null)
+      }
+      if (draft['building_date'] != null) {
         _buildingDateController.text = draft['building_date'].toString();
+      }
       if (draft['service_room'] != null) {
         _serviceRoomController.text = draft['service_room'].toString();
       } else if (draft['_service_room_text'] != null) {
@@ -277,8 +282,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         }
       }
       if (draft['bedrooms'] != null) _bedrooms = draft['bedrooms'].toString();
-      if (draft['bathrooms'] != null)
+      if (draft['bathrooms'] != null) {
         _bathrooms = draft['bathrooms'].toString();
+      }
       if (draft['garages'] != null) _garages = draft['garages'].toString();
       if (draft['stratum'] != null) _stratum = draft['stratum'].toString();
       if (draft['features'] is List) {
@@ -427,11 +433,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Future<void> _loadZones(String cityId) async {
     if (cityId.isEmpty) return;
-    if (mounted)
+    if (mounted) {
       setState(() {
         _loadingZones = true;
         _zones = [];
       });
+    }
     try {
       final api = WasiApiService(
         apiToken: AppConstants.wasiApiToken,
@@ -2056,11 +2063,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               ],
                               validator: (v) {
                                 final raw = (v ?? '').trim();
-                                if (raw.isEmpty)
+                                if (raw.isEmpty) {
                                   return 'Ingrese el año de construcción';
+                                }
                                 final digits = _digitsOnly(raw, maxLength: 4);
-                                if (digits.length != 4)
+                                if (digits.length != 4) {
                                   return 'Ingrese un año válido (4 dígitos)';
+                                }
                                 return null;
                               },
                             ),

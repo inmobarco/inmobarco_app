@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/property_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../data/services/cache_service.dart';
 
@@ -52,35 +50,26 @@ class _InmobarcoAppBarState extends State<InmobarcoAppBar> {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      leadingWidth: 100,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
-        child: TextButton(
-          style: TextButton.styleFrom(
-            backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          ),
-          onPressed: _showUserDialog,
-          child: Text(
-            _userFirstName != null && _userFirstName!.trim().isNotEmpty
-                ? _userFirstName!.trim()
-                : 'Entrar',
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-      ),
       title: const Text('Inmobarco'),
       actions: [
-        // Botón de información del caché
-        Consumer<PropertyProvider>(
-          builder: (context, provider, child) {
-            return IconButton(
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => _showCacheInfo(context),
-            );
-          },
+        // Botón de usuario a la derecha
+        Padding(
+          padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
+          child: TextButton(
+            style: TextButton.styleFrom(
+              backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+            onPressed: _showUserDialog,
+            child: Text(
+              _userFirstName != null && _userFirstName!.trim().isNotEmpty
+                  ? _userFirstName!.trim()
+                  : 'Entrar',
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
         ),
       ],
     );
@@ -207,63 +196,5 @@ class _InmobarcoAppBarState extends State<InmobarcoAppBar> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Perfil guardado correctamente')),
     );
-  }
-
-  void _showCacheInfo(BuildContext context) async {
-    final provider = context.read<PropertyProvider>();
-    final cacheInfo = await provider.getCacheInfo();
-    if (!mounted) return;
-
-    showDialog(
-      // ignore: use_build_context_synchronously
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Información del Caché'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Propiedades en caché: ${cacheInfo['propertiesCount']}'),
-            const SizedBox(height: 8),
-            if (cacheInfo['hasCache'])
-              Text('Última actualización: ${_formatDate(cacheInfo['lastUpdate'])}')
-            else
-              const Text('Sin caché disponible'),
-            const SizedBox(height: 8),
-            if (cacheInfo['hasCache'])
-              Text('Antigüedad: ${cacheInfo['cacheAgeHours'].toStringAsFixed(1)} horas'),
-          ],
-        ),
-        actions: [
-          if (cacheInfo['hasCache'])
-            TextButton(
-              onPressed: () async {
-                // Capturar referencias antes del async
-                final navigator = Navigator.of(dialogContext);
-                final scaffoldMessenger = ScaffoldMessenger.of(context);
-                
-                await provider.clearCache();
-                navigator.pop();
-                
-                if (mounted) {
-                  scaffoldMessenger.showSnackBar(
-                    const SnackBar(content: Text('Caché limpiado')),
-                  );
-                }
-              },
-              child: const Text('Limpiar Caché'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Desconocida';
-    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

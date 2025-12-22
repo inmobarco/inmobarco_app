@@ -742,8 +742,8 @@ Ver más detalles: $propertyUrl''';
           SnackBar(
             content: Text(
               failCount == 0
-                  ? '✓ ${successCount} imágenes descargadas en:\n$downloadPath\n\nYa disponibles en tu galería'
-                  : '${successCount} descargadas, ${failCount} fallidas\nRuta: $downloadPath',
+                  ? '✓ $successCount imágenes descargadas en:\n$downloadPath\n\nYa disponibles en tu galería'
+                  : '$successCount descargadas, $failCount fallidas\nRuta: $downloadPath',
             ),
             backgroundColor: failCount == 0 ? Colors.green : Colors.orange,
             duration: const Duration(seconds: 5),
