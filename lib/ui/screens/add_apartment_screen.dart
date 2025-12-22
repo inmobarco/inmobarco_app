@@ -40,7 +40,10 @@ class _ThousandsSeparatorFormatter extends TextInputFormatter {
   const _ThousandsSeparatorFormatter();
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
     if (digits.isEmpty) {
       return const TextEditingValue(
@@ -78,10 +81,7 @@ class _ApartmentPhoto {
   final Uint8List bytes;
   final String fileName;
 
-  const _ApartmentPhoto({
-    required this.bytes,
-    required this.fileName,
-  });
+  const _ApartmentPhoto({required this.bytes, required this.fileName});
 }
 
 class AddApartmentScreen extends StatefulWidget {
@@ -112,6 +112,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   final _adminMailController = TextEditingController();
   final _adminPhoneController = TextEditingController();
   final _lodgePhoneController = TextEditingController();
+  final _porterNameController = TextEditingController();
+  final _porterPhoneController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
   Uint8List? _serviceRoomPhotoBytes;
   String? _serviceRoomPhotoFileName;
@@ -128,7 +130,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   List<Map<String, dynamic>> _externalFeatures = [];
   List<Map<String, dynamic>> _otherFeatures = [];
   bool _loadingFeatures = false;
-  String _operation = 'alquiler'; // Control interno UI -> se mapea a for_rent / for_sale
+  String _operation =
+      'alquiler'; // Control interno UI -> se mapea a for_rent / for_sale
   String _statusOnPageId = '1'; // 1 Activo, 2 Inactivo
   bool _cooldownActive = false;
   Timer? _cooldownTimer;
@@ -179,8 +182,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   static const String _fixedPropertyTypeId = '2';
   static const String _fixedCountryId = '1';
   static const String _fixedRegionId = '2'; // Antioquia
-  static const String _webhookUrl = 'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/wasi';
-  static const Set<String> _allowedImageExtensions = {'png', 'jpg', 'jpeg', 'gif'};
+  static const String _webhookUrl =
+      'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/wasi';
+  static const Set<String> _allowedImageExtensions = {
+    'png',
+    'jpg',
+    'jpeg',
+    'gif',
+  };
   static const int _maxPhotoCount = 30;
 
   @override
@@ -199,7 +208,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     // Cargar draft primero
     final draft = await CacheService.loadAddApartmentDraft();
     if (draft != null) {
-      final storedApartmentNumber = draft['_apartment_number_text'] ?? draft['apartment_number'];
+      final storedApartmentNumber =
+          draft['_apartment_number_text'] ?? draft['apartment_number'];
       final storedUnitName = draft['_unit_name_text'] ?? draft['unit_name'];
       if (storedApartmentNumber != null) {
         final sanitizedNumber = _digitsOnly(storedApartmentNumber.toString());
@@ -232,17 +242,22 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
           _statusOptions.any((option) => option['id'] == storedStatusOnPage)) {
         _statusOnPageId = storedStatusOnPage;
       }
-      if (draft['rent_price'] != null) _rentPriceController.text = draft['rent_price'].toString();
+      if (draft['rent_price'] != null)
+        _rentPriceController.text = draft['rent_price'].toString();
       if (_rentPriceController.text.isEmpty && draft['price'] != null) {
         _rentPriceController.text = draft['price'].toString();
       }
       _applyThousandsFormat(_rentPriceController);
-      if (draft['sale_price'] != null) _salePriceController.text = draft['sale_price'].toString();
+      if (draft['sale_price'] != null)
+        _salePriceController.text = draft['sale_price'].toString();
       _applyThousandsFormat(_salePriceController);
       if (draft['address'] != null) _addressController.text = draft['address'];
-      if (draft['area'] != null) _areaController.text = draft['area'].toString();
-      if (draft['observations'] != null) _observationsController.text = draft['observations'];
-      if (draft['building_date'] != null) _buildingDateController.text = draft['building_date'].toString();
+      if (draft['area'] != null)
+        _areaController.text = draft['area'].toString();
+      if (draft['observations'] != null)
+        _observationsController.text = draft['observations'];
+      if (draft['building_date'] != null)
+        _buildingDateController.text = draft['building_date'].toString();
       if (draft['service_room'] != null) {
         _serviceRoomController.text = draft['service_room'].toString();
       } else if (draft['_service_room_text'] != null) {
@@ -262,7 +277,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         }
       }
       if (draft['bedrooms'] != null) _bedrooms = draft['bedrooms'].toString();
-      if (draft['bathrooms'] != null) _bathrooms = draft['bathrooms'].toString();
+      if (draft['bathrooms'] != null)
+        _bathrooms = draft['bathrooms'].toString();
       if (draft['garages'] != null) _garages = draft['garages'].toString();
       if (draft['stratum'] != null) _stratum = draft['stratum'].toString();
       if (draft['features'] is List) {
@@ -280,10 +296,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       }
 
       if (draft['_internal_features_text'] != null) {
-        _pendingFeatureNames.addAll(_extractFeatures(draft['_internal_features_text'].toString()));
+        _pendingFeatureNames.addAll(
+          _extractFeatures(draft['_internal_features_text'].toString()),
+        );
       }
       if (draft['_external_features_text'] != null) {
-        _pendingFeatureNames.addAll(_extractFeatures(draft['_external_features_text'].toString()));
+        _pendingFeatureNames.addAll(
+          _extractFeatures(draft['_external_features_text'].toString()),
+        );
       }
       if (draft['_prompts_text'] != null) {
         _promptsController.text = draft['_prompts_text'].toString();
@@ -295,9 +315,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       } else if (draft['landlordName'] != null) {
         _landlordNameController.text = draft['landlordName'].toString();
       }
-      final storedLandlordPhone = draft['_landlord_phone_text'] ?? draft['landlordPhone'];
+      final storedLandlordPhone =
+          draft['_landlord_phone_text'] ?? draft['landlordPhone'];
       if (storedLandlordPhone != null) {
-        _landlordPhoneController.text = _digitsOnly(storedLandlordPhone.toString());
+        _landlordPhoneController.text = _digitsOnly(
+          storedLandlordPhone.toString(),
+        );
       }
       if (draft['_keys_text'] != null) {
         _keysController.text = draft['_keys_text'].toString();
@@ -309,13 +332,25 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       } else if (draft['adminMail'] != null) {
         _adminMailController.text = draft['adminMail'].toString();
       }
-      final storedAdminPhone = draft['_admin_phone_text'] ?? draft['adminPhone'];
+      final storedAdminPhone =
+          draft['_admin_phone_text'] ?? draft['adminPhone'];
       if (storedAdminPhone != null) {
         _adminPhoneController.text = _digitsOnly(storedAdminPhone.toString());
       }
-      final storedLodgePhone = draft['_lodge_phone_text'] ?? draft['lodgePhone'];
+      final storedLodgePhone =
+          draft['_lodge_phone_text'] ?? draft['lodgePhone'];
       if (storedLodgePhone != null) {
         _lodgePhoneController.text = _digitsOnly(storedLodgePhone.toString());
+      }
+      if (draft['_porter_name_text'] != null) {
+        _porterNameController.text = draft['_porter_name_text'].toString();
+      } else if (draft['porterName'] != null) {
+        _porterNameController.text = draft['porterName'].toString();
+      }
+      final storedPorterPhone =
+          draft['_porter_phone_text'] ?? draft['porterPhone'];
+      if (storedPorterPhone != null) {
+        _porterPhoneController.text = _digitsOnly(storedPorterPhone.toString());
       }
       if (_keysController.text.trim().isEmpty) {
         _keysController.text = 'PORTERIA';
@@ -323,7 +358,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _loadPhotosFromDraft(draft);
 
       _hasVeredalWater = _parseBool(
-        draft['agua_veredal'] ?? draft['_agua_veredal_bool'] ?? draft['aguaVeredal'],
+        draft['agua_veredal'] ??
+            draft['_agua_veredal_bool'] ??
+            draft['aguaVeredal'],
       );
       _hasGasInstallation = _parseBool(
         draft['instalacion_gas_cubierta'] ??
@@ -331,7 +368,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
             draft['instalacionGasCubierta'],
       );
       _hasLegalizacionEpm = _parseBool(
-        draft['legalizacion_epm'] ?? draft['_legalizacion_epm_bool'] ?? draft['legalizacionEpm'],
+        draft['legalizacion_epm'] ??
+            draft['_legalizacion_epm_bool'] ??
+            draft['legalizacionEpm'],
       );
       _hasInternetOperators = _parseBool(
         draft['operadores_internet'] ??
@@ -340,14 +379,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       );
     }
 
-  // Cargar perfil de usuario si existe
-  await _loadUserProfile();
+    // Cargar perfil de usuario si existe
+    await _loadUserProfile();
 
-  // Cargar ciudades desde GlobalData si está inicializado, si no llamar API
+    // Cargar ciudades desde GlobalData si está inicializado, si no llamar API
     await _loadCities();
 
-  // Cargar características disponibles en WASI
-  await _loadFeatures();
+    // Cargar características disponibles en WASI
+    await _loadFeatures();
 
     // Si hay city en draft, cargar zonas
     if (_selectedCityId != null) {
@@ -365,7 +404,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       if (cached.isNotEmpty) {
         _cities = List<Map<String, dynamic>>.from(cached);
       } else {
-        final api = WasiApiService(apiToken: AppConstants.wasiApiToken, companyId: AppConstants.wasiApiId);
+        final api = WasiApiService(
+          apiToken: AppConstants.wasiApiToken,
+          companyId: AppConstants.wasiApiId,
+        );
         _cities = await api.getCities();
       }
 
@@ -385,12 +427,20 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Future<void> _loadZones(String cityId) async {
     if (cityId.isEmpty) return;
-    if (mounted) setState(() { _loadingZones = true; _zones = []; });
+    if (mounted)
+      setState(() {
+        _loadingZones = true;
+        _zones = [];
+      });
     try {
-      final api = WasiApiService(apiToken: AppConstants.wasiApiToken, companyId: AppConstants.wasiApiId);
+      final api = WasiApiService(
+        apiToken: AppConstants.wasiApiToken,
+        companyId: AppConstants.wasiApiId,
+      );
       _zones = await api.getZonesByCity(cityId);
       // Si la zona seleccionada ya no pertenece, limpiar
-      if (_selectedZoneId != null && !_zones.any((z) => z['id'] == _selectedZoneId)) {
+      if (_selectedZoneId != null &&
+          !_zones.any((z) => z['id'] == _selectedZoneId)) {
         _selectedZoneId = null;
       }
     } catch (e) {
@@ -405,7 +455,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     try {
       List<Map<String, dynamic>> rawFeatures = AppConstants.features;
       if (rawFeatures.isEmpty) {
-        final api = WasiApiService(apiToken: AppConstants.wasiApiToken, companyId: AppConstants.wasiApiId);
+        final api = WasiApiService(
+          apiToken: AppConstants.wasiApiToken,
+          companyId: AppConstants.wasiApiId,
+        );
         rawFeatures = await api.getFeatures();
       } else {
         rawFeatures = List<Map<String, dynamic>>.from(rawFeatures);
@@ -414,34 +467,43 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       final normalized = rawFeatures
           .map((feature) {
             final id = feature['id']?.toString() ?? '';
-            final name = (feature['name'] ?? feature['nombre'] ?? '').toString().trim();
-            final category = (feature['category'] ?? feature['type'] ?? '').toString().toLowerCase();
+            final name = (feature['name'] ?? feature['nombre'] ?? '')
+                .toString()
+                .trim();
+            final category = (feature['category'] ?? feature['type'] ?? '')
+                .toString()
+                .toLowerCase();
             if (id.isEmpty || name.isEmpty) return null;
-            return {
-              'id': id,
-              'name': name,
-              'category': category,
-            };
+            return {'id': id, 'name': name, 'category': category};
           })
           .whereType<Map<String, dynamic>>()
           .toList();
 
-      _internalFeatures = normalized
-          .where((feature) => feature['category'] == 'internal')
-          .toList()
-        ..sort(_compareFeaturesByName);
+      _internalFeatures =
+          normalized
+              .where((feature) => feature['category'] == 'internal')
+              .toList()
+            ..sort(_compareFeaturesByName);
 
-      _externalFeatures = normalized
-          .where((feature) => feature['category'] == 'external')
-          .toList()
-        ..sort(_compareFeaturesByName);
+      _externalFeatures =
+          normalized
+              .where((feature) => feature['category'] == 'external')
+              .toList()
+            ..sort(_compareFeaturesByName);
 
-      _otherFeatures = normalized
-          .where((feature) => feature['category'] != 'internal' && feature['category'] != 'external')
-          .toList()
-        ..sort(_compareFeaturesByName);
+      _otherFeatures =
+          normalized
+              .where(
+                (feature) =>
+                    feature['category'] != 'internal' &&
+                    feature['category'] != 'external',
+              )
+              .toList()
+            ..sort(_compareFeaturesByName);
 
-      final validIds = normalized.map((feature) => feature['id'] as String).toSet();
+      final validIds = normalized
+          .map((feature) => feature['id'] as String)
+          .toSet();
       _selectedFeatureIds.removeWhere((id) => !validIds.contains(id));
 
       if (_pendingFeatureNames.isNotEmpty) {
@@ -512,7 +574,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         draft['photos_base64'] ?? draft['photosBase64'],
       );
       final photoNamesList = _extractStringList(
-        draft['photos_file_names'] ?? draft['photosFileNames'] ?? draft['photoFileNames'],
+        draft['photos_file_names'] ??
+            draft['photosFileNames'] ??
+            draft['photoFileNames'],
       );
 
       if (photosList.isNotEmpty) {
@@ -523,11 +587,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     if (!restoredFromTuples) {
       final singlePhotoBase64 = draft['photo_base64'] ?? draft['photoBase64'];
-      final storedPhotoName = draft['_photo_file_name'] ?? draft['photoFileName'];
+      final storedPhotoName =
+          draft['_photo_file_name'] ?? draft['photoFileName'];
       if (singlePhotoBase64 is String && singlePhotoBase64.isNotEmpty) {
         try {
           final bytes = base64Decode(singlePhotoBase64);
-          final rawName = storedPhotoName is String ? storedPhotoName.trim() : '';
+          final rawName = storedPhotoName is String
+              ? storedPhotoName.trim()
+              : '';
           final resolvedName = rawName.isEmpty ? 'foto_01.jpg' : rawName;
           if (_photos.length < _maxPhotoCount) {
             _photos.add(_ApartmentPhoto(bytes: bytes, fileName: resolvedName));
@@ -563,10 +630,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         try {
           final bytes = base64Decode(legacyBase64);
           final rawName = legacyFileName?.toString() ?? '';
-          final resolvedName = rawName.trim().isEmpty ? fallbackName : rawName.trim();
+          final resolvedName = rawName.trim().isEmpty
+              ? fallbackName
+              : rawName.trim();
           return _ApartmentPhoto(bytes: bytes, fileName: resolvedName);
         } catch (e) {
-          debugPrint('Error decodificando foto auxiliar (fallback $fallbackName): $e');
+          debugPrint(
+            'Error decodificando foto auxiliar (fallback $fallbackName): $e',
+          );
         }
       }
       return null;
@@ -574,8 +645,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     final servicePhoto = decodeAuxPhoto(
       raw: draft['service_room_photo'],
-      legacyBase64: draft['_service_room_photo_base64'] ?? draft['serviceRoomPhotoBase64'],
-      legacyFileName: draft['_service_room_photo_file_name'] ?? draft['serviceRoomPhotoFileName'],
+      legacyBase64:
+          draft['_service_room_photo_base64'] ??
+          draft['serviceRoomPhotoBase64'],
+      legacyFileName:
+          draft['_service_room_photo_file_name'] ??
+          draft['serviceRoomPhotoFileName'],
       fallbackName: 'cuarto_util.jpg',
     );
     if (servicePhoto != null) {
@@ -585,8 +660,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     final parkingPhoto = decodeAuxPhoto(
       raw: draft['parking_lot_photo'],
-      legacyBase64: draft['_parking_lot_photo_base64'] ?? draft['parkingLotPhotoBase64'],
-      legacyFileName: draft['_parking_lot_photo_file_name'] ?? draft['parkingLotPhotoFileName'],
+      legacyBase64:
+          draft['_parking_lot_photo_base64'] ?? draft['parkingLotPhotoBase64'],
+      legacyFileName:
+          draft['_parking_lot_photo_file_name'] ??
+          draft['parkingLotPhotoFileName'],
       fallbackName: 'parqueo.jpg',
     );
     if (parkingPhoto != null) {
@@ -611,8 +689,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
           name = item[1].toString();
         }
       } else if (item is Map) {
-        final base = item['base64'] ?? item['bytes'] ?? item['data'] ?? item['photo'];
-        final nameCandidate = item['name'] ?? item['fileName'] ?? item['filename'] ?? item['title'];
+        final base =
+            item['base64'] ?? item['bytes'] ?? item['data'] ?? item['photo'];
+        final nameCandidate =
+            item['name'] ??
+            item['fileName'] ??
+            item['filename'] ??
+            item['title'];
         if (base != null) {
           base64 = base.toString();
         }
@@ -637,7 +720,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   void _addPhotosFromLists(List<String> base64List, List<String> nameList) {
-    for (var i = 0; i < base64List.length && _photos.length < _maxPhotoCount; i++) {
+    for (
+      var i = 0;
+      i < base64List.length && _photos.length < _maxPhotoCount;
+      i++
+    ) {
       final encoded = base64List[i];
       if (encoded.isEmpty) {
         continue;
@@ -655,7 +742,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     }
   }
 
-  _ApartmentPhoto? _decodeSinglePhoto(dynamic raw, {required String fallbackName}) {
+  _ApartmentPhoto? _decodeSinglePhoto(
+    dynamic raw, {
+    required String fallbackName,
+  }) {
     if (raw == null) {
       return null;
     }
@@ -681,8 +771,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         }
       }
     } else if (raw is Map) {
-      final base = raw['base64'] ?? raw['bytes'] ?? raw['data'] ?? raw['photo'] ?? raw['value'];
-      final nameCandidate = raw['name'] ?? raw['fileName'] ?? raw['filename'] ?? raw['title'];
+      final base =
+          raw['base64'] ??
+          raw['bytes'] ??
+          raw['data'] ??
+          raw['photo'] ??
+          raw['value'];
+      final nameCandidate =
+          raw['name'] ?? raw['fileName'] ?? raw['filename'] ?? raw['title'];
       if (base != null) {
         base64Data = base.toString();
       }
@@ -699,7 +795,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     try {
       final bytes = base64Decode(base64Data);
-      final resolvedName = (name ?? '').trim().isEmpty ? fallbackName : name!.trim();
+      final resolvedName = (name ?? '').trim().isEmpty
+          ? fallbackName
+          : name!.trim();
       return _ApartmentPhoto(bytes: bytes, fileName: resolvedName);
     } catch (e) {
       debugPrint('Error decodificando foto auxiliar: $e');
@@ -835,9 +933,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       }
     }
 
-    if (internalNames.isEmpty && externalNames.isEmpty && _pendingFeatureNames.isNotEmpty) {
+    if (internalNames.isEmpty &&
+        externalNames.isEmpty &&
+        _pendingFeatureNames.isNotEmpty) {
       final pending = _pendingFeatureNames.toList();
-      pending.sort((a, b) => _normalizeSortText(a).compareTo(_normalizeSortText(b)));
+      pending.sort(
+        (a, b) => _normalizeSortText(a).compareTo(_normalizeSortText(b)),
+      );
       return [pending, <String>[]];
     }
 
@@ -873,7 +975,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         _externalFeatures.isEmpty &&
         _otherFeatures.isEmpty) {
       await _loadFeatures();
-      if (!mounted || (_internalFeatures.isEmpty && _externalFeatures.isEmpty && _otherFeatures.isEmpty)) {
+      if (!mounted ||
+          (_internalFeatures.isEmpty &&
+              _externalFeatures.isEmpty &&
+              _otherFeatures.isEmpty)) {
         return;
       }
     }
@@ -885,7 +990,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
         return StatefulBuilder(
           builder: (ctx, setStateDialog) {
-            Widget buildCategory(String title, List<Map<String, dynamic>> features) {
+            Widget buildCategory(
+              String title,
+              List<Map<String, dynamic>> features,
+            ) {
               if (features.isEmpty) {
                 return const SizedBox.shrink();
               }
@@ -938,7 +1046,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           _otherFeatures.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Text('No se encontraron características disponibles.'),
+                          child: Text(
+                            'No se encontraron características disponibles.',
+                          ),
                         ),
                     ],
                   ),
@@ -950,7 +1060,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(ctx).pop<Set<String>>(Set<String>.from(tempSelected)),
+                  onPressed: () => Navigator.of(
+                    ctx,
+                  ).pop<Set<String>>(Set<String>.from(tempSelected)),
                   child: const Text('Guardar'),
                 ),
               ],
@@ -973,11 +1085,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   void _showSnackBarMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _showInvalidImageFormatMessage() {
-    _showSnackBarMessage('Formato de imagen no permitido. Usa archivos PNG, JPG, JPEG o GIF.');
+    _showSnackBarMessage(
+      'Formato de imagen no permitido. Usa archivos PNG, JPG, JPEG o GIF.',
+    );
   }
 
   void _startCooldown() {
@@ -1006,11 +1122,17 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     });
   }
 
-  List<String>? _buildSinglePhotoTuple(Uint8List? bytes, String? fileName, String fallbackName) {
+  List<String>? _buildSinglePhotoTuple(
+    Uint8List? bytes,
+    String? fileName,
+    String fallbackName,
+  ) {
     if (bytes == null) {
       return null;
     }
-    final resolvedName = (fileName ?? '').trim().isEmpty ? fallbackName : fileName!.trim();
+    final resolvedName = (fileName ?? '').trim().isEmpty
+        ? fallbackName
+        : fileName!.trim();
     return [base64Encode(bytes), resolvedName];
   }
 
@@ -1019,7 +1141,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     for (var i = 0; i < _photos.length && i < _maxPhotoCount; i++) {
       final photo = _photos[i];
       final fallbackName = 'foto_${(i + 1).toString().padLeft(2, '0')}.jpg';
-      final name = photo.fileName.trim().isNotEmpty ? photo.fileName.trim() : fallbackName;
+      final name = photo.fileName.trim().isNotEmpty
+          ? photo.fileName.trim()
+          : fallbackName;
       tuples.add([base64Encode(photo.bytes), name]);
     }
     return tuples;
@@ -1027,14 +1151,19 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Future<_ApartmentPhoto?> _readPhotoFromXFile(XFile file) async {
     final nameOrPath = file.name.isNotEmpty ? file.name : file.path;
-    final extension = p.extension(nameOrPath).replaceFirst('.', '').toLowerCase();
+    final extension = p
+        .extension(nameOrPath)
+        .replaceFirst('.', '')
+        .toLowerCase();
     if (extension.isEmpty || !_allowedImageExtensions.contains(extension)) {
       _showInvalidImageFormatMessage();
       return null;
     }
     try {
       final bytes = await file.readAsBytes();
-      final resolvedName = file.name.isNotEmpty ? file.name : p.basename(nameOrPath);
+      final resolvedName = file.name.isNotEmpty
+          ? file.name
+          : p.basename(nameOrPath);
       return _ApartmentPhoto(bytes: bytes, fileName: resolvedName);
     } catch (e) {
       debugPrint('Error leyendo imagen: $e');
@@ -1093,7 +1222,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   Future<int> _pickPhotos() async {
     final remaining = _remainingPhotoSlots;
     if (remaining <= 0) {
-      _showSnackBarMessage('Ya se cargaron las $_maxPhotoCount fotos permitidas.');
+      _showSnackBarMessage(
+        'Ya se cargaron las $_maxPhotoCount fotos permitidas.',
+      );
       return 0;
     }
 
@@ -1136,7 +1267,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     await _autoSave();
 
     if (limitApplied) {
-      _showSnackBarMessage('Solo se agregaron ${newPhotos.length} fotos (límite alcanzado).');
+      _showSnackBarMessage(
+        'Solo se agregaron ${newPhotos.length} fotos (límite alcanzado).',
+      );
     }
 
     return newPhotos.length;
@@ -1197,7 +1330,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       ElevatedButton.icon(
                         icon: const Icon(Icons.add),
                         label: const Text('Agregar fotos'),
-                        onPressed: _remainingPhotoSlots <= 0 ? null : handleAddPhotos,
+                        onPressed: _remainingPhotoSlots <= 0
+                            ? null
+                            : handleAddPhotos,
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -1212,18 +1347,21 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               )
                             : GridView.builder(
                                 itemCount: _photos.length,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  crossAxisSpacing: 8,
-                                  mainAxisSpacing: 8,
-                                ),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: 3,
+                                      crossAxisSpacing: 8,
+                                      mainAxisSpacing: 8,
+                                    ),
                                 itemBuilder: (gridContext, index) {
                                   final photo = _photos[index];
                                   return Stack(
                                     children: [
                                       Positioned.fill(
                                         child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                           child: Image.memory(
                                             photo.bytes,
                                             fit: BoxFit.cover,
@@ -1254,16 +1392,26 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                         right: 4,
                                         bottom: 4,
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 2,
+                                          ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withValues(alpha: 0.5),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: Colors.black.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Text(
                                             photo.fileName,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(color: Colors.white, fontSize: 10),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                            ),
                                             textAlign: TextAlign.center,
                                           ),
                                         ),
@@ -1303,21 +1451,23 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _adminMailController.clear();
     _adminPhoneController.clear();
     _lodgePhoneController.clear();
+    _porterNameController.clear();
+    _porterPhoneController.clear();
     _selectedFeatureIds.clear();
     _pendingFeatureNames.clear();
     _selectedCityId = null;
     _selectedZoneId = null;
     _operation = 'alquiler';
-  _statusOnPageId = '1';
+    _statusOnPageId = '1';
     _propertyConditionId = '1';
     _bedrooms = '1';
     _bathrooms = '1';
     _garages = '0';
     _stratum = '3';
-  _hasVeredalWater = false;
-  _hasGasInstallation = false;
-  _hasLegalizacionEpm = false;
-  _hasInternetOperators = false;
+    _hasVeredalWater = false;
+    _hasGasInstallation = false;
+    _hasLegalizacionEpm = false;
+    _hasInternetOperators = false;
     _serviceRoomPhotoBytes = null;
     _serviceRoomPhotoFileName = null;
     _parkingLotPhotoBytes = null;
@@ -1334,7 +1484,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       builder: (ctx) {
         return AlertDialog(
           title: const Text('Eliminar borrador'),
-          content: const Text('¿Desea eliminar el borrador actual? Esta acción es irreversible.'),
+          content: const Text(
+            '¿Desea eliminar el borrador actual? Esta acción es irreversible.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
@@ -1358,16 +1510,16 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _resetFormState();
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Borrador eliminado.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Borrador eliminado.')));
   }
 
   Future<void> _autoSave() async {
     if (!mounted) return;
     // No guardar si formulario está completamente vacío
-  if (_apartmentNumberController.text.isEmpty &&
-    _unitNameController.text.isEmpty &&
+    if (_apartmentNumberController.text.isEmpty &&
+        _unitNameController.text.isEmpty &&
         _rentPriceController.text.isEmpty &&
         _salePriceController.text.isEmpty &&
         _addressController.text.isEmpty &&
@@ -1378,11 +1530,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         _promptsController.text.isEmpty &&
         _landlordNameController.text.isEmpty &&
         _landlordPhoneController.text.isEmpty &&
-        (_keysController.text.trim().isEmpty || _keysController.text.trim().toUpperCase() == 'PORTERIA') &&
-  _adminMailController.text.isEmpty &&
-  _adminPhoneController.text.isEmpty &&
-  _lodgePhoneController.text.isEmpty &&
-  _photos.isEmpty &&
+        (_keysController.text.trim().isEmpty ||
+            _keysController.text.trim().toUpperCase() == 'PORTERIA') &&
+        _adminMailController.text.isEmpty &&
+        _adminPhoneController.text.isEmpty &&
+        _lodgePhoneController.text.isEmpty &&
+        _porterNameController.text.isEmpty &&
+        _porterPhoneController.text.isEmpty &&
+        _photos.isEmpty &&
         !_hasVeredalWater &&
         !_hasGasInstallation &&
         !_hasLegalizacionEpm &&
@@ -1392,10 +1547,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       return;
     }
     final photoTuples = _buildPhotoTuples();
-    final serviceRoomPhotoBase64 =
-        _serviceRoomPhotoBytes == null ? null : base64Encode(_serviceRoomPhotoBytes!);
-    final parkingLotPhotoBase64 =
-        _parkingLotPhotoBytes == null ? null : base64Encode(_parkingLotPhotoBytes!);
+    final serviceRoomPhotoBase64 = _serviceRoomPhotoBytes == null
+        ? null
+        : base64Encode(_serviceRoomPhotoBytes!);
+    final parkingLotPhotoBase64 = _parkingLotPhotoBytes == null
+        ? null
+        : base64Encode(_parkingLotPhotoBytes!);
     final data = {
       ..._currentData(),
       '_apartment_number_text': _digitsOnly(_apartmentNumberController.text),
@@ -1409,6 +1566,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       '_admin_mail_text': _adminMailController.text,
       '_admin_phone_text': _digitsOnly(_adminPhoneController.text),
       '_lodge_phone_text': _digitsOnly(_lodgePhoneController.text),
+      '_porter_name_text': _porterNameController.text,
+      '_porter_phone_text': _digitsOnly(_porterPhoneController.text),
       'photos': photoTuples,
       '_service_room_photo_file_name': _serviceRoomPhotoFileName,
       '_parking_lot_photo_file_name': _parkingLotPhotoFileName,
@@ -1422,7 +1581,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   String _numericString(String value) {
-    final cleaned = value.replaceAll(RegExp(r'[^0-9.,]'), '').replaceAll(',', '');
+    final cleaned = value
+        .replaceAll(RegExp(r'[^0-9.,]'), '')
+        .replaceAll(',', '');
     return cleaned;
   }
 
@@ -1475,28 +1636,38 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Map<String, dynamic> _currentData() {
     final isForRent = _operation == 'alquiler';
-  final rentPrice = _digitsOnly(_rentPriceController.text);
-  final salePrice = _digitsOnly(_salePriceController.text);
+    final rentPrice = _digitsOnly(_rentPriceController.text);
+    final salePrice = _digitsOnly(_salePriceController.text);
     final area = _numericString(_areaController.text);
-    final buildingDate = _digitsOnly(_buildingDateController.text, maxLength: 4);
-  final apartmentNumber = _digitsOnly(_apartmentNumberController.text);
+    final buildingDate = _digitsOnly(
+      _buildingDateController.text,
+      maxLength: 4,
+    );
+    final apartmentNumber = _digitsOnly(_apartmentNumberController.text);
     final unitName = _unitNameController.text.trim();
     final address = _addressController.text.trim();
     final comment = _observationsController.text.trim();
     final serviceRoom = _serviceRoomController.text.trim();
     final parkingLot = _parkingLotController.text.trim();
-    final featureIds = _selectedFeatureIds
-        .map((id) => int.tryParse(id))
-        .whereType<int>()
-        .toList()
-      ..sort();
+    final featureIds =
+        _selectedFeatureIds
+            .map((id) => int.tryParse(id))
+            .whereType<int>()
+            .toList()
+          ..sort();
     final featureNameList = _selectedFeatureNameList();
     final cityName = _lookupNameById(_cities, _selectedCityId);
     final zoneName = _lookupNameById(_zones, _selectedZoneId);
-  final serviceRoomPhotoTuple =
-    _buildSinglePhotoTuple(_serviceRoomPhotoBytes, _serviceRoomPhotoFileName, 'cuarto_util.jpg');
-  final parkingLotPhotoTuple =
-    _buildSinglePhotoTuple(_parkingLotPhotoBytes, _parkingLotPhotoFileName, 'parqueo.jpg');
+    final serviceRoomPhotoTuple = _buildSinglePhotoTuple(
+      _serviceRoomPhotoBytes,
+      _serviceRoomPhotoFileName,
+      'cuarto_util.jpg',
+    );
+    final parkingLotPhotoTuple = _buildSinglePhotoTuple(
+      _parkingLotPhotoBytes,
+      _parkingLotPhotoFileName,
+      'parqueo.jpg',
+    );
     final prompts = _promptsController.text.trim();
     final landlordName = _landlordNameController.text.trim();
     final landlordPhone = _digitsOnly(_landlordPhoneController.text);
@@ -1511,7 +1682,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     if (apartmentNumber.isNotEmpty) titleParts.add(apartmentNumber);
     if (unitName.isNotEmpty) titleParts.add(unitName);
     final computedTitle = titleParts.join(' ');
-    final effectiveTitle = computedTitle.isEmpty ? 'Apartamento sin título' : computedTitle;
+    final effectiveTitle = computedTitle.isEmpty
+        ? 'Apartamento sin título'
+        : computedTitle;
     return {
       // Fijos / derivables
       'id_company': AppConstants.wasiApiId,
@@ -1519,7 +1692,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'id_property_type': _fixedPropertyTypeId,
       'id_country': _fixedCountryId,
       'id_region': _fixedRegionId,
-      'id_availability': '1',   // Fijo según requerimiento (Disponible)
+      'id_availability': '1', // Fijo según requerimiento (Disponible)
       'id_publish_on_map': '2', // Fijo según requerimiento
       'title': 'Apartamento en ${cityName ?? 'Medellin'}',
       'registration_number': effectiveTitle,
@@ -1529,8 +1702,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'id_property_condition': _propertyConditionId,
       'id_city': _selectedCityId,
       'id_zone': _selectedZoneId,
-  'city_name': cityName,
-  'zone_name': zoneName,
+      'city_name': cityName,
+      'zone_name': zoneName,
       'reference': effectiveTitle,
       'comment': comment,
       'for_rent': isForRent,
@@ -1548,18 +1721,18 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'observations': 'Apartamento en ${cityName ?? 'Medellin'}',
       'building_date': buildingDate,
       'service_room': serviceRoom.isEmpty ? null : serviceRoom,
-    'service_room_photo': serviceRoomPhotoTuple,
+      'service_room_photo': serviceRoomPhotoTuple,
       'parking_lot': parkingLot.isEmpty ? null : parkingLot,
-    'parking_lot_photo': parkingLotPhotoTuple,
-  'features': featureIds,
-  'featureNameList': featureNameList,
-    'agua_veredal': _hasVeredalWater,
-    'instalacion_gas_cubierta': _hasGasInstallation,
-    'legalizacion_epm': _hasLegalizacionEpm,
-    'operadores_internet': _hasInternetOperators,
+      'parking_lot_photo': parkingLotPhotoTuple,
+      'features': featureIds,
+      'featureNameList': featureNameList,
+      'agua_veredal': _hasVeredalWater,
+      'instalacion_gas_cubierta': _hasGasInstallation,
+      'legalizacion_epm': _hasLegalizacionEpm,
+      'operadores_internet': _hasInternetOperators,
       'prompts': prompts.isEmpty ? null : prompts,
-    'apartment_number': apartmentNumber.isEmpty ? null : apartmentNumber,
-    'unit_name': unitName.isEmpty ? null : unitName,
+      'apartment_number': apartmentNumber.isEmpty ? null : apartmentNumber,
+      'unit_name': unitName.isEmpty ? null : unitName,
       'user_first_name': _userFirstName,
       'user_last_name': _userLastName,
       'user_phone': _userPhone,
@@ -1568,8 +1741,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'keys': keys,
       'adminMail': adminMail.isEmpty ? null : adminMail,
       'adminPhone': adminPhone.isEmpty ? null : adminPhone,
-  'lodgePhone': lodgePhone.isEmpty ? null : lodgePhone,
-  'photos': photoTuples,
+      'lodgePhone': lodgePhone.isEmpty ? null : lodgePhone,
+      'photos': photoTuples,
       // Metadatos
       'timestamp': DateTime.now().toIso8601String(),
     };
@@ -1582,17 +1755,25 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       return;
     }
     if (_photos.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Agrega al menos una foto del apartamento.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Agrega al menos una foto del apartamento.'),
+        ),
+      );
       return;
     }
     if (_userFirstName == null || _userFirstName!.trim().isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Completa los datos del asesor antes de captar.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Completa los datos del asesor antes de captar.'),
+        ),
+      );
       return;
     }
     if (_selectedCityId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Seleccione una ciudad')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seleccione una ciudad')));
       return;
     }
     final data = _currentData();
@@ -1605,8 +1786,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         if (!mounted) return;
         final message = result.isConnectionError
             ? 'No se pudo enviar la información. Verifique su conexión a internet.'
-            : (result.message ?? 'No se pudo enviar la información al webhook. Intente nuevamente.');
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+            : (result.message ??
+                  'No se pudo enviar la información al webhook. Intente nuevamente.');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
         return;
       }
       if (!mounted) return;
@@ -1649,24 +1833,25 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     } on DioException catch (dioError, stackTrace) {
       debugPrint('Error enviando al webhook: $dioError');
       debugPrint(stackTrace.toString());
-      final isConnectionError = dioError.type == DioExceptionType.connectionTimeout ||
+      final isConnectionError =
+          dioError.type == DioExceptionType.connectionTimeout ||
           dioError.type == DioExceptionType.sendTimeout ||
           dioError.type == DioExceptionType.receiveTimeout ||
-      dioError.type == DioExceptionType.connectionError ||
-      dioError.type == DioExceptionType.badCertificate ||
+          dioError.type == DioExceptionType.connectionError ||
+          dioError.type == DioExceptionType.badCertificate ||
           dioError.type == DioExceptionType.unknown;
       return _WebhookResult(
         success: false,
         isConnectionError: isConnectionError,
-        message: dioError.message ?? dioError.error?.toString() ?? 'Ocurrió un error enviando la información.',
+        message:
+            dioError.message ??
+            dioError.error?.toString() ??
+            'Ocurrió un error enviando la información.',
       );
     } catch (e, stackTrace) {
       debugPrint('Error enviando al webhook: $e');
       debugPrint(stackTrace.toString());
-      return _WebhookResult(
-        success: false,
-        message: e.toString(),
-      );
+      return _WebhookResult(success: false, message: e.toString());
     }
   }
 
@@ -1674,8 +1859,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   void dispose() {
     _autoSaveTimer?.cancel();
     _cooldownTimer?.cancel();
-  _apartmentNumberController.dispose();
-  _unitNameController.dispose();
+    _apartmentNumberController.dispose();
+    _unitNameController.dispose();
     _rentPriceController.dispose();
     _salePriceController.dispose();
     _addressController.dispose();
@@ -1691,6 +1876,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _adminMailController.dispose();
     _adminPhoneController.dispose();
     _lodgePhoneController.dispose();
+    _porterNameController.dispose();
+    _porterPhoneController.dispose();
     super.dispose();
   }
 
@@ -1734,7 +1921,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                         validator: (v) {
                           final digits = _digitsOnly(v ?? '');
                           if (digits.isEmpty) {
@@ -1772,8 +1961,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                   isDense: true,
                                   value: _operation,
                                   items: const [
-                                    DropdownMenuItem(value: 'alquiler', child: Text('Alquiler')),
-                                    DropdownMenuItem(value: 'venta', child: Text('Venta')),
+                                    DropdownMenuItem(
+                                      value: 'alquiler',
+                                      child: Text('Alquiler'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'venta',
+                                      child: Text('Venta'),
+                                    ),
                                   ],
                                   onChanged: (value) {
                                     if (value == null) return;
@@ -1827,14 +2022,20 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                   value: _propertyConditionId,
                                   isExpanded: true,
                                   items: _propertyConditions
-                                      .map((c) => DropdownMenuItem(
-                                            value: c['id'],
-                                            child: Text('${c['id']}. ${c['label']}'),
-                                          ))
+                                      .map(
+                                        (c) => DropdownMenuItem(
+                                          value: c['id'],
+                                          child: Text(
+                                            '${c['id']}. ${c['label']}',
+                                          ),
+                                        ),
+                                      )
                                       .toList(),
                                   onChanged: (value) {
                                     if (value == null) return;
-                                    setState(() => _propertyConditionId = value);
+                                    setState(
+                                      () => _propertyConditionId = value,
+                                    );
                                   },
                                 ),
                               ),
@@ -1850,12 +2051,16 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 border: OutlineInputBorder(),
                                 hintText: 'Ej: 2015',
                               ),
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
                               validator: (v) {
                                 final raw = (v ?? '').trim();
-                                if (raw.isEmpty) return 'Ingrese el año de construcción';
+                                if (raw.isEmpty)
+                                  return 'Ingrese el año de construcción';
                                 final digits = _digitsOnly(raw, maxLength: 4);
-                                if (digits.length != 4) return 'Ingrese un año válido (4 dígitos)';
+                                if (digits.length != 4)
+                                  return 'Ingrese un año válido (4 dígitos)';
                                 return null;
                               },
                             ),
@@ -1870,7 +2075,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: OutlineInputBorder(),
                         ),
                         child: _loadingCities
-                            ? const SizedBox(height: 40, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+                            ? const SizedBox(
+                                height: 40,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
                             : DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   isDense: true,
@@ -1878,10 +2090,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                   isExpanded: true,
                                   hint: const Text('Seleccione ciudad'),
                                   items: _cities
-                                      .map((c) => DropdownMenuItem(
-                                            value: c['id'] as String,
-                                            child: Text(c['name'] as String),
-                                          ))
+                                      .map(
+                                        (c) => DropdownMenuItem(
+                                          value: c['id'] as String,
+                                          child: Text(c['name'] as String),
+                                        ),
+                                      )
                                       .toList(),
                                   onChanged: (value) async {
                                     if (value == _selectedCityId) return;
@@ -1907,27 +2121,39 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               child: (_selectedCityId == null)
                                   ? const Text('Seleccione primero una ciudad')
                                   : _loadingZones
-                                      ? const SizedBox(
-                                          height: 40,
-                                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                        )
-                                      : DropdownButtonHideUnderline(
-                                          child: DropdownButton<String>(
-                                            isDense: true,
-                                            value: _selectedZoneId,
-                                            isExpanded: true,
-                                            hint: const Text('Seleccione zona (opcional)'),
-                                            items: _zones
-                                                .map((z) => DropdownMenuItem(
-                                                      value: z['id'] as String,
-                                                      child: Text(z['name'] as String),
-                                                    ))
-                                                .toList(),
-                                            onChanged: (value) {
-                                              setState(() => _selectedZoneId = value);
-                                            },
-                                          ),
+                                  ? const SizedBox(
+                                      height: 40,
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
                                         ),
+                                      ),
+                                    )
+                                  : DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        isDense: true,
+                                        value: _selectedZoneId,
+                                        isExpanded: true,
+                                        hint: const Text(
+                                          'Seleccione zona (opcional)',
+                                        ),
+                                        items: _zones
+                                            .map(
+                                              (z) => DropdownMenuItem(
+                                                value: z['id'] as String,
+                                                child: Text(
+                                                  z['name'] as String,
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                        onChanged: (value) {
+                                          setState(
+                                            () => _selectedZoneId = value,
+                                          );
+                                        },
+                                      ),
+                                    ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1941,7 +2167,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               isExpanded: true,
                               items: List.generate(6, (index) {
                                 final value = (index + 1).toString();
-                                return DropdownMenuItem(value: value, child: Text(value));
+                                return DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                );
                               }),
                               onChanged: (value) {
                                 if (value == null) return;
@@ -1958,7 +2187,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           labelText: 'Dirección',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Ingrese la dirección' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Ingrese la dirección'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       // Precios
@@ -1972,13 +2203,17 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 labelText: 'Precio arriendo',
                                 border: OutlineInputBorder(),
                               ),
-                              inputFormatters: const [_ThousandsSeparatorFormatter()],
+                              inputFormatters: const [
+                                _ThousandsSeparatorFormatter(),
+                              ],
                               validator: (v) {
                                 final digits = _digitsOnly(v ?? '');
-                                if (_operation == 'alquiler' && digits.isEmpty) {
+                                if (_operation == 'alquiler' &&
+                                    digits.isEmpty) {
                                   return 'Ingrese el precio de arriendo';
                                 }
-                                if (digits.isEmpty && (v ?? '').trim().isNotEmpty) {
+                                if (digits.isEmpty &&
+                                    (v ?? '').trim().isNotEmpty) {
                                   return 'Solo números';
                                 }
                                 return null;
@@ -1994,13 +2229,16 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 labelText: 'Precio venta',
                                 border: OutlineInputBorder(),
                               ),
-                              inputFormatters: const [_ThousandsSeparatorFormatter()],
+                              inputFormatters: const [
+                                _ThousandsSeparatorFormatter(),
+                              ],
                               validator: (v) {
                                 final digits = _digitsOnly(v ?? '');
                                 if (_operation == 'venta' && digits.isEmpty) {
                                   return 'Ingrese el precio de venta';
                                 }
-                                if (digits.isEmpty && (v ?? '').trim().isNotEmpty) {
+                                if (digits.isEmpty &&
+                                    (v ?? '').trim().isNotEmpty) {
                                   return 'Solo números';
                                 }
                                 return null;
@@ -2022,7 +2260,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               isExpanded: true,
                               items: List.generate(10, (index) {
                                 final value = (index + 1).toString();
-                                return DropdownMenuItem(value: value, child: Text(value));
+                                return DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                );
                               }),
                               onChanged: (value) {
                                 if (value == null) return;
@@ -2041,7 +2282,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               isExpanded: true,
                               items: List.generate(10, (index) {
                                 final value = (index + 1).toString();
-                                return DropdownMenuItem(value: value, child: Text(value));
+                                return DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                );
                               }),
                               onChanged: (value) {
                                 if (value == null) return;
@@ -2064,7 +2308,10 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                               isExpanded: true,
                               items: List.generate(10, (index) {
                                 final value = index.toString();
-                                return DropdownMenuItem(value: value, child: Text(value));
+                                return DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                );
                               }),
                               onChanged: (value) {
                                 if (value == null) return;
@@ -2081,7 +2328,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 labelText: 'Área (m²)',
                                 border: OutlineInputBorder(),
                               ),
-                              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9.,]'),
+                                ),
+                              ],
                               validator: (v) {
                                 final numeric = _numericString(v ?? '');
                                 if (numeric.isEmpty) return 'Ingrese el área';
@@ -2118,7 +2369,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                             _otherFeatures.isEmpty)
                           const Padding(
                             padding: EdgeInsets.only(top: 8.0),
-                            child: Text('No se encontraron características disponibles.'),
+                            child: Text(
+                              'No se encontraron características disponibles.',
+                            ),
                           ),
                         if (_selectedFeatureIds.isNotEmpty)
                           TextButton(
@@ -2135,7 +2388,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       TextFormField(
                         controller: _promptsController,
                         decoration: const InputDecoration(
-                          labelText: 'Prompts / Descripciones adicionales para IA',
+                          labelText:
+                              'Prompts / Descripciones adicionales para IA',
                           border: OutlineInputBorder(),
                         ),
                         maxLines: 4,
@@ -2214,7 +2468,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                         ? 'Agregar foto cuarto útil'
                                         : 'Cambiar foto cuarto útil',
                                   ),
-                                  onPressed: _isSubmitting ? null : _pickServiceRoomPhoto,
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : _pickServiceRoomPhoto,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -2250,7 +2506,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                         ? 'Agregar foto parqueo'
                                         : 'Cambiar foto parqueo',
                                   ),
-                                  onPressed: _isSubmitting ? null : _pickParkingLotPhoto,
+                                  onPressed: _isSubmitting
+                                      ? null
+                                      : _pickParkingLotPhoto,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -2342,7 +2600,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                   ? null
                                   : (checked) {
                                       setState(() {
-                                        _hasInternetOperators = checked ?? false;
+                                        _hasInternetOperators =
+                                            checked ?? false;
                                       });
                                       _autoSave();
                                     },
@@ -2371,7 +2630,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -2399,7 +2660,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -2409,7 +2672,38 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _porterNameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Nombre portero',
+                                border: OutlineInputBorder(),
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _porterPhoneController,
+                              decoration: const InputDecoration(
+                                labelText: 'Numero portero',
+                                border: OutlineInputBorder(),
+                              ),
+                              keyboardType: TextInputType.phone,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 24),
                       SizedBox(
@@ -2417,16 +2711,21 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.save),
                           label: const Text('Captar!'),
-                          onPressed: (_isSubmitting || _cooldownActive) ? null : _onSavePressed,
+                          onPressed: (_isSubmitting || _cooldownActive)
+                              ? null
+                              : _onSavePressed,
                         ),
                       ),
                       if (_lastSaved != null) ...[
                         const SizedBox(height: 12),
                         Text(
                           'Último guardado automático: ${_lastSaved!.hour.toString().padLeft(2, '0')}:${_lastSaved!.minute.toString().padLeft(2, '0')}:${_lastSaved!.second.toString().padLeft(2, '0')}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        )
-                      ]
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -2435,4 +2734,3 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
   }
 }
-

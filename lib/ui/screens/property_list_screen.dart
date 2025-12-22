@@ -62,53 +62,29 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-      leadingWidth: 170,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                ),
-                onPressed: _showUserDialog,
-                child: Text(
-                  _userFirstName != null && _userFirstName!.trim().isNotEmpty
-                      ? _userFirstName!.trim()
-                      : 'Entrar',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Botón del ojo (navegación pública/privada)
+          FloatingActionButton.small(
+            heroTag: 'visibility_fab',
+            backgroundColor: _isPublicNavigation 
+                ? AppColors.primaryColor.withValues(alpha: 0.8)
+                : Colors.grey.shade600,
+            onPressed: _toggleNavigationVisibility,
+            tooltip: _isPublicNavigation
+                ? 'Navegación pública'
+                : 'Navegación privada',
+            child: Icon(
+              _isPublicNavigation ? Icons.visibility : Icons.visibility_off,
+              color: Colors.white,
             ),
-            const SizedBox(width: 8),
-            Material(
-              color: Colors.transparent,
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: IconButton(
-                icon: Icon(
-                  _isPublicNavigation ? Icons.visibility : Icons.visibility_off,
-                  color: Colors.white,
-                ),
-                tooltip: _isPublicNavigation
-                    ? 'Navegación pública'
-                    : 'Navegación privada',
-                onPressed: _toggleNavigationVisibility,
-              ),
-            ),
-          ],
-        ),
-      ),
-        title: const Text('Inmobarco'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Nuevo Apartamento',
+          ),
+          const SizedBox(height: 12),
+          // Botón de nuevo apartamento
+          FloatingActionButton(
+            heroTag: 'add_apartment_fab',
+            backgroundColor: AppColors.primaryColor,
             onPressed: () async {
               await Navigator.push(
                 context,
@@ -117,7 +93,33 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                 ),
               );
             },
+            tooltip: 'Nuevo Apartamento',
+            child: const Icon(Icons.add, color: Colors.white),
           ),
+        ],
+      ),
+      appBar: AppBar(
+      leadingWidth: 100,
+      leading: Padding(
+        padding: const EdgeInsets.only(left: 12, top: 8, bottom: 8),
+        child: TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: AppColors.primaryColor.withValues(alpha: 0.1),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          onPressed: _showUserDialog,
+          child: Text(
+            _userFirstName != null && _userFirstName!.trim().isNotEmpty
+                ? _userFirstName!.trim()
+                : 'Entrar',
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+      ),
+        title: const Text('Inmobarco'),
+        actions: [
           // Botón de información del caché
           Consumer<PropertyProvider>(
             builder: (context, provider, child) {
