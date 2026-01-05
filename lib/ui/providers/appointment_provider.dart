@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/appointment.dart';
+import '../../core/services/notification_service.dart';
 
 /// Provider para gestionar las citas del calendario.
 /// 
@@ -93,6 +94,9 @@ class AppointmentProvider extends ChangeNotifier {
     _appointments.add(appointment);
     notifyListeners();
     await _saveToStorage();
+    
+    // Programar notificación de recordatorio 30 minutos antes
+    await notificationService.scheduleAppointmentReminder(appointment);
   }
 
   /// Actualiza una cita existente
@@ -104,11 +108,17 @@ class AppointmentProvider extends ChangeNotifier {
       );
       notifyListeners();
       await _saveToStorage();
+      
+      // Reprogramar notificación con la nueva hora
+      await notificationService.rescheduleAppointmentReminder(appointment);
     }
   }
 
   /// Elimina una cita
   Future<void> deleteAppointment(String id) async {
+    // Cancelar notificación antes de eliminar
+    await notificationService.cancelAppointmentReminder(id);
+    
     _appointments.removeWhere((a) => a.id == id);
     notifyListeners();
     await _saveToStorage();
@@ -127,6 +137,10 @@ class AppointmentProvider extends ChangeNotifier {
   Future<void> updateAppointmentStatus(String id, AppointmentStatus status) async {
     final appointment = getAppointmentById(id);
     if (appointment != null) {
+      // Si se cancela la cita, cancelar la notificación
+      if (status == AppointmentStatus.cancelled) {
+        await notificationService.cancelAppointmentReminder(id);
+      }
       await updateAppointment(appointment.copyWith(status: status));
     }
   }

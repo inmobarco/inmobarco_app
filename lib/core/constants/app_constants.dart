@@ -16,11 +16,12 @@ class AppConstants {
 
   // City allowlist
   static const Set<String> allowedCityIds = {
-    '291', // Medellín
-    '496', // Bello
-    '698', // Envigado
-    '416', // Itagüí
-    '389', // Copacabana (example)
+    '291', // Envigado
+    '496', // Medellín
+    '698', // Sabaneta
+    '416', // La Estrella
+    '389', // Itagüí
+    '89' // Bello
   };
 
   static bool isCityAllowed(String? cityId) {

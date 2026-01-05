@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/encription.dart';
 import 'core/services/global_data_service.dart';
+import 'core/services/notification_service.dart';
 import 'data/services/wasi_api_service.dart';
 import 'ui/providers/property_provider.dart';
 import 'ui/providers/appointment_provider.dart';
@@ -22,6 +23,9 @@ void main() async {
   
   // Inicializar datos globales (ciudades, etc.)
   await GlobalDataService().initialize();
+  
+  // Inicializar servicio de notificaciones
+  await notificationService.initialize();
   
   // Inicializar localización para fechas en español
   try {

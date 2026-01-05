@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest_all.dart' as tz;
 import '../../core/constants/app_constants.dart';
+import '../../core/services/notification_service.dart';
 import '../providers/property_provider.dart';
 import '../widgets/inmobarco_app_bar.dart';
 import 'property_list_screen.dart';
@@ -24,14 +22,12 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
 class _HomeScreenState extends State<HomeScreen> {
-  final FlutterLocalNotificationsPlugin notificationsPlugin =
-       FlutterLocalNotificationsPlugin();
   int _currentIndex = 0;
 
   @override
   void initState() {
-    init();
     super.initState();
     
     // Cargar datos iniciales
@@ -42,70 +38,6 @@ class _HomeScreenState extends State<HomeScreen> {
         provider.refresh();
       }
     });
-  }
-  Future<void> init() async {
-    // Inicializar zona horaria
-    tz.initializeTimeZones();
-    final androidPlugin = notificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    await androidPlugin?.requestExactAlarmsPermission();
-    // Configurar notificaciones locales
-    tz.setLocalLocation(
-      tz.getLocation('America/Bogota'),
-    );
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-    await notificationsPlugin.initialize(initSettings);
-  }
-
-  Future<void> showInstantNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-      await notificationsPlugin.show(
-        id,
-        title,
-        body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'inmobarco_channel',
-            'Inmobarco Notifications',
-            channelDescription: 'Notificaciones de Inmobarco',
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
-      ),
-    );
-  }
-
-  Future<void> scheduleNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-      tz.TZDateTime scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(seconds: 5));
-      await notificationsPlugin.zonedSchedule(
-        id,
-        title,
-        body,
-        scheduledDate,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            'inmobarco_reminder_channel',
-            'Inmobarco Notifications',
-            channelDescription: 'Notificaciones de Inmobarco',
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      );
   }
 
   @override
