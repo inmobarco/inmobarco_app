@@ -21,7 +21,7 @@ class AppConstants {
     '698', // Sabaneta
     '416', // La Estrella
     '389', // Itagüí
-    '89' // Bello
+    '89', // Bello
   };
 
   static bool isCityAllowed(String? cityId) {
