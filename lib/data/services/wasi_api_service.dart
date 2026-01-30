@@ -18,16 +18,9 @@ class WasiApiService {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
-    
-    // Interceptor para logging (opcional)
-    /*_dio.interceptors.add(
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        error: true,
-        logPrint: (obj) => debugPrint('[WASI API] $obj'),
-      ),
-    );*/
+    _dio.options.connectTimeout = AppConstants.apiConnectTimeout;
+    _dio.options.sendTimeout = AppConstants.apiSendTimeout;
+    _dio.options.receiveTimeout = AppConstants.apiReceiveTimeout;
   }
 
   /// Obtiene la lista de propiedades activas

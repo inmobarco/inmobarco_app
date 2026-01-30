@@ -46,86 +46,31 @@ class Apartment {
   });
 
   factory Apartment.fromJson(Map<String, dynamic> json) {
-    // Verificar si es data de WASI API o data de caché
-    bool isFromCache = json.containsKey('rentPrice') && json.containsKey('salePrice');
-    
-    if (isFromCache) {
-      // Data desde caché (formato simplificado)
-      return Apartment(
-        id: json['id']?.toString() ?? '',
-        titulo: json['titulo']?.toString() ?? '',
-        reference: json['reference']?.toString() ?? '',
-        rentPrice: (json['rentPrice'] ?? 0).toDouble(),
-        salePrice: (json['salePrice'] ?? 0).toDouble(),
-        cuartos: json['cuartos'] ?? 0,
-        banos: json['banos'] ?? 0,
-        barrio: json['barrio']?.toString() ?? '',
-        municipio: json['municipio']?.toString() ?? '',
-        estrato: json['estrato'] ?? 0,
-        area: (json['area'] ?? 0).toDouble(),
-        estado: json['estado']?.toString() ?? '1',
-        estadoTexto: json['estado_texto']?.toString() ?? 'Activa',
-        imagenes: List<String>.from(json['imagenes'] ?? []),
-        descripcion: json['descripcion']?.toString() ?? '',
-        direccion: json['direccion']?.toString() ?? '',
-        claseInmueble: json['clase_inmueble']?.toString() ?? '',
-        asesor: json['asesor']?.toString() ?? '',
-        departamento: json['departamento']?.toString() ?? '',
-        coordenadas: json['coordenadas']?.toString() ?? '',
-        caracteristicas: List<Map<String, dynamic>>.from(
-          json['caracteristicas']?.map((x) => Map<String, dynamic>.from(x)) ?? []
-        ),
-      );
-    }
-    
-    // Data desde API original (formato API legacy - Arrendasoft)
-    // Extraer cuartos y baños de las características
-    final caracteristicasList = (json['caracteristicas'] as List<dynamic>?) ?? [];
-    int cuartos = 0;
-    int banos = 0;
-    
-    for (var caracteristica in caracteristicasList) {
-      final descripcion = caracteristica['descripcion']?.toString().toLowerCase() ?? '';
-      final valor = caracteristica['valor']?.toString() ?? '';
-      
-      if (descripcion.contains('habitacion') || descripcion.contains('cuartos')) {
-        cuartos = int.tryParse(valor) ?? 0;
-      } else if (descripcion.contains('baño') || descripcion.contains('banos')) {
-        banos = int.tryParse(valor) ?? 0;
-      }
-    }
-
-    // Extraer imágenes
-    final imagenesList = (json['imagenes'] as List<dynamic>?) ?? [];
-    final imagenesUrls = imagenesList
-        .map((img) => img['imagen']?.toString() ?? '')
-        .where((url) => url.isNotEmpty)
-        .toList();
-
+    // Data desde caché (formato simplificado con claves en camelCase)
     return Apartment(
-      id: json['codigo']?.toString() ?? '',
+      id: json['id']?.toString() ?? '',
       titulo: json['titulo']?.toString() ?? '',
-      reference: (json['reference']?.toString() ?? '').isNotEmpty
-          ? json['reference']?.toString() ?? ''
-          : json['registration_number']?.toString() ?? '',
-      rentPrice: _parseDouble(json['rent_price']),
-      salePrice: _parseDouble(json['sale_price']),
-      cuartos: cuartos,
-      banos: banos,
+      reference: json['reference']?.toString() ?? '',
+      rentPrice: (json['rentPrice'] ?? 0).toDouble(),
+      salePrice: (json['salePrice'] ?? 0).toDouble(),
+      cuartos: json['cuartos'] ?? 0,
+      banos: json['banos'] ?? 0,
       barrio: json['barrio']?.toString() ?? '',
       municipio: json['municipio']?.toString() ?? '',
-      estrato: int.tryParse(json['estrato']?.toString() ?? '0') ?? 0,
-      area: _parseDouble(json['area']),
-      estado: json['estado']?.toString() ?? '',
-      estadoTexto: json['estado_texto']?.toString() ?? '',
-      imagenes: imagenesUrls,
-      descripcion: json['observaciones']?.toString() ?? json['titulo']?.toString() ?? '',
+      estrato: json['estrato'] ?? 0,
+      area: (json['area'] ?? 0).toDouble(),
+      estado: json['estado']?.toString() ?? '1',
+      estadoTexto: json['estado_texto']?.toString() ?? 'Activa',
+      imagenes: List<String>.from(json['imagenes'] ?? []),
+      descripcion: json['descripcion']?.toString() ?? '',
       direccion: json['direccion']?.toString() ?? '',
       claseInmueble: json['clase_inmueble']?.toString() ?? '',
       asesor: json['asesor']?.toString() ?? '',
       departamento: json['departamento']?.toString() ?? '',
       coordenadas: json['coordenadas']?.toString() ?? '',
-      caracteristicas: caracteristicasList.cast<Map<String, dynamic>>(),
+      caracteristicas: List<Map<String, dynamic>>.from(
+        json['caracteristicas']?.map((x) => Map<String, dynamic>.from(x)) ?? []
+      ),
     );
   }
 

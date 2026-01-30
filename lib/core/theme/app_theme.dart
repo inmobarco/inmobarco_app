@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import '../constants/app_constants.dart';
 
 class AppTheme {
+  // Border radius constants accesibles desde el theme
+  static BorderRadius get cardBorderRadius => BorderRadius.circular(AppConstants.cardBorderRadius);
+  static BorderRadius get buttonBorderRadius => BorderRadius.circular(AppConstants.buttonBorderRadius);
+  static BorderRadius get inputBorderRadius => BorderRadius.circular(AppConstants.inputBorderRadius);
+  
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -30,11 +36,11 @@ class AppTheme {
         ),
       ),
       
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         color: AppColors.backgroundLevel1,
         elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderRadius: cardBorderRadius,
         ),
       ),
       
@@ -44,7 +50,7 @@ class AppTheme {
           foregroundColor: AppColors.white,
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: buttonBorderRadius,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -55,7 +61,7 @@ class AppTheme {
           foregroundColor: AppColors.primaryColor,
           side: const BorderSide(color: AppColors.primaryColor),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: buttonBorderRadius,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -65,15 +71,15 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.backgroundLevel1,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: inputBorderRadius,
           borderSide: const BorderSide(color: AppColors.textColor2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: inputBorderRadius,
           borderSide: const BorderSide(color: AppColors.textColor2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: inputBorderRadius,
           borderSide: const BorderSide(color: AppColors.primaryColor, width: 2),
         ),
         labelStyle: const TextStyle(color: AppColors.textColor2),

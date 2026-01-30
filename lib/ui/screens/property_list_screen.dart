@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/property_provider.dart';
 import '../widgets/property_card.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/constants/app_constants.dart';
 import 'property_detail_screen.dart';
 import 'property_filter_screen.dart';
 import 'add_apartment_screen.dart';
@@ -45,7 +46,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
+        _scrollController.position.maxScrollExtent - AppConstants.loadMoreThreshold) {
       context.read<PropertyProvider>().loadMoreProperties();
     }
   }

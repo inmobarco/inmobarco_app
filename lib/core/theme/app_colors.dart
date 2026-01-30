@@ -4,7 +4,6 @@ class AppColors {
   // Colores principales Inmobarco
   static const Color primaryColor = Color(0xFF1B99D3);
   static const Color secondaryColor = Color(0xFF48BFF7);
-  static const Color accentColor = Color(0xFF1B99D3);
   
   // Colores de texto
   static const Color textColor = Color(0xFF3F3F3F);
@@ -19,6 +18,5 @@ class AppColors {
   // Colores adicionales
   static const Color white = Color(0xFFFFFFFF);
   static const Color success = Color(0xFF28a745);
-  static const Color warning = Color(0xFFffc107);
   static const Color error = Color(0xFFdc3545);
 }

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/property_provider.dart';
 import '../../domain/models/property_filter.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 
 class PropertyFilterScreen extends StatefulWidget {
@@ -386,12 +387,12 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
   Widget _buildTransactionChip(String label, bool isSelected, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppTheme.buttonBorderRadius,
       child: Container(
         height: 48,
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryColor : AppColors.backgroundLevel2,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppTheme.buttonBorderRadius,
           border: Border.all(
             color: isSelected ? AppColors.primaryColor : AppColors.textColor2,
             width: 1.5,

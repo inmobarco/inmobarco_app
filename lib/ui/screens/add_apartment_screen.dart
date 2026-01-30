@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import '../../data/services/cache_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/theme/app_theme.dart';
 
 class _WebhookResult {
   final bool success;
@@ -1116,7 +1117,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
         content: Text(
           'Datos enviados correctamente, por favor espere 30 segundos antes de volver a captar.',
         ),
-        duration: Duration(seconds: 30),
+        duration: Duration(seconds: 10),
       ),
     );
     _cooldownTimer = Timer(_cooldownDuration, () {
@@ -1941,9 +1942,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     try {
       final dio = Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 10),
-          sendTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 15),
+          connectTimeout: AppConstants.apiConnectTimeout,
+          sendTimeout: AppConstants.apiSendTimeout,
+          receiveTimeout: AppConstants.apiReceiveTimeout,
           headers: const {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -2531,7 +2532,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       const SizedBox(height: 16),
                       if (_photos.isNotEmpty) ...[
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppTheme.buttonBorderRadius,
                           child: AspectRatio(
                             aspectRatio: 4 / 3,
                             child: Image.memory(

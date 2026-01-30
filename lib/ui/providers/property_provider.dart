@@ -8,8 +8,6 @@ import '../../core/constants/app_constants.dart';
 
 class PropertyProvider extends ChangeNotifier {
   final WasiApiService _apiService;
-  // Tamaño de página (mantener sincronizado con el parámetro limit al pedir a la API)
-  static const int _pageSize = 100; // Requisito: almacenar hasta 100 propiedades en caché
   
   List<Apartment> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
@@ -36,7 +34,6 @@ class PropertyProvider extends ChangeNotifier {
     final q = _searchQuery.toLowerCase();
     return _properties.where((p) => p.reference.toLowerCase().contains(q)).toList();
   }
-  List<Map<String, dynamic>> get cities => AppConstants.cities; // Usar datos globales
   PropertyFilter get currentFilter => _currentFilter;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -81,7 +78,7 @@ class PropertyProvider extends ChangeNotifier {
       final newProperties = await _apiService.getActiveProperties(
         filter: _currentFilter,
         page: _currentPage,
-        limit: _pageSize,
+        limit: AppConstants.pageSize,
       );
 
       if (refresh) {
@@ -92,13 +89,13 @@ class PropertyProvider extends ChangeNotifier {
 
       _currentPage++;
       // Si recibimos menos elementos que el tamaño de página asumimos que no hay más datos.
-      _hasMoreData = newProperties.length == _pageSize;
+      _hasMoreData = newProperties.length == AppConstants.pageSize;
 
       // Guardar en caché sólo después de completar la primera página (ya en _properties) o en refresh.
       // _currentPage se incrementó, así que cuando era página 1 ahora vale 2.
       if (_currentPage == 2) {
         // Persistimos únicamente la primera página (hasta 100 propiedades) como snapshot rápido de arranque.
-        await CacheService.saveProperties(_properties.take(_pageSize).toList());
+        await CacheService.saveProperties(_properties.take(AppConstants.pageSize).toList());
       }
 
       notifyListeners();

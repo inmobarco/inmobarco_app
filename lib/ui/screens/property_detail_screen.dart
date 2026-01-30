@@ -9,6 +9,7 @@ import 'dart:io';
 import '../providers/property_provider.dart';
 import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/encription.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -373,7 +374,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                 decoration: BoxDecoration(
                   color: AppColors.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppTheme.buttonBorderRadius,
                   border: Border.all(color: AppColors.primaryColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(

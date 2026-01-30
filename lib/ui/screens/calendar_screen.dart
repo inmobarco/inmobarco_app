@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../domain/models/appointment.dart';
 import '../providers/appointment_provider.dart';
 import 'add_appointment_screen.dart';
@@ -136,7 +137,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         formatButtonShowsNext: false,
         formatButtonDecoration: BoxDecoration(
           color: AppColors.primaryColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppTheme.cardBorderRadius,
         ),
         formatButtonTextStyle: const TextStyle(
           color: AppColors.primaryColor,
@@ -203,7 +204,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: AppColors.primaryColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppTheme.cardBorderRadius,
               ),
               child: const Text(
                 'Hoy',
@@ -266,14 +267,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.cardBorderRadius,
         side: BorderSide(
           color: statusColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTheme.cardBorderRadius,
         onTap: () => _showAppointmentDetails(appointment),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -305,7 +306,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppTheme.buttonBorderRadius,
                     ),
                     child: Text(
                       appointment.status.displayName,
