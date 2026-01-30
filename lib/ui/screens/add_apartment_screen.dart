@@ -1755,16 +1755,106 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     };
   }
 
+  Future<bool?> _showConfirmationDialog() async {
+    final cityName = _lookupNameById(_cities, _selectedCityId) ?? 'Sin ciudad';
+    final zoneName = _lookupNameById(_zones, _selectedZoneId) ?? 'Sin barrio';
+    final tipoNegocio = _operation == 'alquiler' ? 'Alquiler' : 'Venta';
+    final valor = _operation == 'alquiler'
+        ? _rentPriceController.text
+        : _salePriceController.text;
+    final valorFormateado = valor.isEmpty ? 'No especificado' : '\$$valor';
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirmar datos del apartamento'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildConfirmationRow(
+                  'Número y Unidad',
+                  '${_apartmentNumberController.text} - ${_unitNameController.text}',
+                ),
+                const Divider(),
+                _buildConfirmationRow('Tipo de negocio', tipoNegocio),
+                _buildConfirmationRow('Valor', valorFormateado),
+                const Divider(),
+                _buildConfirmationRow('Ciudad', cityName),
+                _buildConfirmationRow('Barrio', zoneName),
+                _buildConfirmationRow('Estrato', _stratum),
+                const Divider(),
+                _buildConfirmationRow('Habitaciones', _bedrooms),
+                _buildConfirmationRow('Baños', _bathrooms),
+                _buildConfirmationRow('Parqueos', _garages),
+                _buildConfirmationRow('Área', '${_areaController.text} m²'),
+                const Divider(),
+                _buildConfirmationRow(
+                  'Cuarto útil',
+                  _serviceRoomController.text.trim().isEmpty
+                      ? 'No especificado'
+                      : _serviceRoomController.text,
+                ),
+                _buildConfirmationRow(
+                  'Parqueo',
+                  _parkingLotController.text.trim().isEmpty
+                      ? 'No especificado'
+                      : _parkingLotController.text,
+                ),
+                const Divider(),
+                _buildConfirmationRow('Fotos', '${_photos.length}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Corregir'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Confirmar y Captar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildConfirmationRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(child: Text(value)),
+        ],
+      ),
+    );
+  }
+
   Future<void> _onSavePressed() async {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) {
       _showSnackBarMessage('Faltan campos obligatorios por completar.');
       return;
     }
-    if (_photos.isEmpty) {
+    if (_photos.length < 22) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Agrega al menos una foto del apartamento.'),
+        SnackBar(
+          content: Text(
+            'Agrega al menos 22 fotos del apartamento. Actualmente tienes ${_photos.length}.',
+          ),
         ),
       );
       return;
@@ -1783,6 +1873,41 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       ).showSnackBar(const SnackBar(content: Text('Seleccione una ciudad')));
       return;
     }
+    if (_selectedZoneId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Seleccione un barrio')));
+      return;
+    }
+    if (_serviceRoomController.text.trim().isNotEmpty &&
+        _serviceRoomPhotoBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Si ingresa información del cuarto útil, debe agregar su foto.',
+          ),
+        ),
+      );
+      return;
+    }
+    if (_parkingLotController.text.trim().isNotEmpty &&
+        _parkingLotPhotoBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Si ingresa información del parqueo, debe agregar su foto.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Mostrar modal de confirmación antes de enviar
+    final confirmed = await _showConfirmationDialog();
+    if (confirmed != true) {
+      return;
+    }
+
     final data = _currentData();
 
     setState(() => _isSubmitting = true);
