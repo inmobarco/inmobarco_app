@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 import '../providers/property_provider.dart';
+import '../providers/auth_provider.dart';
 import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -362,8 +363,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
           const SizedBox(height: 8),
 
-          // Título
-          if (apartment!.reference.isNotEmpty)
+          // Título - Solo visible si está logueado
+          if (apartment!.reference.isNotEmpty && context.watch<AuthProvider>().isLoggedIn)
             GestureDetector(
               onTap: () {
                 setState(() {

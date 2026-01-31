@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/services/notification_service.dart';
 import '../providers/property_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/inmobarco_app_bar.dart';
 import 'property_list_screen.dart';
 import 'calendar_screen.dart';
+import 'login_screen.dart';
 
 /// Pantalla principal de la aplicación.
 /// 
@@ -17,18 +18,21 @@ import 'calendar_screen.dart';
 /// Esta pantalla está diseñada para ser extensible y permitir
 /// agregar navegación con tabs u otras secciones en el futuro.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTab;
+  
+  const HomeScreen({super.key, this.initialTab = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialTab;
     
     // Cargar datos iniciales
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -42,48 +46,72 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const InmobarcoAppBar(),
-      body: _buildBody(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        final isLoggedIn = authProvider.isLoggedIn;
+        
+        // Construir items de navegación dinámicamente
+        final navItems = <BottomNavigationBarItem>[
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_work),
             label: 'Propiedades',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_month),
-            label: 'Agenda',
+        ];
+        
+        if (isLoggedIn) {
+          navItems.addAll([
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month),
+              label: 'Agenda',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'Clientes',
+            ),
+          ]);
+        }
+        
+        navItems.add(const BottomNavigationBarItem(
+          icon: Icon(Icons.settings),
+          label: 'Configuración',
+        ));
+        
+        // Ajustar índice si cambia el número de tabs
+        final maxIndex = navItems.length - 1;
+        final safeIndex = _currentIndex > maxIndex ? 0 : _currentIndex;
+        
+        return Scaffold(
+          appBar: const InmobarcoAppBar(),
+          body: _buildBody(isLoggedIn, safeIndex, navItems.length),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: safeIndex,
+            onTap: _onTabTapped,
+            type: BottomNavigationBarType.fixed,
+            items: navItems,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Clientes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Configuración',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildBody() {
-    switch (_currentIndex) {
-      case 0:
-        return const PropertyListScreen();
-      case 1:
+  Widget _buildBody(bool isLoggedIn, int index, int totalTabs) {
+    // Configuración siempre es el último tab
+    final configIndex = totalTabs - 1;
+    
+    if (index == 0) {
+      return const PropertyListScreen();
+    } else if (index == configIndex) {
+      return _buildSettingsScreen();
+    } else if (isLoggedIn) {
+      // Solo accesible si está logueado
+      if (index == 1) {
         return const CalendarScreen();
-      case 2:
+      } else if (index == 2) {
         return _buildClientsPlaceholder();
-      case 3:
-        return _buildSettingsScreen();
-      default:
-        return const PropertyListScreen();
+      }
     }
+    
+    return const PropertyListScreen();
   }
 
   void _onTabTapped(int index) {
@@ -120,31 +148,173 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSettingsScreen() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Sección de Caché
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.storage),
-            title: const Text('Información del Caché'),
-            subtitle: const Text('Ver y limpiar datos en caché'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showCacheInfo(context),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Sección de Versión
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Versión de la App'),
-            subtitle: Text('v${AppConstants.appVersion}'),
-          ),
-        ),
-        const SizedBox(height: 12),
-      ],
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // Sección de autenticación
+            if (!authProvider.isLoggedIn)
+              // Botón para iniciar sesión
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.login),
+                  title: const Text('Iniciar Sesión'),
+                  subtitle: const Text('Accede para ver más funciones'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _navigateToLogin(),
+                ),
+              )
+            else
+              // Ficha de información del usuario
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            child: Text(
+                              authProvider.user?.firstName.isNotEmpty == true
+                                  ? authProvider.user!.firstName[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        authProvider.fullName,
+                                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    if (authProvider.user?.phone.isNotEmpty == true)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.phone,
+                                            size: 16,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            authProvider.user!.phone,
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '@${authProvider.user?.username ?? ''}',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () async {
+                          await authProvider.logout();
+                        },
+                        child: const Text('Cerrar sesión'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            
+            const SizedBox(height: 12),
+            
+            // Sección de Caché
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.storage),
+                title: const Text('Información del Caché'),
+                subtitle: const Text('Ver y limpiar datos en caché'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showCacheInfo(context),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Sección de Versión
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Versión de la App'),
+                subtitle: Text('v${AppConstants.appVersion}'),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        );
+      },
     );
+  }
+
+  Widget _buildUserInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: Colors.grey.shade600),
+          const SizedBox(width: 12),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _navigateToLogin() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+    
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Bienvenido!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   void _showCacheInfo(BuildContext context) async {

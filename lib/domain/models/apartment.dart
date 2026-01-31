@@ -74,16 +74,6 @@ class Apartment {
     );
   }
 
-  static double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) {
-      return double.tryParse(value.replaceAll(',', '')) ?? 0.0;
-    }
-    return 0.0;
-  }
-
   String get priceFormatted {
     String formatedRent = '\$${rentPrice.toStringAsFixed(0).replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),

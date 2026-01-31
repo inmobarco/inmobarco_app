@@ -1,0 +1,73 @@
+import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
+import '../../domain/models/user.dart';
+
+/// Servicio de autenticación contra el backend
+class AuthService {
+  static const String _baseUrl = 'http://194.163.147.243:8080';
+  static const String _loginEndpoint = '/login';
+
+  static final Dio _dio = Dio(BaseOptions(
+    baseUrl: _baseUrl,
+    connectTimeout: const Duration(seconds: 10),
+    receiveTimeout: const Duration(seconds: 10),
+  ));
+
+  /// Intenta autenticar al usuario con las credenciales proporcionadas
+  /// Retorna el User si es exitoso, o lanza una excepción si falla
+  static Future<User> login(String username, String password) async {
+    try {
+      final response = await _dio.post(
+        _loginEndpoint,
+        data: {
+          'username': username,
+          'password': password,
+        },
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+
+      debugPrint('🔐 Login response status: ${response.statusCode}');
+      debugPrint('🔐 Login response body: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data as Map<String, dynamic>;
+        
+        if (data['status'] == 'ok') {
+          return User.fromJson(data);
+        } else {
+          throw AuthException(data['message'] ?? 'Error de autenticación');
+        }
+      } else {
+        throw AuthException('Error del servidor (${response.statusCode})');
+      }
+    } on DioException catch (e) {
+      debugPrint('❌ DioException en login: ${e.type} - ${e.message}');
+      
+      if (e.response?.statusCode == 401) {
+        throw AuthException('Usuario o contraseña incorrectos');
+      } else if (e.type == DioExceptionType.connectionTimeout ||
+                 e.type == DioExceptionType.receiveTimeout) {
+        throw AuthException('Tiempo de espera agotado. Intenta de nuevo.');
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw AuthException('Error de conexión. Verifica tu internet.');
+      }
+      
+      throw AuthException('Error de conexión');
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      debugPrint('❌ Error en login: $e');
+      throw AuthException('Error inesperado');
+    }
+  }
+}
+
+/// Excepción personalizada para errores de autenticación
+class AuthException implements Exception {
+  final String message;
+  AuthException(this.message);
+
+  @override
+  String toString() => message;
+}

@@ -10,6 +10,7 @@ import 'core/services/notification_service.dart';
 import 'data/services/wasi_api_service.dart';
 import 'ui/providers/property_provider.dart';
 import 'ui/providers/appointment_provider.dart';
+import 'ui/providers/auth_provider.dart';
 import 'ui/screens/home_screen.dart';
 
 void main() async {
@@ -44,6 +45,14 @@ class InmobarcoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (context) {
+            final authProvider = AuthProvider();
+            // Cargar sesión guardada al iniciar
+            authProvider.loadSession();
+            return authProvider;
+          },
+        ),
         ChangeNotifierProvider(
           create: (context) => PropertyProvider(
             apiService: WasiApiService(

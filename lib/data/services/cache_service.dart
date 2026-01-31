@@ -12,6 +12,7 @@ class CacheService {
   static const String _propertiesFileName = 'properties_cache.json'; // Archivo persistente para búsquedas
   static const String _addApartmentDraftFileName = 'add_apartment_draft.json'; // Borrador formulario nuevo apartamento
   static const String _userProfileFileName = 'user_profile.json';
+  static const String _authSessionFileName = 'auth_session.json'; // Sesión de autenticación
   
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
@@ -257,6 +258,47 @@ class CacheService {
       if (await file.exists()) await file.delete();
     } catch (e) {
       debugPrint('⚠️ No se pudo borrar perfil de usuario: $e');
+    }
+  }
+
+  // ================== Sesión de autenticación ==================
+  
+  /// Guarda la sesión de autenticación
+  static Future<void> saveAuthSession(Map<String, dynamic> data) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_authSessionFileName');
+      await file.writeAsString(jsonEncode(data), flush: true);
+      debugPrint('✅ Sesión de autenticación guardada');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar sesión de autenticación: $e');
+    }
+  }
+
+  /// Carga la sesión de autenticación guardada
+  static Future<Map<String, dynamic>?> loadAuthSession() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_authSessionFileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+      return jsonDecode(content) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar sesión de autenticación: $e');
+      return null;
+    }
+  }
+
+  /// Elimina la sesión de autenticación
+  static Future<void> clearAuthSession() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_authSessionFileName');
+      if (await file.exists()) await file.delete();
+      debugPrint('🧹 Sesión de autenticación eliminada');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo borrar sesión de autenticación: $e');
     }
   }
 

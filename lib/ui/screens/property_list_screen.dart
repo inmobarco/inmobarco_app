@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/property_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/property_card.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
@@ -53,11 +54,13 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+    
     return Scaffold(
-      floatingActionButton: Column(
+      floatingActionButton: isLoggedIn ? Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Botón del ojo (navegación pública/privada)
+          // Botón del ojo (navegación pública/privada) - solo si está logueado
           FloatingActionButton.small(
             heroTag: 'visibility_fab',
             backgroundColor: _isPublicNavigation 
@@ -73,7 +76,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Botón de nuevo apartamento
+          // Botón de nuevo apartamento - solo si está logueado
           FloatingActionButton(
             heroTag: 'add_apartment_fab',
             backgroundColor: AppColors.primaryColor,
@@ -89,7 +92,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
             child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
-      ),
+      ) : null,
       body: Column(
         children: [
           // Indicador de carga desde caché
@@ -173,9 +176,11 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                     }
 
                     final apartment = isFiltering ? visibleList[index] : provider.properties[index];
+                    // Forzar navegación pública si no está logueado
+                    final effectivePublicNav = !isLoggedIn || _isPublicNavigation;
                     return PropertyCard(
                       apartment: apartment,
-                      isPublicNavigation: _isPublicNavigation,
+                      isPublicNavigation: effectivePublicNav,
                       onTap: () => _navigateToDetail(apartment.id),
                     );
                   },

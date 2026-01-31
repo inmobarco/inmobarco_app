@@ -175,6 +175,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   String? _userFirstName;
   String? _userLastName;
   String? _userPhone;
+  String? _userName;
 
   static const _autoSaveInterval = Duration(seconds: 5);
 
@@ -535,13 +536,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   Future<void> _loadUserProfile() async {
-    final data = await CacheService.loadUserProfile();
+    // Cargar desde la sesión de autenticación
+    final data = await CacheService.loadAuthSession();
     if (!mounted) return;
     if (data == null) {
       setState(() {
         _userFirstName = null;
         _userLastName = null;
         _userPhone = null;
+        _userName = null;
       });
       return;
     }
@@ -550,6 +553,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _userFirstName = _normalizeProfileValue(data['first_name']);
       _userLastName = _normalizeProfileValue(data['last_name']);
       _userPhone = _normalizeProfileValue(data['phone']);
+      _userName = _normalizeProfileValue(data['username']);
     });
   }
 
@@ -1684,6 +1688,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     final adminMail = _adminMailController.text.trim();
     final adminPhone = _digitsOnly(_adminPhoneController.text);
     final lodgePhone = _digitsOnly(_lodgePhoneController.text);
+    final porterName = _porterNameController.text.trim();
+    final porterPhone = _digitsOnly(_porterPhoneController.text);
     final photoTuples = _buildPhotoTuples();
 
     final List<String> titleParts = [];
@@ -1744,12 +1750,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'user_first_name': _userFirstName,
       'user_last_name': _userLastName,
       'user_phone': _userPhone,
+      'username': _userName,
       'landlordName': landlordName.isEmpty ? null : landlordName,
       'landlordPhone': landlordPhone.isEmpty ? null : landlordPhone,
       'keys': keys,
       'adminMail': adminMail.isEmpty ? null : adminMail,
       'adminPhone': adminPhone.isEmpty ? null : adminPhone,
       'lodgePhone': lodgePhone.isEmpty ? null : lodgePhone,
+      'porterName': porterName.isEmpty ? null : porterName,
+      'porterPhone': porterPhone.isEmpty ? null : porterPhone,
       'photos': photoTuples,
       // Metadatos
       'timestamp': DateTime.now().toIso8601String(),
