@@ -21,6 +21,14 @@ class AppConstants {
   static const Duration apiConnectTimeout = Duration(seconds: 10);
   static const Duration apiSendTimeout = Duration(seconds: 10);
   static const Duration apiReceiveTimeout = Duration(seconds: 15);
+
+  // Timeouts para webhook (payloads grandes con fotos)
+  static const Duration webhookConnectTimeout = Duration(seconds: 15);
+  static const Duration webhookSendTimeout = Duration(seconds: 120);
+  static const Duration webhookReceiveTimeout = Duration(seconds: 60);
+
+  // Límite de advertencia de tamaño de payload (en bytes)
+  static const int webhookPayloadWarningSizeBytes = 50 * 1024 * 1024; // 50 MB
   
   // UI - Border Radius
   static const double cardBorderRadius = 12.0;

@@ -93,47 +93,49 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
           ),
         ],
       ) : null,
-      body: Column(
+      body: Stack(
         children: [
-          // Indicador de carga desde caché
-          Consumer<PropertyProvider>(
-            builder: (context, provider, child) {
-              if (provider.isLoadingFromCache) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                color: AppColors.primaryColor.withValues(alpha: 0.1),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primaryColor,
-                      ),
+          Column(
+            children: [
+              // Indicador de carga desde caché
+              Consumer<PropertyProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoadingFromCache) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    color: AppColors.primaryColor.withValues(alpha: 0.1),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Cargando desde caché...',
+                          style: TextStyle(
+                            color: AppColors.primaryColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Cargando desde caché...',
-                      style: TextStyle(
-                        color: AppColors.primaryColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
 
-        // Barra de búsqueda
-        _buildSearchBar(),
-        
-        // Lista de propiedades
-        Expanded(
+            // Barra de búsqueda (solo si está logueado)
+            if (isLoggedIn) _buildSearchBar(),
+            
+            // Lista de propiedades
+            Expanded(
           child: Consumer<PropertyProvider>(
             builder: (context, provider, child) {
               final visibleList = provider.filteredProperties;
@@ -188,86 +190,95 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               );
             },
           ),
-        ),
-      ],
+            ),
+          ],
+          ),
+          // Botón flotante de filtros
+          Positioned(
+            top: isLoggedIn ? 12 : 12,
+            right: 16,
+            child: _buildFloatingFilterButton(),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 68, 16), // Espacio a la derecha para el botón flotante
       color: AppColors.backgroundLevel1,
       child: Consumer<PropertyProvider>(
         builder: (context, provider, _) {
-          final hasActiveFilters = provider.hasActiveFilters;
-          return Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar por número de registro...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, color: AppColors.textColor2),
-                            onPressed: () {
-                              _searchController.clear();
-                              provider.clearSearchQuery();
-                              setState(() {}); // Actualiza visibilidad del botón
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: AppColors.backgroundLevel2,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  onChanged: (value) {
-                    provider.updateSearchQuery(value);
-                    setState(() {}); // solo para refrescar suffixIcon
-                  },
-                ),
+          return TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Buscar por número de registro...',
+              prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: AppColors.textColor2),
+                      onPressed: () {
+                        _searchController.clear();
+                        provider.clearSearchQuery();
+                        setState(() {}); // Actualiza visibilidad del botón
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.backgroundLevel2,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(25),
+                borderSide: BorderSide.none,
               ),
-              const SizedBox(width: 12),
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Material(
-                    color: AppColors.primaryColor,
-                    shape: const CircleBorder(),
-                    child: IconButton(
-                      icon: const Icon(Icons.filter_list, color: Colors.white),
-                      tooltip: 'Filtros',
-                      onPressed: () => _showFilterDialog(context),
-                    ),
-                  ),
-                  if (hasActiveFilters)
-                    Positioned(
-                      right: 6,
-                      top: 6,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: AppColors.secondaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                ],
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
-            ],
+            ),
+            onChanged: (value) {
+              provider.updateSearchQuery(value);
+              setState(() {}); // solo para refrescar suffixIcon
+            },
           );
         },
       ),
+    );
+  }
+
+  Widget _buildFloatingFilterButton() {
+    return Consumer<PropertyProvider>(
+      builder: (context, provider, _) {
+        final hasActiveFilters = provider.hasActiveFilters;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Material(
+              elevation: 4,
+              color: AppColors.primaryColor,
+              shape: const CircleBorder(),
+              child: IconButton(
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                tooltip: 'Filtros',
+                onPressed: () => _showFilterDialog(context),
+              ),
+            ),
+            if (hasActiveFilters)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: AppColors.secondaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

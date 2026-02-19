@@ -144,6 +144,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           // Botón de compartir
           _buildShareButton(),
 
+          // Botón de eliminar propiedad (solo si está logueado)
+          if (context.watch<AuthProvider>().isLoggedIn)
+            _buildDeleteButton(),
+
           const SizedBox(height: 32),
         ],
       ),
@@ -575,6 +579,152 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDeleteButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _showDeleteConfirmationDialog,
+          icon: const Icon(Icons.delete_outline, color: Colors.white),
+          label: const Text(
+            'Eliminar Propiedad',
+            style: TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmationDialog() {
+    final TextEditingController reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar Propiedad'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '¿Estás seguro de que deseas eliminar esta propiedad?',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Referencia: ${apartment!.reference}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'ID: ${apartment!.id}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  labelText: 'Razón (opcional)',
+                  hintText: 'Ingrese una razón...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _sendDeleteWebhook(reasonController.text.trim());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _sendDeleteWebhook(String comment) async {
+    final authProvider = context.read<AuthProvider>();
+    final user = authProvider.user;
+
+    if (user == null || apartment == null) return;
+
+    final body = {
+      'username': user.username,
+      'user_first_name': user.firstName,
+      'user_last_name': user.lastName,
+      'apartment_reference': apartment!.reference,
+      'apartment_id': apartment!.id,
+      'comment': comment,
+    };
+
+    try {
+      final dio = Dio();
+      final response = await dio.post(
+        'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/ap-delete',
+        data: body,
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+        ),
+      );
+
+      if (mounted) {
+        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+          // Refrescar la lista de propiedades
+          context.read<PropertyProvider>().loadProperties(refresh: true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Solicitud de eliminación enviada correctamente.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error al enviar solicitud: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error de conexión: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildErrorWidget() {

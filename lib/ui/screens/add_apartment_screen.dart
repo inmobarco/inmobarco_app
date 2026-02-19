@@ -10,16 +10,72 @@ import '../../data/services/wasi_api_service.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 
+enum _WebhookErrorType {
+  none,
+  connectionTimeout,
+  sendTimeout,
+  receiveTimeout,
+  connectionError,
+  payloadTooLarge,
+  rateLimited,
+  serverError,
+  badRequest,
+  unauthorized,
+  unknown,
+}
+
 class _WebhookResult {
   final bool success;
   final bool isConnectionError;
+  final _WebhookErrorType errorType;
   final String? message;
+  final int? statusCode;
 
   const _WebhookResult({
     required this.success,
     this.isConnectionError = false,
+    this.errorType = _WebhookErrorType.none,
     this.message,
+    this.statusCode,
   });
+
+  String get userFriendlyMessage {
+    switch (errorType) {
+      case _WebhookErrorType.none:
+        return message ?? '';
+      case _WebhookErrorType.connectionTimeout:
+        return 'No se pudo establecer conexión con el servidor. '
+            'Verifique su conexión a internet e intente nuevamente.';
+      case _WebhookErrorType.sendTimeout:
+        return 'Se agotó el tiempo enviando los datos (las fotos pueden ser muy pesadas). '
+            'Intente con menos fotos o una conexión más rápida.';
+      case _WebhookErrorType.receiveTimeout:
+        return 'El servidor no respondió a tiempo. '
+            'Los datos podrían haberse recibido parcialmente. '
+            'Verifique antes de reintentar.';
+      case _WebhookErrorType.connectionError:
+        return 'Se perdió la conexión durante el envío. '
+            'Verifique su conexión a internet e intente nuevamente.';
+      case _WebhookErrorType.payloadTooLarge:
+        return 'El contenido es demasiado pesado para el servidor. '
+            'Intente reducir el número de fotos o su calidad.';
+      case _WebhookErrorType.rateLimited:
+        return 'Se han realizado demasiadas solicitudes. '
+            'Espere unos minutos antes de intentar nuevamente.';
+      case _WebhookErrorType.serverError:
+        return 'El servidor encontró un error interno '
+            '(código ${statusCode ?? "desconocido"}). '
+            'Intente nuevamente en unos minutos.';
+      case _WebhookErrorType.badRequest:
+        return 'Los datos enviados no son válidos. '
+            '${message ?? "Revise la información e intente nuevamente."}';
+      case _WebhookErrorType.unauthorized:
+        return 'No tiene autorización para realizar esta operación. '
+            'Cierre sesión y vuelva a iniciar.';
+      case _WebhookErrorType.unknown:
+        return message ?? 'Ocurrió un error inesperado al enviar la información.';
+    }
+  }
 }
 
 String _formatWithThousandsSeparator(String digits) {
@@ -136,7 +192,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   String _statusOnPageId = '1'; // 1 Activo, 2 Inactivo
   bool _cooldownActive = false;
   Timer? _cooldownTimer;
-  static const Duration _cooldownDuration = Duration(seconds: 30);
+  static const Duration _cooldownDuration = Duration(seconds: 60);
   // Condición de la propiedad (WASI: id_property_condition)
   String _propertyConditionId = '1'; // 1 Nuevo (default)
   static const List<Map<String, String>> _propertyConditions = [
@@ -1095,11 +1151,20 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     }
   }
 
-  void _showSnackBarMessage(String message) {
+  void _showSnackBarMessage(String message, {Duration? duration}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 150,
+          left: 10,
+          right: 10,
+        ),
+        duration: duration ?? const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _showInvalidImageFormatMessage() {
@@ -1116,13 +1181,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     setState(() {
       _cooldownActive = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Datos enviados correctamente, por favor espere 30 segundos antes de volver a captar.',
-        ),
-        duration: Duration(seconds: 10),
-      ),
+    _showSnackBarMessage(
+      'Datos enviados correctamente, por favor espere antes de volver a captar.',
+      duration: const Duration(seconds: 10),
     );
     _cooldownTimer = Timer(_cooldownDuration, () {
       if (!mounted) {
@@ -1522,9 +1583,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _resetFormState();
     });
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Borrador eliminado.')));
+    _showSnackBarMessage('Borrador eliminado.');
   }
 
   Future<void> _autoSave() async {
@@ -1751,8 +1810,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'user_last_name': _userLastName,
       'user_phone': _userPhone,
       'username': _userName,
-      'landlordName': landlordName.isEmpty ? null : landlordName,
-      'landlordPhone': landlordPhone.isEmpty ? null : landlordPhone,
+      'landlordName': landlordName,
+      'landlordPhone': landlordPhone,
       'keys': keys,
       'adminMail': adminMail.isEmpty ? null : adminMail,
       'adminPhone': adminPhone.isEmpty ? null : adminPhone,
@@ -1853,6 +1912,21 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     );
   }
 
+  int _estimatePayloadSizeBytes(Map<String, dynamic> data) {
+    try {
+      final jsonString = jsonEncode(data);
+      return jsonString.length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   Future<void> _onSavePressed() async {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) {
@@ -1860,54 +1934,34 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       return;
     }
     if (_photos.length < 22) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Agrega al menos 22 fotos del apartamento. Actualmente tienes ${_photos.length}.',
-          ),
-        ),
+      _showSnackBarMessage(
+        'Agrega al menos 22 fotos del apartamento. Actualmente tienes ${_photos.length}.',
       );
       return;
     }
     if (_userFirstName == null || _userFirstName!.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Completa los datos del asesor antes de captar.'),
-        ),
-      );
+      _showSnackBarMessage('Completa los datos del asesor antes de captar.');
       return;
     }
     if (_selectedCityId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Seleccione una ciudad')));
+      _showSnackBarMessage('Seleccione una ciudad');
       return;
     }
     if (_selectedZoneId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Seleccione un barrio')));
+      _showSnackBarMessage('Seleccione un barrio');
       return;
     }
     if (_serviceRoomController.text.trim().isNotEmpty &&
         _serviceRoomPhotoBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Si ingresa información del cuarto útil, debe agregar su foto.',
-          ),
-        ),
+      _showSnackBarMessage(
+        'Si ingresa información del cuarto útil, debe agregar su foto.',
       );
       return;
     }
     if (_parkingLotController.text.trim().isNotEmpty &&
         _parkingLotPhotoBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Si ingresa información del parqueo, debe agregar su foto.',
-          ),
-        ),
+      _showSnackBarMessage(
+        'Si ingresa información del parqueo, debe agregar su foto.',
       );
       return;
     }
@@ -1920,24 +1974,88 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
     final data = _currentData();
 
+    // Estimar tamaño del payload y advertir si es muy grande
+    final payloadSize = _estimatePayloadSizeBytes(data);
+    final payloadSizeFormatted = _formatBytes(payloadSize);
+    debugPrint('Tamaño estimado del payload: $payloadSizeFormatted');
+
+    if (payloadSize > AppConstants.webhookPayloadWarningSizeBytes) {
+      if (!mounted) return;
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Contenido muy pesado'),
+          content: Text(
+            'El tamaño de los datos a enviar es de $payloadSizeFormatted. '
+            'Esto puede tardar varios minutos o fallar con conexiones lentas.\n\n'
+            '¿Desea continuar de todas formas?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+    }
+
     setState(() => _isSubmitting = true);
+
+    // Mostrar diálogo de progreso
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(
+                child: Text(
+                  'Enviando datos ($payloadSizeFormatted)...\n'
+                  'Esto puede tardar unos minutos.',
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
 
     try {
       final result = await _sendToWebhook(data);
+
+      // Cerrar diálogo de progreso
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
       if (!result.success) {
         if (!mounted) return;
-        final message = result.isConnectionError
-            ? 'No se pudo enviar la información. Verifique su conexión a internet.'
-            : (result.message ??
-                  'No se pudo enviar la información al webhook. Intente nuevamente.');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        _showSnackBarMessage(
+          result.userFriendlyMessage,
+          duration: const Duration(seconds: 8),
+        );
         return;
       }
       if (!mounted) return;
       _startCooldown();
       return;
+    } catch (_) {
+      // Cerrar diálogo de progreso en caso de error no controlado
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      rethrow;
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -1951,9 +2069,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     try {
       final dio = Dio(
         BaseOptions(
-          connectTimeout: AppConstants.apiConnectTimeout,
-          sendTimeout: AppConstants.apiSendTimeout,
-          receiveTimeout: AppConstants.apiReceiveTimeout,
+          connectTimeout: AppConstants.webhookConnectTimeout,
+          sendTimeout: AppConstants.webhookSendTimeout,
+          receiveTimeout: AppConstants.webhookReceiveTimeout,
           headers: const {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -1963,37 +2081,161 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
       final response = await dio.post(_webhookUrl, data: data);
       final status = response.statusCode ?? 0;
+
       if (status >= 200 && status < 300) {
         return const _WebhookResult(success: true);
       }
 
       debugPrint('Webhook responded with status $status: ${response.data}');
-      return _WebhookResult(
-        success: false,
-        message: 'El servidor respondió con un estado inesperado ($status).',
-      );
+      return _classifyHttpStatus(status, response.data);
     } on DioException catch (dioError, stackTrace) {
       debugPrint('Error enviando al webhook: $dioError');
       debugPrint(stackTrace.toString());
-      final isConnectionError =
-          dioError.type == DioExceptionType.connectionTimeout ||
-          dioError.type == DioExceptionType.sendTimeout ||
-          dioError.type == DioExceptionType.receiveTimeout ||
-          dioError.type == DioExceptionType.connectionError ||
-          dioError.type == DioExceptionType.badCertificate ||
-          dioError.type == DioExceptionType.unknown;
+      return _classifyDioError(dioError);
+    } catch (e, stackTrace) {
+      debugPrint('Error inesperado enviando al webhook: $e');
+      debugPrint(stackTrace.toString());
       return _WebhookResult(
         success: false,
-        isConnectionError: isConnectionError,
-        message:
-            dioError.message ??
-            dioError.error?.toString() ??
-            'Ocurrió un error enviando la información.',
+        errorType: _WebhookErrorType.unknown,
+        message: e.toString(),
       );
-    } catch (e, stackTrace) {
-      debugPrint('Error enviando al webhook: $e');
-      debugPrint(stackTrace.toString());
-      return _WebhookResult(success: false, message: e.toString());
+    }
+  }
+
+  _WebhookResult _classifyHttpStatus(int status, dynamic responseData) {
+    // Extraer mensaje del servidor si viene en la respuesta
+    String? serverMessage;
+    if (responseData is Map) {
+      serverMessage = responseData['message']?.toString() ??
+          responseData['error']?.toString();
+    } else if (responseData is String && responseData.isNotEmpty) {
+      serverMessage = responseData.length > 200
+          ? '${responseData.substring(0, 200)}...'
+          : responseData;
+    }
+
+    if (status == 413) {
+      return _WebhookResult(
+        success: false,
+        statusCode: status,
+        errorType: _WebhookErrorType.payloadTooLarge,
+        message: serverMessage,
+      );
+    }
+    if (status == 429) {
+      return _WebhookResult(
+        success: false,
+        statusCode: status,
+        errorType: _WebhookErrorType.rateLimited,
+        message: serverMessage,
+      );
+    }
+    if (status == 400) {
+      return _WebhookResult(
+        success: false,
+        statusCode: status,
+        errorType: _WebhookErrorType.badRequest,
+        message: serverMessage,
+      );
+    }
+    if (status == 401 || status == 403) {
+      return _WebhookResult(
+        success: false,
+        statusCode: status,
+        errorType: _WebhookErrorType.unauthorized,
+        message: serverMessage,
+      );
+    }
+    if (status >= 500) {
+      return _WebhookResult(
+        success: false,
+        statusCode: status,
+        errorType: _WebhookErrorType.serverError,
+        message: serverMessage,
+      );
+    }
+
+    return _WebhookResult(
+      success: false,
+      statusCode: status,
+      errorType: _WebhookErrorType.unknown,
+      message: serverMessage ?? 'El servidor respondió con estado $status.',
+    );
+  }
+
+  _WebhookResult _classifyDioError(DioException dioError) {
+    // Si el servidor respondió con un código de error, clasificarlo por status
+    final response = dioError.response;
+    if (response != null) {
+      final status = response.statusCode ?? 0;
+      if (status > 0) {
+        return _classifyHttpStatus(status, response.data);
+      }
+    }
+
+    switch (dioError.type) {
+      case DioExceptionType.connectionTimeout:
+        return const _WebhookResult(
+          success: false,
+          isConnectionError: true,
+          errorType: _WebhookErrorType.connectionTimeout,
+        );
+      case DioExceptionType.sendTimeout:
+        return const _WebhookResult(
+          success: false,
+          isConnectionError: true,
+          errorType: _WebhookErrorType.sendTimeout,
+        );
+      case DioExceptionType.receiveTimeout:
+        return const _WebhookResult(
+          success: false,
+          isConnectionError: true,
+          errorType: _WebhookErrorType.receiveTimeout,
+        );
+      case DioExceptionType.connectionError:
+        return const _WebhookResult(
+          success: false,
+          isConnectionError: true,
+          errorType: _WebhookErrorType.connectionError,
+        );
+      case DioExceptionType.badCertificate:
+        return _WebhookResult(
+          success: false,
+          isConnectionError: true,
+          errorType: _WebhookErrorType.connectionError,
+          message: 'Error de certificado SSL. Contacte al administrador.',
+        );
+      case DioExceptionType.badResponse:
+        return _WebhookResult(
+          success: false,
+          errorType: _WebhookErrorType.unknown,
+          message: dioError.message ?? 'Respuesta inválida del servidor.',
+        );
+      case DioExceptionType.cancel:
+        return const _WebhookResult(
+          success: false,
+          errorType: _WebhookErrorType.unknown,
+          message: 'La solicitud fue cancelada.',
+        );
+      case DioExceptionType.unknown:
+        final errorMsg = dioError.error?.toString() ?? '';
+        // Detectar errores de conexión que Dio clasifica como 'unknown'
+        final isConnection = errorMsg.contains('SocketException') ||
+            errorMsg.contains('Connection refused') ||
+            errorMsg.contains('Connection reset') ||
+            errorMsg.contains('Network is unreachable') ||
+            errorMsg.contains('HandshakeException');
+        return _WebhookResult(
+          success: false,
+          isConnectionError: isConnection,
+          errorType: isConnection
+              ? _WebhookErrorType.connectionError
+              : _WebhookErrorType.unknown,
+          message: isConnection
+              ? null
+              : (dioError.message ?? errorMsg),
+        );
     }
   }
 
@@ -2761,22 +3003,34 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       TextFormField(
                         controller: _landlordNameController,
                         decoration: const InputDecoration(
-                          labelText: 'Nombre propietario',
+                          labelText: 'Nombre propietario *',
                           border: OutlineInputBorder(),
                         ),
                         textCapitalization: TextCapitalization.words,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El nombre del propietario es obligatorio';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _landlordPhoneController,
                         decoration: const InputDecoration(
-                          labelText: 'Celular propietario',
+                          labelText: 'Celular propietario *',
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                         ],
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'El celular del propietario es obligatorio';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -2870,6 +3124,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
