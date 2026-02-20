@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/appointment.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/sync_service.dart';
 
 /// Provider para gestionar las citas del calendario.
 /// 
@@ -16,7 +17,6 @@ class AppointmentProvider extends ChangeNotifier {
   String? _error;
 
   static const String _storageKey = 'appointments_cache';
-  static const String _pendingQueueKey = 'appointments_pending_sync';
 
   List<Appointment> get appointments => List.unmodifiable(_appointments);
   bool get isLoading => _isLoading;
@@ -206,10 +206,18 @@ class AppointmentProvider extends ChangeNotifier {
       }
     } on DioException catch (e) {
       debugPrint('⚠️ Error al sincronizar cita con API: ${e.message}');
-      await _enqueuePending('create', appointment.id, appointment.toApiJson());
+      await SyncService.instance.enqueue(
+        action: 'create',
+        localId: appointment.id,
+        payload: appointment.toApiJson(),
+      );
     } catch (e) {
       debugPrint('⚠️ Error inesperado al sincronizar cita: $e');
-      await _enqueuePending('create', appointment.id, appointment.toApiJson());
+      await SyncService.instance.enqueue(
+        action: 'create',
+        localId: appointment.id,
+        payload: appointment.toApiJson(),
+      );
     }
   }
 
@@ -217,7 +225,11 @@ class AppointmentProvider extends ChangeNotifier {
   void _syncUpdateInBackground(Appointment appointment) async {
     if (appointment.serverId == null) {
       debugPrint('⚠️ No se puede actualizar en API: falta serverId');
-      await _enqueuePending('update', appointment.id, appointment.toApiJson());
+      await SyncService.instance.enqueue(
+        action: 'update',
+        localId: appointment.id,
+        payload: appointment.toApiJson(),
+      );
       return;
     }
 
@@ -229,10 +241,18 @@ class AppointmentProvider extends ChangeNotifier {
       debugPrint('✅ Cita actualizada en API (serverId: ${appointment.serverId})');
     } on DioException catch (e) {
       debugPrint('⚠️ Error al actualizar cita en API: ${e.message}');
-      await _enqueuePending('update', appointment.id, appointment.toApiJson());
+      await SyncService.instance.enqueue(
+        action: 'update',
+        localId: appointment.id,
+        payload: appointment.toApiJson(),
+      );
     } catch (e) {
       debugPrint('⚠️ Error inesperado al actualizar cita: $e');
-      await _enqueuePending('update', appointment.id, appointment.toApiJson());
+      await SyncService.instance.enqueue(
+        action: 'update',
+        localId: appointment.id,
+        payload: appointment.toApiJson(),
+      );
     }
   }
 
@@ -243,37 +263,18 @@ class AppointmentProvider extends ChangeNotifier {
       debugPrint('✅ Cita eliminada de API (serverId: $serverId)');
     } on DioException catch (e) {
       debugPrint('⚠️ Error al eliminar cita en API: ${e.message}');
-      await _enqueuePending('delete', localId, {'serverId': serverId});
+      await SyncService.instance.enqueue(
+        action: 'delete',
+        localId: localId,
+        payload: {'serverId': serverId},
+      );
     } catch (e) {
       debugPrint('⚠️ Error inesperado al eliminar cita: $e');
-      await _enqueuePending('delete', localId, {'serverId': serverId});
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Cola de operaciones pendientes
-  // ---------------------------------------------------------------------------
-
-  /// Encola una operación que no pudo sincronizarse con la API.
-  Future<void> _enqueuePending(
-    String action,
-    String localId,
-    Map<String, dynamic> payload,
-  ) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_pendingQueueKey);
-      final List<dynamic> queue = raw != null ? json.decode(raw) : [];
-      queue.add({
-        'action': action,
-        'localId': localId,
-        'payload': payload,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-      await prefs.setString(_pendingQueueKey, json.encode(queue));
-      debugPrint('📋 Operación encolada ($action) para cita $localId');
-    } catch (e) {
-      debugPrint('❌ Error al encolar operación pendiente: $e');
+      await SyncService.instance.enqueue(
+        action: 'delete',
+        localId: localId,
+        payload: {'serverId': serverId},
+      );
     }
   }
 }
