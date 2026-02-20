@@ -3,6 +3,8 @@
 /// Puede estar asociada a una propiedad específica y a un cliente.
 class Appointment {
   final String id;
+  /// ID asignado por el servidor (null si aún no se ha sincronizado).
+  final int? serverId;
   final String title;
   final String? description;
   final DateTime dateTime;
@@ -19,6 +21,7 @@ class Appointment {
 
   Appointment({
     required this.id,
+    this.serverId,
     required this.title,
     this.description,
     required this.dateTime,
@@ -37,6 +40,7 @@ class Appointment {
   /// Crea una copia del objeto con los campos modificados
   Appointment copyWith({
     String? id,
+    int? serverId,
     String? title,
     String? description,
     DateTime? dateTime,
@@ -53,6 +57,7 @@ class Appointment {
   }) {
     return Appointment(
       id: id ?? this.id,
+      serverId: serverId ?? this.serverId,
       title: title ?? this.title,
       description: description ?? this.description,
       dateTime: dateTime ?? this.dateTime,
@@ -69,10 +74,11 @@ class Appointment {
     );
   }
 
-  /// Convierte el objeto a JSON para persistencia
+  /// Convierte el objeto a JSON para persistencia local
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'serverId': serverId,
       'title': title,
       'description': description,
       'dateTime': dateTime.toIso8601String(),
@@ -89,10 +95,29 @@ class Appointment {
     };
   }
 
+  /// Convierte al formato que espera la API del backend.
+  ///
+  /// Campos: title, description, appointment_date, duration_minutes,
+  ///         client_name, client_phone, appointment_type, status.
+  /// El username NO va en el body → el backend lo toma del JWT.
+  Map<String, dynamic> toApiJson() {
+    return {
+      'title': title,
+      'description': description,
+      'appointment_date': dateTime.toUtc().toIso8601String(),
+      'duration_minutes': duration.inMinutes,
+      'client_name': clientName,
+      'client_phone': clientPhone,
+      'appointment_type': type.name,
+      'status': status.name,
+    };
+  }
+
   /// Crea un objeto desde JSON
   factory Appointment.fromJson(Map<String, dynamic> json) {
     return Appointment(
       id: json['id'] as String,
+      serverId: json['serverId'] as int?,
       title: json['title'] as String,
       description: json['description'] as String?,
       dateTime: DateTime.parse(json['dateTime'] as String),
@@ -183,7 +208,7 @@ enum AppointmentStatus {
   confirmed,  // Confirmada
   completed,  // Completada
   cancelled,  // Cancelada
-  rescheduled, // Reagendada
+  //rescheduled, // Reagendada
 }
 
 /// Extensión para obtener información adicional del estado
@@ -198,8 +223,8 @@ extension AppointmentStatusExtension on AppointmentStatus {
         return 'Completada';
       case AppointmentStatus.cancelled:
         return 'Cancelada';
-      case AppointmentStatus.rescheduled:
-        return 'Reagendada';
+      //case AppointmentStatus.rescheduled:
+        //return 'Reagendada';
     }
   }
 
@@ -213,8 +238,8 @@ extension AppointmentStatusExtension on AppointmentStatus {
         return 0xFF28A745; // Verde
       case AppointmentStatus.cancelled:
         return 0xFFDC3545; // Rojo
-      case AppointmentStatus.rescheduled:
-        return 0xFF6C757D; // Gris
+      //case AppointmentStatus.rescheduled:
+        //return 0xFF6C757D; // Gris
     }
   }
 }

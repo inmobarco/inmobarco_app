@@ -105,8 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (isLoggedIn) {
       // Solo accesible si está logueado
       if (index == 1) {
-        //return const CalendarScreen();
-        return _buildPlannerPlaceholder();
+        return const CalendarScreen();
+        //return _buildPlannerPlaceholder();
       } else if (index == 2) {
         return _buildClientsPlaceholder();
       }

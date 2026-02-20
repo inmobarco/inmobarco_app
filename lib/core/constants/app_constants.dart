@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/global_data_service.dart';
 
 class AppConstants {
-  static const String appVersion = '1.7.2';
+  static const String appVersion = '1.8.0';
   
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';

@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/user.dart';
 
 /// Servicio de autenticación contra el backend
@@ -29,12 +31,23 @@ class AuthService {
       );
 
       debugPrint('🔐 Login response status: ${response.statusCode}');
-      debugPrint('🔐 Login response body: ${response.data}');
+      final jsonString = const JsonEncoder.withIndent('  ').convert(response.data);
+      debugPrint('🔐 Login response JSON:\n$jsonString');
 
       if (response.statusCode == 200) {
         final data = response.data as Map<String, dynamic>;
         
         if (data['status'] == 'ok') {
+          // Guardar el token JWT en SharedPreferences
+          final accessToken = data['access_token'] as String?;
+          if (accessToken != null && accessToken.isNotEmpty) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('access_token', accessToken);
+            debugPrint('🔑 Token JWT guardado en SharedPreferences');
+          } else {
+            debugPrint('⚠️ No se recibió access_token en la respuesta');
+          }
+
           return User.fromJson(data);
         } else {
           throw AuthException(data['message'] ?? 'Error de autenticación');

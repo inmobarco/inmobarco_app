@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/user.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/cache_service.dart';
+import '../../data/services/api_service.dart';
 
 /// Provider de autenticación para gestionar el estado de sesión en toda la app
 class AuthProvider extends ChangeNotifier {
@@ -74,6 +76,11 @@ class AuthProvider extends ChangeNotifier {
   /// Cierra la sesión actual
   Future<void> logout() async {
     await CacheService.clearAuthSession();
+    // Limpiar el token JWT
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    debugPrint('🔑 Token JWT eliminado');
+    ApiService.reset();
     _user = null;
     notifyListeners();
   }
