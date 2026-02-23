@@ -113,7 +113,40 @@ class Appointment {
     };
   }
 
-  /// Crea un objeto desde JSON
+  /// Crea un objeto desde el JSON que retorna la API del servidor.
+  ///
+  /// El servidor usa snake_case y campos como `appointment_date`,
+  /// `appointment_type`, `created_at`, etc.
+  factory Appointment.fromApiJson(Map<String, dynamic> json) {
+    return Appointment(
+      // Usamos el serverId como id local (prefijado) para citas que solo
+      // existen en el servidor.
+      id: 'srv_${json['id']}',
+      serverId: json['id'] as int?,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String?,
+      dateTime: DateTime.parse(json['appointment_date'] as String).toLocal(),
+      duration: Duration(minutes: json['duration_minutes'] as int? ?? 60),
+      type: AppointmentType.values.firstWhere(
+        (e) => e.name == json['appointment_type'],
+        orElse: () => AppointmentType.visit,
+      ),
+      status: AppointmentStatus.values.firstWhere(
+        (e) => e.name == json['status'],
+        orElse: () => AppointmentStatus.pending,
+      ),
+      clientName: json['client_name'] as String?,
+      clientPhone: json['client_phone'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String).toLocal()
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String).toLocal()
+          : null,
+    );
+  }
+
+  /// Crea un objeto desde JSON (persistencia local)
   factory Appointment.fromJson(Map<String, dynamic> json) {
     return Appointment(
       id: json['id'] as String,

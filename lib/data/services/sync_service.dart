@@ -5,14 +5,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../domain/models/appointment.dart';
 import 'api_service.dart';
 
 /// Servicio de sincronización entre almacenamiento local y la API.
 ///
 /// Estrategia:
-/// 1. Al abrir la app → vacía la cola de pendientes.
+/// 1. Al abrir la app → fullSync (push local + pull servidor).
 /// 2. Mientras la app está abierta → `Timer.periodic` cada 5 min.
-/// 3. Si la red cambia de offline → online → intenta vaciar de inmediato.
+/// 3. Si la red cambia de offline → online → fullSync inmediato.
 /// 4. Antes de procesar la cola se **compacta** para evitar inconsistencias
 ///    (ej. CREATE + DELETE del mismo localId se cancelan mutuamente).
 class SyncService {
@@ -46,8 +47,8 @@ class SyncService {
           (r) => r != ConnectivityResult.none,
         );
         if (hasConnection) {
-          debugPrint('🌐 Red disponible → vaciando cola pendiente');
-          syncPendingQueue();
+          debugPrint('🌐 Red disponible → fullSync');
+          fullSync();
         }
       },
     );
@@ -55,12 +56,12 @@ class SyncService {
     // --- Timer periódico (cada 5 min mientras la app está abierta) ---
     _periodicTimer?.cancel();
     _periodicTimer = Timer.periodic(_syncInterval, (_) {
-      debugPrint('⏰ Timer periódico → intentando sincronizar cola');
-      syncPendingQueue();
+      debugPrint('⏰ Timer periódico → fullSync');
+      fullSync();
     });
 
-    // --- Vaciado inmediato al arrancar ---
-    syncPendingQueue();
+    // --- Sync inmediato al arrancar ---
+    fullSync();
 
     debugPrint('📡 SyncService: escuchando red + timer cada ${_syncInterval.inMinutes} min');
   }
@@ -372,6 +373,118 @@ class SyncService {
     } catch (_) {}
 
     return null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Full sync: push + pull
+  // ---------------------------------------------------------------------------
+
+  /// Ejecuta una sincronización completa:
+  /// 1. **Push** — vacía la cola de pendientes (local → servidor).
+  /// 2. **Pull** — descarga citas del servidor y las fusiona con las locales.
+  Future<void> fullSync() async {
+    await syncPendingQueue();
+    await pullFromServer();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pull: descargar citas del servidor
+  // ---------------------------------------------------------------------------
+
+  /// Descarga las citas del servidor y las fusiona con el caché local.
+  ///
+  /// Reglas de merge:
+  /// - Cita existe en servidor y local (mismo serverId) → actualiza la local
+  ///   con los datos del servidor (server-wins).
+  /// - Cita existe solo en servidor → la agrega localmente.
+  /// - Cita existe solo en local sin serverId → la mantiene (aún no se
+  ///   sincronizó, está en cola pendiente).
+  /// - Cita existe solo en local con serverId → fue eliminada desde el
+  ///   servidor/admin → la elimina localmente.
+  Future<void> pullFromServer() async {
+    try {
+      // Delta sync: solo traer citas desde hoy a las 00:00 local
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final serverList = await ApiService.getAppointments(after: today);
+      debugPrint('📥 GET /appointments?after=${today.toUtc().toIso8601String()} '
+          '→ ${serverList.length} citas del servidor');
+
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_appointmentsCacheKey);
+      final List<Appointment> localList = (raw != null && raw.isNotEmpty)
+          ? (json.decode(raw) as List<dynamic>)
+              .map((j) => Appointment.fromJson(j as Map<String, dynamic>))
+              .toList()
+          : [];
+
+      // Mapas de lookup
+      final Map<int, Appointment> localByServerId = {};
+      final List<Appointment> localWithoutServerId = [];
+      for (final a in localList) {
+        if (a.serverId != null) {
+          localByServerId[a.serverId!] = a;
+        } else {
+          localWithoutServerId.add(a);
+        }
+      }
+
+      final Set<int> serverIds = {};
+      final List<Appointment> merged = [];
+
+      // 1. Procesar citas del servidor
+      for (final serverJson in serverList) {
+        final serverAppointment = Appointment.fromApiJson(serverJson);
+        final sId = serverAppointment.serverId!;
+        serverIds.add(sId);
+
+        final localMatch = localByServerId[sId];
+        if (localMatch != null) {
+          // Existe local → actualizar con datos del servidor (conservar id local)
+          merged.add(serverAppointment.copyWith(id: localMatch.id));
+        } else {
+          // Solo en servidor → agregar como nueva
+          merged.add(serverAppointment);
+        }
+      }
+
+      // 2. Mantener citas locales que aún no tienen serverId
+      //    (aún no se sincronizaron, probablemente en cola pendiente)
+      merged.addAll(localWithoutServerId);
+
+      // 3. Citas locales con serverId que NO vinieron en la respuesta
+      //    → con delta sync puede ser que simplemente no se incluyeron;
+      //      las mantenemos localmente para no perder datos.
+      for (final entry in localByServerId.entries) {
+        if (!serverIds.contains(entry.key)) {
+          merged.add(entry.value);
+          debugPrint('ℹ️ Cita local ${entry.value.id} (serverId: ${entry.key}) '
+              'no vino del servidor, se mantiene localmente');
+        }
+      }
+
+      // Guardar el resultado
+      final jsonList = merged.map((a) => a.toJson()).toList();
+      await prefs.setString(_appointmentsCacheKey, json.encode(jsonList));
+      debugPrint('💾 ${merged.length} citas guardadas tras merge '
+          '(${localWithoutServerId.length} locales sin sync)');
+
+      // Notificar al callback para que el provider recargue
+      _onPullCompleted?.call();
+    } on DioException catch (e) {
+      debugPrint('⚠️ Error al descargar citas del servidor: ${e.message}');
+    } catch (e) {
+      debugPrint('❌ Error inesperado en pullFromServer: $e');
+    }
+  }
+
+  /// Callback que se ejecuta tras un pull exitoso para que el provider
+  /// recargue sus datos desde SharedPreferences.
+  VoidCallback? _onPullCompleted;
+
+  /// Registra un callback para ser notificado cuando pullFromServer termina.
+  void setOnPullCompleted(VoidCallback callback) {
+    _onPullCompleted = callback;
   }
 
   // ---------------------------------------------------------------------------

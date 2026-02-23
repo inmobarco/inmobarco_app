@@ -79,6 +79,58 @@ class AppointmentProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+
+    // Registrar callback para recargar cuando SyncService hace pull del servidor
+    SyncService.instance.setOnPullCompleted(() {
+      _reloadFromStorage();
+    });
+  }
+
+  /// Recarga las citas desde SharedPreferences sin mostrar loading.
+  ///
+  /// Se usa cuando SyncService actualiza el caché tras un pull del servidor.
+  /// Solo llama [notifyListeners] si los datos realmente cambiaron.
+  Future<void> _reloadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_storageKey);
+
+      if (jsonString != null) {
+        final List<dynamic> jsonList = json.decode(jsonString);
+        final newList = jsonList
+            .map((j) => Appointment.fromJson(j as Map<String, dynamic>))
+            .toList();
+
+        // Comparar rápido: si la cantidad o los ids/serverIds/updatedAt difieren → cambió
+        if (!_appointmentListEquals(_appointments, newList)) {
+          _appointments = newList;
+          notifyListeners();
+          debugPrint('🔄 AppointmentProvider: recargado tras pull (${_appointments.length} citas)');
+        } else {
+          debugPrint('⏭️ AppointmentProvider: sin cambios tras pull, skip rebuild');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error al recargar citas tras pull: $e');
+    }
+  }
+
+  /// Compara dos listas de citas de forma ligera (sin deep-equals en todos los campos).
+  ///
+  /// Retorna `true` si son equivalentes.
+  bool _appointmentListEquals(List<Appointment> a, List<Appointment> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].serverId != b[i].serverId ||
+          a[i].title != b[i].title ||
+          a[i].status != b[i].status ||
+          a[i].dateTime != b[i].dateTime ||
+          a[i].updatedAt != b[i].updatedAt) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Guarda las citas en el almacenamiento local

@@ -80,4 +80,24 @@ class ApiService {
     final response = await dio.delete('/appointments/$id');
     debugPrint('📅 DELETE /appointments/$id → ${response.statusCode}');
   }
+
+  /// Obtiene las citas del usuario autenticado.
+  ///
+  /// Si se proporciona [after], solo devuelve citas cuyo `updated_at` es
+  /// posterior a esa fecha (delta sync).
+  /// Retorna la lista de mapas tal como viene del servidor.
+  static Future<List<Map<String, dynamic>>> getAppointments({DateTime? after}) async {
+    final dio = await getInstance();
+    final Map<String, dynamic> queryParams = {};
+    if (after != null) {
+      queryParams['after'] = after.toUtc().toIso8601String();
+    }
+    final response = await dio.get(
+      '/appointments',
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    debugPrint('📅 GET /appointments${after != null ? '?after=${queryParams['after']}' : ''} → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
 }
