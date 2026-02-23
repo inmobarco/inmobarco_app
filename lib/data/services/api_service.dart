@@ -83,7 +83,7 @@ class ApiService {
 
   /// Obtiene las citas del usuario autenticado.
   ///
-  /// Si se proporciona [after], solo devuelve citas cuyo `updated_at` es
+  /// Si se proporciona [after], solo devuelve citas cuyo `appointment_date` es
   /// posterior a esa fecha (delta sync).
   /// Retorna la lista de mapas tal como viene del servidor.
   static Future<List<Map<String, dynamic>>> getAppointments({DateTime? after}) async {

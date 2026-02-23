@@ -5,6 +5,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/notification_service.dart';
 import '../../domain/models/appointment.dart';
 import 'api_service.dart';
 
@@ -32,6 +33,7 @@ class SyncService {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _periodicTimer;
   bool _isSyncing = false;
+  bool _initialSyncDone = false;
 
   // ---------------------------------------------------------------------------
   // Inicialización / dispose
@@ -43,6 +45,13 @@ class SyncService {
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
       (List<ConnectivityResult> results) {
+        // Ignorar el primer evento (estado actual al suscribirse),
+        // ya que el sync inmediato al arrancar ya lo cubre.
+        if (!_initialSyncDone) {
+          _initialSyncDone = true;
+          return;
+        }
+
         final hasConnection = results.any(
           (r) => r != ConnectivityResult.none,
         );
@@ -98,6 +107,34 @@ class SyncService {
       debugPrint('📋 Operación encolada ($action) para cita $localId');
     } catch (e) {
       debugPrint('❌ Error al encolar operación pendiente: $e');
+    }
+  }
+
+  /// Elimina de la cola todas las operaciones pendientes para un [localId].
+  ///
+  /// Se usa cuando se elimina localmente una cita que nunca llegó al servidor
+  /// (sin serverId), para limpiar cualquier CREATE/UPDATE pendiente.
+  Future<void> purgeLocalId(String localId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_pendingQueueKey);
+      if (raw == null || raw.isEmpty) return;
+
+      final List<dynamic> queue = json.decode(raw);
+      final before = queue.length;
+      queue.removeWhere((op) => (op as Map<String, dynamic>)['localId'] == localId);
+
+      if (queue.length < before) {
+        if (queue.isEmpty) {
+          await prefs.remove(_pendingQueueKey);
+        } else {
+          await prefs.setString(_pendingQueueKey, json.encode(queue));
+        }
+        debugPrint('🧹 Purgadas ${before - queue.length} operación(es) pendientes '
+            'de cita $localId');
+      }
+    } catch (e) {
+      debugPrint('❌ Error al purgar cola para $localId: $e');
     }
   }
 
@@ -434,17 +471,39 @@ class SyncService {
 
       // 1. Procesar citas del servidor
       for (final serverJson in serverList) {
-        final serverAppointment = Appointment.fromApiJson(serverJson);
-        final sId = serverAppointment.serverId!;
+        final sId = serverJson['id'] as int;
         serverIds.add(sId);
+
+        // Si el servidor marca la cita como "deleted", eliminarla localmente
+        final serverStatus = (serverJson['status'] as String?)?.toLowerCase();
+        if (serverStatus == 'deleted') {
+          final localMatch = localByServerId[sId];
+          if (localMatch != null) {
+            debugPrint('🗑️ Cita local ${localMatch.id} (serverId: $sId) '
+                'eliminada: status "deleted" en servidor');
+            // Cancelar notificación de la cita eliminada
+            await notificationService.cancelAppointmentReminder(localMatch.id);
+          }
+          continue;
+        }
+
+        final serverAppointment = Appointment.fromApiJson(serverJson);
 
         final localMatch = localByServerId[sId];
         if (localMatch != null) {
           // Existe local → actualizar con datos del servidor (conservar id local)
-          merged.add(serverAppointment.copyWith(id: localMatch.id));
+          final updatedLocal = serverAppointment.copyWith(id: localMatch.id);
+          merged.add(updatedLocal);
+          // Reprogramar notificación si la fecha/hora cambió
+          if (localMatch.dateTime != serverAppointment.dateTime) {
+            await notificationService.rescheduleAppointmentReminder(updatedLocal);
+            debugPrint('🔔 Notificación reprogramada para cita ${localMatch.id}');
+          }
         } else {
-          // Solo en servidor → agregar como nueva
+          // Solo en servidor → agregar como nueva + programar notificación
           merged.add(serverAppointment);
+          await notificationService.scheduleAppointmentReminder(serverAppointment);
+          debugPrint('🔔 Notificación programada para nueva cita ${serverAppointment.id}');
         }
       }
 

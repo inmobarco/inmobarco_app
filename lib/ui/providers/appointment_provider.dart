@@ -188,10 +188,14 @@ class AppointmentProvider extends ChangeNotifier {
     notifyListeners();
     await _saveToStorage();
 
-    // Intentar sincronizar con la API en background.
-    // Si serverId es null (nunca se sincronizó), se encola igualmente
-    // para que la compactación de cola cancele el CREATE pendiente.
-    _syncDeleteInBackground(id, serverId);
+    if (serverId != null) {
+      // Tiene serverId → intentar eliminar en la API
+      _syncDeleteInBackground(id, serverId);
+    } else {
+      // Sin serverId → nunca existió en el servidor.
+      // Purgar cualquier operación pendiente (CREATE/UPDATE) de la cola.
+      await SyncService.instance.purgeLocalId(id);
+    }
   }
 
   /// Obtiene una cita por ID
@@ -310,21 +314,8 @@ class AppointmentProvider extends ChangeNotifier {
 
   /// Intenta eliminar la cita en la API. Si falla, encola la operación.
   ///
-  /// Si [serverId] es null, la cita nunca llegó al servidor → se encola un
-  /// marcador DELETE para que la compactación de cola cancele el CREATE
-  /// pendiente del mismo [localId].
-  void _syncDeleteInBackground(String localId, int? serverId) async {
-    if (serverId == null) {
-      // Nunca se sincronizó: solo encolar para que la compactación
-      // elimine el CREATE pendiente.
-      await SyncService.instance.enqueue(
-        action: 'delete',
-        localId: localId,
-        payload: {},
-      );
-      return;
-    }
-
+  /// Solo se llama cuando [serverId] no es null (la cita existe en el servidor).
+  void _syncDeleteInBackground(String localId, int serverId) async {
     try {
       await ApiService.deleteAppointment(serverId);
       debugPrint('✅ Cita eliminada de API (serverId: $serverId)');
