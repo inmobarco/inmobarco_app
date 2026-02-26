@@ -97,6 +97,55 @@ class Apartment {
 
   String get ubicacion => '$barrio, $municipio';
 
+  /// Crea una copia del apartamento reemplazando los campos indicados.
+  Apartment copyWith({
+    String? id,
+    String? titulo,
+    String? reference,
+    double? rentPrice,
+    double? salePrice,
+    int? cuartos,
+    int? banos,
+    String? barrio,
+    String? municipio,
+    int? estrato,
+    double? area,
+    String? estado,
+    String? estadoTexto,
+    List<String>? imagenes,
+    String? descripcion,
+    String? direccion,
+    String? claseInmueble,
+    String? asesor,
+    String? departamento,
+    String? coordenadas,
+    List<Map<String, dynamic>>? caracteristicas,
+  }) {
+    return Apartment(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      reference: reference ?? this.reference,
+      rentPrice: rentPrice ?? this.rentPrice,
+      salePrice: salePrice ?? this.salePrice,
+      cuartos: cuartos ?? this.cuartos,
+      banos: banos ?? this.banos,
+      barrio: barrio ?? this.barrio,
+      municipio: municipio ?? this.municipio,
+      estrato: estrato ?? this.estrato,
+      area: area ?? this.area,
+      estado: estado ?? this.estado,
+      estadoTexto: estadoTexto ?? this.estadoTexto,
+      imagenes: imagenes ?? this.imagenes,
+      descripcion: descripcion ?? this.descripcion,
+      direccion: direccion ?? this.direccion,
+      claseInmueble: claseInmueble ?? this.claseInmueble,
+      asesor: asesor ?? this.asesor,
+      departamento: departamento ?? this.departamento,
+      coordenadas: coordenadas ?? this.coordenadas,
+      caracteristicas: caracteristicas ?? this.caracteristicas,
+    );
+  }
+
   String get primaryImage => imagenes.isNotEmpty ? imagenes.first : '';
 
   Map<String, dynamic> toJson() {

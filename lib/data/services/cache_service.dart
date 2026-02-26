@@ -302,6 +302,82 @@ class CacheService {
     }
   }
 
+  /// Obtiene el tamaño total de todo el almacenamiento local (archivos + SharedPreferences)
+  static Future<Map<String, dynamic>> getTotalStorageInfo() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final prefs = await SharedPreferences.getInstance();
+
+      // ── Archivos en documents directory ──
+      final files = <String, int>{};
+      final fileNames = [
+        _propertiesFileName,
+        _addApartmentDraftFileName,
+        _userProfileFileName,
+        _authSessionFileName,
+      ];
+      for (final name in fileNames) {
+        final file = File('${dir.path}/$name');
+        if (await file.exists()) {
+          files[name] = await file.length();
+        }
+      }
+
+      // ── SharedPreferences (estimar tamaño serializado) ──
+      int prefsBytes = 0;
+      final allKeys = prefs.getKeys();
+      for (final key in allKeys) {
+        // Sumar tamaño de la clave
+        prefsBytes += key.length * 2; // UTF-16
+        final value = prefs.get(key);
+        if (value is String) {
+          prefsBytes += value.length * 2;
+        } else if (value is int || value is double) {
+          prefsBytes += 8;
+        } else if (value is bool) {
+          prefsBytes += 1;
+        } else if (value is List<String>) {
+          for (final s in value) {
+            prefsBytes += s.length * 2;
+          }
+        }
+      }
+
+      final totalFileBytes = files.values.fold<int>(0, (sum, v) => sum + v);
+      final totalBytes = totalFileBytes + prefsBytes;
+
+      return {
+        'files': files,
+        'totalFileBytes': totalFileBytes,
+        'prefsBytes': prefsBytes,
+        'prefsKeyCount': allKeys.length,
+        'totalBytes': totalBytes,
+        'totalFormatted': _formatBytes(totalBytes),
+        'filesFormatted': _formatBytes(totalFileBytes),
+        'prefsFormatted': _formatBytes(prefsBytes),
+      };
+    } catch (e) {
+      debugPrint('❌ Error calculando almacenamiento total: $e');
+      return {
+        'files': <String, int>{},
+        'totalFileBytes': 0,
+        'prefsBytes': 0,
+        'prefsKeyCount': 0,
+        'totalBytes': 0,
+        'totalFormatted': '0 B',
+        'filesFormatted': '0 B',
+        'prefsFormatted': '0 B',
+      };
+    }
+  }
+
+  /// Formatea bytes a unidad legible (B, KB, MB)
+  static String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  }
+
   /// Guarda filtros aplicados
   static Future<void> saveFilter(Map<String, dynamic> filterData) async {
     try {

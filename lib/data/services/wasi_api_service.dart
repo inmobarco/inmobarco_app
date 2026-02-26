@@ -36,7 +36,7 @@ class WasiApiService {
         //'for_sale': true, // Solo propiedades en venta
         'id_availability': '1', // Solo disponibles
         'scope': '1', // Solo propiedades propias
-        'short': false, // Incluir galerías y características
+        'short': true, // Lista ligera: sin galerías ni características
         'skip': (page - 1) * limit,
         'take': limit,
         'order': 'desc',
@@ -88,7 +88,7 @@ class WasiApiService {
       final queryParams = <String, dynamic>{
         'wasi_token': apiToken,
         'id_company': companyId,
-        'short': 'false', // Incluir galerías y características
+        'short': false, // Incluir galerías y características completas
       };
 
       final response = await _dio.get('/property/get/$id', queryParameters: queryParams);

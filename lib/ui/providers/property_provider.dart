@@ -138,21 +138,36 @@ class PropertyProvider extends ChangeNotifier {
     await loadProperties();
   }
 
-  /// Obtiene una propiedad por ID
+  /// Obtiene una propiedad por ID con detalle completo (fotos + características).
+  ///
+  /// Siempre consulta la API con short=false para garantizar que se incluyan
+  /// galerías y características completas, ya que la lista se carga con short=true.
   Future<Apartment?> getPropertyById(String id) async {
     try {
-      // Buscar en la lista local
+      // Retornar la versión local inmediatamente si existe, para mostrar algo rápido.
       final localIndex = _properties.indexWhere((p) => p.id == id);
-      if (localIndex != -1) {
-        // Retornar directamente desde cache/memoria sin llamar a la API
-        return _properties[localIndex];
-      }
+      final localProperty = localIndex != -1 ? _properties[localIndex] : null;
 
-      // Si no existe localmente, buscar en la API
-      final detailedProperty = await _apiService.getPropertyById(id);
-      _properties.add(detailedProperty);
-      notifyListeners();
-      return detailedProperty;
+      // Siempre traer detalle completo desde la API (short=false incluye galerías).
+      try {
+        final detailedProperty = await _apiService.getPropertyById(id);
+
+        // Actualizar la entrada local con los datos completos.
+        if (localIndex != -1) {
+          _properties[localIndex] = detailedProperty;
+        } else {
+          _properties.add(detailedProperty);
+        }
+        notifyListeners();
+        return detailedProperty;
+      } catch (apiError) {
+        // Si falla la API pero tenemos datos locales, devolverlos como fallback.
+        if (localProperty != null) {
+          debugPrint('⚠️ Usando datos locales para propiedad $id: $apiError');
+          return localProperty;
+        }
+        rethrow;
+      }
     } catch (e) {
       throw Exception('Error obteniendo propiedad: $e');
     }
@@ -221,6 +236,11 @@ class PropertyProvider extends ChangeNotifier {
   /// Obtiene información del caché
   Future<Map<String, dynamic>> getCacheInfo() async {
     return await CacheService.getCacheInfo();
+  }
+
+  /// Obtiene información del almacenamiento total
+  Future<Map<String, dynamic>> getTotalStorageInfo() async {
+    return await CacheService.getTotalStorageInfo();
   }
 
   /// Limpia el caché manualmente

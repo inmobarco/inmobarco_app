@@ -204,6 +204,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   int? _selectedComplexId;
   double? _selectedLatitude;
   double? _selectedLongitude;
+  bool _unitNameHasError = false; // muestra contorno rojo en dropdown sin selección
   // Condición de la propiedad (WASI: id_property_condition)
   String _propertyConditionId = '1'; // 1 Nuevo (default)
   static const List<Map<String, String>> _propertyConditions = [
@@ -452,6 +453,28 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
             draft['_operadores_internet_bool'] ??
             draft['operadoresInternet'],
       );
+
+      // Restaurar estado de unidad residencial
+      final storedComplexId = draft['_selected_complex_id'];
+      if (storedComplexId != null) {
+        _selectedComplexId = storedComplexId is int
+            ? storedComplexId
+            : int.tryParse(storedComplexId.toString());
+      }
+      _isManualUnitName = _parseBool(draft['_is_manual_unit_name']);
+      _fieldsLockedByComplex = _parseBool(draft['_fields_locked_by_complex']);
+      final storedLat = draft['_selected_latitude'];
+      if (storedLat != null) {
+        _selectedLatitude = storedLat is num
+            ? storedLat.toDouble()
+            : double.tryParse(storedLat.toString());
+      }
+      final storedLng = draft['_selected_longitude'];
+      if (storedLng != null) {
+        _selectedLongitude = storedLng is num
+            ? storedLng.toDouble()
+            : double.tryParse(storedLng.toString());
+      }
     }
 
     // Cargar perfil de usuario si existe
@@ -621,6 +644,18 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       // Si no hay complejos, habilitar modo manual automáticamente
       if (_residentialComplexes.isEmpty) {
         _isManualUnitName = true;
+      } else if (_selectedComplexId != null) {
+        // Re-vincular el complejo seleccionado desde el draft
+        try {
+          _selectedComplex = _residentialComplexes.firstWhere(
+            (c) => c['id'] == _selectedComplexId,
+          );
+        } catch (_) {
+          // Complejo ya no existe en la lista; limpiar
+          _selectedComplex = null;
+          _selectedComplexId = null;
+          _fieldsLockedByComplex = false;
+        }
       }
       debugPrint('🏢 Unidades residenciales disponibles: ${_residentialComplexes.length}');
     } catch (e) {
@@ -638,6 +673,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _selectedComplexId = complex['id'] as int?;
       _isManualUnitName = false;
       _fieldsLockedByComplex = true;
+      _unitNameHasError = false;
 
       // Poblar nombre de la unidad
       final name = complex['name']?.toString() ?? '';
@@ -711,6 +747,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       _selectedLatitude = null;
       _selectedLongitude = null;
       _fieldsLockedByComplex = false;
+      _unitNameHasError = false;
       _unitNameController.clear();
     });
   }
@@ -1660,6 +1697,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _selectedLongitude = null;
     _isManualUnitName = _residentialComplexes.isEmpty;
     _fieldsLockedByComplex = false;
+    _unitNameHasError = false;
     _operation = 'alquiler';
     _statusOnPageId = '1';
     _propertyConditionId = '1';
@@ -1769,6 +1807,11 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       '_lodge_phone_text': _digitsOnly(_lodgePhoneController.text),
       '_porter_name_text': _porterNameController.text,
       '_porter_phone_text': _digitsOnly(_porterPhoneController.text),
+      '_selected_complex_id': _selectedComplexId,
+      '_is_manual_unit_name': _isManualUnitName,
+      '_fields_locked_by_complex': _fieldsLockedByComplex,
+      '_selected_latitude': _selectedLatitude,
+      '_selected_longitude': _selectedLongitude,
       'photos': photoTuples,
       '_service_room_photo_file_name': _serviceRoomPhotoFileName,
       '_parking_lot_photo_file_name': _parkingLotPhotoFileName,
@@ -2068,10 +2111,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     }
     // Validar nombre de unidad cuando está en modo dropdown
     if (!_isManualUnitName && _selectedComplexId == null && _residentialComplexes.isNotEmpty) {
+      setState(() => _unitNameHasError = true);
       _showSnackBarMessage('Seleccione una unidad residencial o ingrese una nueva.');
       return;
     }
     if (_unitNameController.text.trim().isEmpty) {
+      setState(() => _unitNameHasError = true);
       _showSnackBarMessage('Ingrese el nombre de la unidad.');
       return;
     }
@@ -2493,9 +2538,21 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                     },
                                   )
                                 : InputDecorator(
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Nombre de la unidad',
-                                      border: OutlineInputBorder(),
+                                      border: OutlineInputBorder(
+                                        borderSide: _unitNameHasError
+                                            ? const BorderSide(color: Colors.red, width: 2)
+                                            : const BorderSide(),
+                                      ),
+                                      enabledBorder: _unitNameHasError
+                                          ? const OutlineInputBorder(
+                                              borderSide: BorderSide(color: Colors.red, width: 2),
+                                            )
+                                          : null,
+                                      errorText: _unitNameHasError
+                                          ? 'Seleccione una unidad residencial'
+                                          : null,
                                     ),
                                     child: DropdownButtonHideUnderline(
                                       child: DropdownButton<int>(

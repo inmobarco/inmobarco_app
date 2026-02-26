@@ -51,21 +51,38 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   Future<void> _loadPropertyDetail() async {
     try {
       final provider = context.read<PropertyProvider>();
-      final property = await provider.getPropertyById(widget.propertyId);
-      
-      if (mounted) {
+
+      // Mostrar datos locales de inmediato (versión short) si existen.
+      final localProperty = provider.properties.where((p) => p.id == widget.propertyId).firstOrNull;
+      if (localProperty != null && mounted) {
         setState(() {
-          apartment = property;
+          apartment = localProperty;
           isLoading = false;
-          if (apartment != null && apartment!.imagenes.isNotEmpty) {
+          if (apartment!.imagenes.isNotEmpty) {
             _pageController = PageController();
-            // Precargar todas las imágenes
+          }
+        });
+      }
+
+      // Obtener detalle completo con galerías desde la API.
+      final fullProperty = await provider.getPropertyById(widget.propertyId);
+
+      if (mounted && fullProperty != null) {
+        setState(() {
+          apartment = fullProperty;
+          isLoading = false;
+          if (apartment!.imagenes.isNotEmpty) {
+            _pageController?.dispose();
+            _pageController = PageController();
+            _currentImageIndex = 0;
             _preloadImages();
           }
         });
       }
     } catch (e) {
       if (mounted) {
+        // Si ya teníamos datos locales, no mostramos error.
+        if (apartment != null) return;
         setState(() {
           error = e.toString();
           isLoading = false;

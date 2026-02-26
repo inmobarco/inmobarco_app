@@ -299,12 +299,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showCacheInfo(BuildContext context) async {
     final provider = context.read<PropertyProvider>();
     final cacheInfo = await provider.getCacheInfo();
+    final storageInfo = await provider.getTotalStorageInfo();
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('appointments_pending_sync');
     final List<dynamic> queue = (raw != null && raw.isNotEmpty)
         ? json.decode(raw)
         : [];
     if (!mounted) return;
+
+    final files = storageInfo['files'] as Map<String, int>;
 
     showDialog(
       // ignore: use_build_context_synchronously
@@ -316,7 +319,119 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+
+              // ── Sección: Tamaño total del almacenamiento ──
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.storage, color: Colors.blue.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Almacenamiento Total',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      storageInfo['totalFormatted'] as String,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildStorageRow(Icons.folder_open, 'Archivos locales', storageInfo['filesFormatted'] as String),
+                    const SizedBox(height: 4),
+                    _buildStorageRow(Icons.settings_applications, 'SharedPreferences (${storageInfo['prefsKeyCount']} claves)', storageInfo['prefsFormatted'] as String),
+                  ],
+                ),
+              ),
+
+              // ── Detalle de archivos ──
+              if (files.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.description, color: Colors.grey.shade700, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Detalle de Archivos',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ...files.entries.map((entry) {
+                  final name = entry.key;
+                  final bytes = entry.value;
+                  String sizeStr;
+                  if (bytes < 1024) {
+                    sizeStr = '$bytes B';
+                  } else if (bytes < 1024 * 1024) {
+                    sizeStr = '${(bytes / 1024).toStringAsFixed(1)} KB';
+                  } else {
+                    sizeStr = '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 4),
+                        Icon(Icons.insert_drive_file_outlined, size: 14, color: Colors.grey.shade500),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: const TextStyle(fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          sizeStr,
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+
               // ── Sección de caché de propiedades ──
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Icon(Icons.home_work, color: Colors.teal.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Caché de Propiedades',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal.shade700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Text('Propiedades en caché: ${cacheInfo['propertiesCount']}'),
               const SizedBox(height: 8),
               if (cacheInfo['hasCache'])
@@ -471,6 +586,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildStorageRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: Colors.blue.shade600),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(label, style: const TextStyle(fontSize: 12)),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.blue.shade800,
+          ),
+        ),
+      ],
     );
   }
 
