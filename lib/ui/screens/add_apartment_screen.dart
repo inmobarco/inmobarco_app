@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import '../../data/services/api_service.dart';
 import '../../data/services/cache_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../../core/constants/app_constants.dart';
@@ -193,6 +194,16 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   bool _cooldownActive = false;
   Timer? _cooldownTimer;
   static const Duration _cooldownDuration = Duration(seconds: 60);
+
+  // Unidades residenciales (cargadas desde API)
+  List<Map<String, dynamic>> _residentialComplexes = [];
+  Map<String, dynamic>? _selectedComplex; // complejo seleccionado del dropdown
+  bool _isManualUnitName = false; // modo manual (escribir nombre nuevo)
+  bool _fieldsLockedByComplex = false; // campos bloqueados al seleccionar
+  // Variables ocultas para el payload
+  int? _selectedComplexId;
+  double? _selectedLatitude;
+  double? _selectedLongitude;
   // Condición de la propiedad (WASI: id_property_condition)
   String _propertyConditionId = '1'; // 1 Nuevo (default)
   static const List<Map<String, String>> _propertyConditions = [
@@ -452,6 +463,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     // Cargar características disponibles en WASI
     await _loadFeatures();
 
+    // Cargar unidades residenciales
+    await _loadResidentialComplexes();
+
     // Si hay city en draft, cargar zonas
     if (_selectedCityId != null) {
       await _loadZones(_selectedCityId!);
@@ -589,6 +603,116 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     } finally {
       if (mounted) setState(() => _loadingFeatures = false);
     }
+  }
+
+  Future<void> _loadResidentialComplexes() async {
+    try {
+      final cached = AppConstants.residentialComplexes;
+      if (cached.isNotEmpty) {
+        _residentialComplexes = List<Map<String, dynamic>>.from(cached);
+      } else {
+        // Si GlobalData no las tiene, intentamos carga directa
+        try {
+          _residentialComplexes = await ApiService.getResidentialComplexes();
+        } catch (_) {
+          _residentialComplexes = [];
+        }
+      }
+      // Si no hay complejos, habilitar modo manual automáticamente
+      if (_residentialComplexes.isEmpty) {
+        _isManualUnitName = true;
+      }
+      debugPrint('🏢 Unidades residenciales disponibles: ${_residentialComplexes.length}');
+    } catch (e) {
+      debugPrint('Error cargando unidades residenciales: $e');
+      _residentialComplexes = [];
+      _isManualUnitName = true;
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _onResidentialComplexSelected(Map<String, dynamic>? complex) {
+    if (complex == null) return;
+    setState(() {
+      _selectedComplex = complex;
+      _selectedComplexId = complex['id'] as int?;
+      _isManualUnitName = false;
+      _fieldsLockedByComplex = true;
+
+      // Poblar nombre de la unidad
+      final name = complex['name']?.toString() ?? '';
+      _unitNameController.text = name;
+
+      // Poblar dirección si existe
+      final address = complex['address']?.toString();
+      if (address != null && address.isNotEmpty) {
+        _addressController.text = address;
+      } else {
+        _addressController.clear();
+      }
+
+      // Poblar ciudad si existe
+      final idCity = complex['id_city']?.toString();
+      if (idCity != null && idCity.isNotEmpty) {
+        _selectedCityId = idCity;
+      }
+
+      // Poblar zona si existe
+      final idZone = complex['id_zone']?.toString();
+      if (idZone != null && idZone.isNotEmpty) {
+        _selectedZoneId = idZone;
+      }
+
+      // Poblar estrato si existe
+      final stratum = complex['stratum']?.toString();
+      if (stratum != null && stratum.isNotEmpty) {
+        final stratumInt = int.tryParse(stratum);
+        if (stratumInt != null && stratumInt >= 1 && stratumInt <= 6) {
+          _stratum = stratum;
+        }
+      }
+
+      // Poblar teléfono de administración si existe
+      final adminPhone = complex['admin_phone']?.toString();
+      if (adminPhone != null && adminPhone.isNotEmpty) {
+        _adminPhoneController.text = _digitsOnly(adminPhone);
+      }
+
+      // Poblar email de administración si existe
+      final adminEmail = complex['admin_email']?.toString();
+      if (adminEmail != null && adminEmail.isNotEmpty) {
+        _adminMailController.text = adminEmail;
+      }
+
+      // Poblar teléfono de portería si existe
+      final frontDeskPhone = complex['front_desk_phone']?.toString();
+      if (frontDeskPhone != null && frontDeskPhone.isNotEmpty) {
+        _lodgePhoneController.text = _digitsOnly(frontDeskPhone);
+      }
+
+      // Variables ocultas
+      final lat = complex['latitude'];
+      _selectedLatitude = lat is num ? lat.toDouble() : double.tryParse(lat?.toString() ?? '');
+      final lng = complex['longitude'];
+      _selectedLongitude = lng is num ? lng.toDouble() : double.tryParse(lng?.toString() ?? '');
+    });
+
+    // Cargar zonas si se asignó ciudad
+    if (_selectedCityId != null) {
+      _loadZones(_selectedCityId!);
+    }
+  }
+
+  void _enableManualUnitName() {
+    setState(() {
+      _isManualUnitName = true;
+      _selectedComplex = null;
+      _selectedComplexId = null;
+      _selectedLatitude = null;
+      _selectedLongitude = null;
+      _fieldsLockedByComplex = false;
+      _unitNameController.clear();
+    });
   }
 
   Future<void> _loadUserProfile() async {
@@ -1530,6 +1654,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     _pendingFeatureNames.clear();
     _selectedCityId = null;
     _selectedZoneId = null;
+    _selectedComplex = null;
+    _selectedComplexId = null;
+    _selectedLatitude = null;
+    _selectedLongitude = null;
+    _isManualUnitName = _residentialComplexes.isEmpty;
+    _fieldsLockedByComplex = false;
     _operation = 'alquiler';
     _statusOnPageId = '1';
     _propertyConditionId = '1';
@@ -1806,6 +1936,9 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       'prompts': prompts.isEmpty ? null : prompts,
       'apartment_number': apartmentNumber.isEmpty ? null : apartmentNumber,
       'unit_name': unitName.isEmpty ? null : unitName,
+      'id_residential_complex': _selectedComplexId,
+      'latitude': _selectedLatitude,
+      'longitude': _selectedLongitude,
       'user_first_name': _userFirstName,
       'user_last_name': _userLastName,
       'user_phone': _userPhone,
@@ -1931,6 +2064,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) {
       _showSnackBarMessage('Faltan campos obligatorios por completar.');
+      return;
+    }
+    // Validar nombre de unidad cuando está en modo dropdown
+    if (!_isManualUnitName && _selectedComplexId == null && _residentialComplexes.isNotEmpty) {
+      _showSnackBarMessage('Seleccione una unidad residencial o ingrese una nueva.');
+      return;
+    }
+    if (_unitNameController.text.trim().isEmpty) {
+      _showSnackBarMessage('Ingrese el nombre de la unidad.');
       return;
     }
     if (_photos.length < 22) {
@@ -2317,19 +2459,83 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _unitNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Nombre de la unidad',
-                          border: OutlineInputBorder(),
-                        ),
-                        textCapitalization: TextCapitalization.words,
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Ingrese el nombre de la unidad';
-                          }
-                          return null;
-                        },
+                      // Nombre de la unidad: dropdown o campo manual
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _isManualUnitName || _residentialComplexes.isEmpty
+                                ? TextFormField(
+                                    controller: _unitNameController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Nombre de la unidad',
+                                      border: const OutlineInputBorder(),
+                                      hintText: 'Ingrese el nombre manualmente',
+                                      suffixIcon: _residentialComplexes.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(Icons.list, size: 20),
+                                              tooltip: 'Seleccionar de lista',
+                                              onPressed: () {
+                                                setState(() {
+                                                  _isManualUnitName = false;
+                                                  _unitNameController.clear();
+                                                });
+                                              },
+                                            )
+                                          : null,
+                                    ),
+                                    textCapitalization: TextCapitalization.words,
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty) {
+                                        return 'Ingrese el nombre de la unidad';
+                                      }
+                                      return null;
+                                    },
+                                  )
+                                : InputDecorator(
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nombre de la unidad',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<int>(
+                                        isDense: true,
+                                        value: _selectedComplexId,
+                                        isExpanded: true,
+                                        hint: const Text('Seleccione una unidad'),
+                                        items: _residentialComplexes.map((complex) {
+                                          return DropdownMenuItem<int>(
+                                            value: complex['id'] as int,
+                                            child: Text(
+                                              complex['name']?.toString() ?? '',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
+                                          final complex = _residentialComplexes.firstWhere(
+                                            (c) => c['id'] == value,
+                                          );
+                                          _onResidentialComplexSelected(complex);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                          if (!_isManualUnitName && _residentialComplexes.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, top: 4),
+                              child: IconButton(
+                                icon: const Icon(Icons.edit, size: 20),
+                                tooltip: 'Ingresar nueva unidad',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade200,
+                                ),
+                                onPressed: _enableManualUnitName,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                       Row(
@@ -2456,9 +2662,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       const SizedBox(height: 16),
                       // Ciudad
                       InputDecorator(
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Ciudad',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: (_fieldsLockedByComplex && _selectedCityId != null)
+                              ? Colors.grey.shade200
+                              : Colors.white,
                         ),
                         child: _loadingCities
                             ? const SizedBox(
@@ -2483,15 +2693,17 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                         ),
                                       )
                                       .toList(),
-                                  onChanged: (value) async {
-                                    if (value == _selectedCityId) return;
-                                    setState(() {
-                                      _selectedCityId = value;
-                                      _selectedZoneId = null; // reset zona
-                                      _zones = [];
-                                    });
-                                    if (value != null) await _loadZones(value);
-                                  },
+                                  onChanged: (_fieldsLockedByComplex && _selectedCityId != null)
+                                      ? null
+                                      : (value) async {
+                                          if (value == _selectedCityId) return;
+                                          setState(() {
+                                            _selectedCityId = value;
+                                            _selectedZoneId = null;
+                                            _zones = [];
+                                          });
+                                          if (value != null) await _loadZones(value);
+                                        },
                                 ),
                               ),
                       ),
@@ -2500,9 +2712,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         children: [
                           Expanded(
                             child: InputDecorator(
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Zona / Barrio',
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: (_fieldsLockedByComplex && _selectedZoneId != null)
+                                    ? Colors.grey.shade200
+                                    : Colors.white,
                               ),
                               child: (_selectedCityId == null)
                                   ? const Text('Seleccione primero una ciudad')
@@ -2533,11 +2749,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                               ),
                                             )
                                             .toList(),
-                                        onChanged: (value) {
-                                          setState(
-                                            () => _selectedZoneId = value,
-                                          );
-                                        },
+                                        onChanged: (_fieldsLockedByComplex && _selectedZoneId != null)
+                                            ? null
+                                            : (value) {
+                                                setState(
+                                                  () => _selectedZoneId = value,
+                                                );
+                                              },
                                       ),
                                     ),
                             ),
@@ -2546,9 +2764,13 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               value: _stratum,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Estrato',
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: (_fieldsLockedByComplex && _selectedComplex?['stratum'] != null)
+                                    ? Colors.grey.shade200
+                                    : Colors.white,
                               ),
                               isExpanded: true,
                               items: List.generate(6, (index) {
@@ -2558,10 +2780,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                   child: Text(value),
                                 );
                               }),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                setState(() => _stratum = value);
-                              },
+                              onChanged: (_fieldsLockedByComplex && _selectedComplex?['stratum'] != null)
+                                  ? null
+                                  : (value) {
+                                      if (value == null) return;
+                                      setState(() => _stratum = value);
+                                    },
                             ),
                           ),
                         ],
@@ -2569,10 +2793,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _addressController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Dirección',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: (_fieldsLockedByComplex && _addressController.text.isNotEmpty)
+                              ? Colors.grey.shade200
+                              : Colors.white,
                         ),
+                        readOnly: _fieldsLockedByComplex && _addressController.text.isNotEmpty,
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Ingrese la dirección'
                             : null,
@@ -3044,19 +3273,29 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _adminMailController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Correo Admin',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: (_fieldsLockedByComplex && _selectedComplex?['admin_email'] != null)
+                              ? Colors.grey.shade200
+                              : Colors.white,
                         ),
+                        readOnly: _fieldsLockedByComplex && _selectedComplex?['admin_email'] != null,
                         keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _adminPhoneController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Celular Admin',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: (_fieldsLockedByComplex && _selectedComplex?['admin_phone'] != null)
+                              ? Colors.grey.shade200
+                              : Colors.white,
                         ),
+                        readOnly: _fieldsLockedByComplex && _selectedComplex?['admin_phone'] != null,
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
@@ -3065,10 +3304,15 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _lodgePhoneController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'Celular Porteria',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: (_fieldsLockedByComplex && _selectedComplex?['front_desk_phone'] != null)
+                              ? Colors.grey.shade200
+                              : Colors.white,
                         ),
+                        readOnly: _fieldsLockedByComplex && _selectedComplex?['front_desk_phone'] != null,
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,

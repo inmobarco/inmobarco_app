@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../data/services/api_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../constants/app_constants.dart';
 
@@ -9,12 +10,14 @@ class GlobalDataService {
 
   List<Map<String, dynamic>> _cities = [];
   List<Map<String, dynamic>> _features = [];
+  List<Map<String, dynamic>> _residentialComplexes = [];
   bool _isLoading = false;
   bool _isInitialized = false;
 
   // Getter para acceder a las ciudades desde cualquier parte
   List<Map<String, dynamic>> get cities => _cities;
   List<Map<String, dynamic>> get features => _features;
+  List<Map<String, dynamic>> get residentialComplexes => _residentialComplexes;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
 
@@ -60,6 +63,16 @@ class GlobalDataService {
         debugPrint('🔖 Primera característica: ${_features.first['name']} (${_features.first['category']})');
       }
       
+      // Cargar unidades residenciales desde API propia
+      debugPrint('🏢 Cargando unidades residenciales...');
+      try {
+        _residentialComplexes = await ApiService.getResidentialComplexes();
+        debugPrint('✅ Unidades residenciales cargadas: ${_residentialComplexes.length}');
+      } catch (e) {
+        debugPrint('⚠️ Error cargando unidades residenciales (no bloqueante): $e');
+        _residentialComplexes = [];
+      }
+
       _isInitialized = true;
       
     } catch (e, stackTrace) {
@@ -68,6 +81,7 @@ class GlobalDataService {
       // En caso de error, inicializar con lista vacía
       _cities = [];
       _features = [];
+      _residentialComplexes = [];
       _isInitialized = false; // Permitir reintento
     } finally {
       _isLoading = false;

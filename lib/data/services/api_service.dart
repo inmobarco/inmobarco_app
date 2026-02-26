@@ -100,4 +100,19 @@ class ApiService {
     final List<dynamic> data = response.data as List<dynamic>;
     return data.cast<Map<String, dynamic>>();
   }
+
+  // ---------------------------------------------------------------------------
+  // Residential Complexes API
+  // ---------------------------------------------------------------------------
+
+  /// Obtiene las unidades residenciales disponibles.
+  ///
+  /// Retorna la lista de mapas tal como viene del servidor.
+  static Future<List<Map<String, dynamic>>> getResidentialComplexes() async {
+    final dio = await getInstance();
+    final response = await dio.get('/inventory/residential-complexes');
+    debugPrint('🏢 GET /inventory/residential-complexes → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
 }

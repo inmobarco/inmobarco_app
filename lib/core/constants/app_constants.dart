@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../services/global_data_service.dart';
 
 class AppConstants {
-  static const String appVersion = '1.8.2';
+  static const String appVersion = '1.8.3';
   
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';
@@ -84,6 +84,16 @@ class AppConstants {
       return List<Map<String, dynamic>>.from(GlobalDataService().features);
     } catch (e) {
       debugPrint('Error accediendo a características: $e');
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  // Residential Complexes (Unidades Residenciales)
+  static List<Map<String, dynamic>> get residentialComplexes {
+    try {
+      return List<Map<String, dynamic>>.from(GlobalDataService().residentialComplexes);
+    } catch (e) {
+      debugPrint('Error accediendo a unidades residenciales: $e');
       return <Map<String, dynamic>>[];
     }
   }
