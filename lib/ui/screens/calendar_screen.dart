@@ -46,9 +46,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Consumer<AppointmentProvider>(
         builder: (context, provider, child) {
-          final selectedDayAppointments = _selectedDay != null
+          final allDayAppointments = _selectedDay != null
               ? provider.getAppointmentsForDay(_selectedDay!)
               : <Appointment>[];
+          final selectedDayAppointments = allDayAppointments
+              .where((a) => a.status != AppointmentStatus.completed && a.status != AppointmentStatus.cancelled)
+              .toList();
+          final finishedAppointments = allDayAppointments
+              .where((a) => a.status == AppointmentStatus.completed || a.status == AppointmentStatus.cancelled)
+              .toList();
 
           return Column(
             children: [
@@ -58,7 +64,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               const Divider(height: 1),
               
               // Encabezado de citas del día
-              _buildDayHeader(),
+              _buildDayHeader(finishedAppointments),
               
               // Lista de citas del día seleccionado
               Expanded(
@@ -172,7 +178,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDayHeader() {
+  Widget _buildDayHeader(List<Appointment> finishedAppointments) {
     final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'es_ES');
     final dayString = _selectedDay != null
         ? dateFormat.format(_selectedDay!)
@@ -183,6 +189,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
       color: AppColors.backgroundLevel2,
       child: Row(
         children: [
+          if (finishedAppointments.isNotEmpty)
+            GestureDetector(
+              onTap: () => _showFinishedAppointmentsDialog(finishedAppointments),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.history,
+                      color: AppColors.primaryColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${finishedAppointments.length}',
+                      style: const TextStyle(
+                        color: AppColors.primaryColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           const Icon(
             Icons.event,
             color: AppColors.primaryColor,
@@ -393,6 +430,80 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showFinishedAppointmentsDialog(List<Appointment> finishedAppointments) {
+    final timeFormat = DateFormat('HH:mm');
+    final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'es_ES');
+    final dayString = _selectedDay != null
+        ? dateFormat.format(_selectedDay!)
+        : '';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.history, color: AppColors.primaryColor, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Citas terminadas',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    dayString,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textColor2, fontWeight: FontWeight.normal),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: finishedAppointments.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final appt = finishedAppointments[index];
+              final statusColor = Color(appt.status.colorValue);
+              return ListTile(
+                dense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                title: Text(
+                  appt.title,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  '${appt.status.displayName}  •  ${timeFormat.format(appt.dateTime)} - ${timeFormat.format(appt.endTime)}',
+                  style: TextStyle(fontSize: 12, color: statusColor, fontWeight: FontWeight.w500),
+                ),
+                leading: Icon(
+                  appt.status == AppointmentStatus.completed ? Icons.check_circle : Icons.cancel,
+                  color: statusColor,
+                  size: 20,
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAppointmentDetails(appt);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
+        ],
       ),
     );
   }
