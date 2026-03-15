@@ -48,14 +48,13 @@ class PropertyCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        // ignore: deprecated_member_use
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(6),
+                        color: AppColors.overlayDark,
+                        borderRadius: AppTheme.badgeBorderRadius,
                       ),
                       child: Text(
                         apartment.reference,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.pureWhite,
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),

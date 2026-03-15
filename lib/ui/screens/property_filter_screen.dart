@@ -404,14 +404,14 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
             if (isSelected)
               const Icon(
                 Icons.check_circle,
-                color: AppColors.white,
+                color: AppColors.pureWhite,
                 size: 20,
               ),
             if (isSelected) const SizedBox(width: 8),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.white : AppColors.textColor,
+                color: isSelected ? AppColors.pureWhite : AppColors.textColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                 fontSize: 14,
               ),
@@ -425,12 +425,12 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
   Widget _buildSelectableChip(String label, bool isSelected, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppTheme.pillBorderRadius,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryColor : AppColors.backgroundLevel2,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppTheme.pillBorderRadius,
           border: Border.all(
             color: isSelected ? AppColors.primaryColor : AppColors.textColor2,
           ),
@@ -438,7 +438,7 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? AppColors.white : AppColors.textColor,
+            color: isSelected ? AppColors.pureWhite : AppColors.textColor,
             fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
           ),
         ),

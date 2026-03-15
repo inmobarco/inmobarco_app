@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 
@@ -47,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(authProvider.error ?? 'Error de autenticación'),
-          backgroundColor: Colors.red.shade700,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -94,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Ingresa tus credenciales para continuar',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey.shade600,
+                    color: AppColors.textColor2,
                   ),
                 ),
                 
@@ -107,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Usuario',
                     prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppTheme.cardBorderRadius,
                     ),
                   ),
                   textInputAction: TextInputAction.next,
@@ -141,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                     ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppTheme.cardBorderRadius,
                     ),
                   ),
                   obscureText: _obscurePassword,
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppTheme.cardBorderRadius,
                         ),
                       ),
                       child: auth.isLoading
@@ -174,13 +175,10 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 20,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: AppColors.pureWhite,
                               ),
                             )
-                          : const Text(
-                              'Iniciar Sesión',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('Iniciar Sesión'),
                     );
                   },
                 ),

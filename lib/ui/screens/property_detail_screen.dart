@@ -260,14 +260,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(15),
+                      color: AppColors.overlayDark,
+                      borderRadius: AppTheme.pillBorderRadius,
                     ),
                     child: Text(
                       '${_currentImageIndex + 1} / ${apartment!.imagenes.length}',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
+                        color: AppColors.pureWhite,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -286,12 +285,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 bottom: 0,
                 child: Center(
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
+                    decoration: const BoxDecoration(
+                      color: AppColors.overlayLight,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.chevron_left, color: Colors.white),
+                      icon: const Icon(Icons.chevron_left, color: AppColors.pureWhite),
                       onPressed: () {
                         _pageController?.previousPage(
                           duration: const Duration(milliseconds: 300),
@@ -311,12 +310,12 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 bottom: 0,
                 child: Center(
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
+                    decoration: const BoxDecoration(
+                      color: AppColors.overlayLight,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.chevron_right, color: Colors.white),
+                      icon: const Icon(Icons.chevron_right, color: AppColors.pureWhite),
                       onPressed: () {
                         _pageController?.nextPage(
                           duration: const Duration(milliseconds: 300),
@@ -605,13 +604,13 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         width: double.infinity,
         child: ElevatedButton.icon(
           onPressed: _showDeleteConfirmationDialog,
-          icon: const Icon(Icons.delete_outline, color: Colors.white),
+          icon: const Icon(Icons.delete_outline, color: AppColors.pureWhite),
           label: const Text(
             'Eliminar Propiedad',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppColors.pureWhite),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
             padding: const EdgeInsets.symmetric(vertical: 16),
           ),
         ),
@@ -674,11 +673,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 _sendDeleteWebhook(reasonController.text.trim());
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
+                backgroundColor: AppColors.error,
               ),
               child: const Text(
                 'Eliminar',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppColors.pureWhite),
               ),
             ),
           ],
@@ -719,7 +718,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Solicitud de eliminación enviada correctamente.'),
-              backgroundColor: Colors.green,
+              backgroundColor: AppColors.success,
             ),
           );
           Navigator.of(context).pop();
@@ -727,7 +726,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Error al enviar solicitud: ${response.statusCode}'),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
             ),
           );
         }
@@ -737,7 +736,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error de conexión: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -914,7 +913,7 @@ Ver más detalles: $propertyUrl''';
                   ? '✓ $successCount imágenes descargadas en:\n$downloadPath\n\nYa disponibles en tu galería'
                   : '$successCount descargadas, $failCount fallidas\nRuta: $downloadPath',
             ),
-            backgroundColor: failCount == 0 ? Colors.green : Colors.orange,
+            backgroundColor: failCount == 0 ? AppColors.success : AppColors.warning,
             duration: const Duration(seconds: 5),
           ),
         );
@@ -924,7 +923,7 @@ Ver más detalles: $propertyUrl''';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al descargar imágenes: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -972,10 +971,10 @@ class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.dark,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.pureWhite,
         title: Text('${_currentIndex + 1} de ${widget.images.length}'),
       ),
       body: PageView.builder(
@@ -994,10 +993,10 @@ class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
                 imageUrl: widget.images[index],
                 fit: BoxFit.contain,
                 placeholder: (context, url) => const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                  child: CircularProgressIndicator(color: AppColors.pureWhite),
                 ),
                 errorWidget: (context, url, error) => const Center(
-                  child: Icon(Icons.error, color: Colors.white, size: 48),
+                  child: Icon(Icons.error, color: AppColors.pureWhite, size: 48),
                 ),
               ),
             ),

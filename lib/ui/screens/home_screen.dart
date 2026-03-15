@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:inmobarco_app/core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
@@ -143,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Próximamente',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey,
+              color: AppColors.textColor2,
             ),
           ),
         ],
@@ -187,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ? authProvider.user!.firstName[0].toUpperCase()
                                   : 'U',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppColors.pureWhite,
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -212,16 +214,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
+                                          const Icon(
                                             Icons.phone,
                                             size: 16,
-                                            color: Colors.grey.shade600,
+                                            color: AppColors.textColor2,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
                                             authProvider.user!.phone,
                                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                              color: Colors.grey.shade600,
+                                              color: AppColors.textColor2,
                                             ),
                                           ),
                                         ],
@@ -232,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   '@${authProvider.user?.username ?? ''}',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey.shade600,
+                                    color: AppColors.textColor2,
                                   ),
                                 ),
                               ],
@@ -290,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Bienvenido!'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
     }
@@ -325,23 +327,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade200),
+                  color: AppColors.backgroundLevel2,
+                  borderRadius: AppTheme.buttonBorderRadius,
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.storage, color: Colors.blue.shade700, size: 20),
+                        const Icon(Icons.storage, color: AppColors.primaryColor, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Almacenamiento Total',
-                          style: TextStyle(
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
-                            fontSize: 14,
+                            color: AppColors.primaryColor,
                           ),
                         ),
                       ],
@@ -349,10 +350,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 8),
                     Text(
                       storageInfo['totalFormatted'] as String,
-                      style: TextStyle(
-                        fontSize: 22,
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade900,
+                        color: AppColors.dark,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -368,14 +368,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.description, color: Colors.grey.shade700, size: 18),
+                    const Icon(Icons.description, color: AppColors.textColor, size: 18),
                     const SizedBox(width: 6),
                     Text(
                       'Detalle de Archivos',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade700,
-                        fontSize: 13,
+                        color: AppColors.textColor,
                       ),
                     ),
                   ],
@@ -397,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Row(
                       children: [
                         const SizedBox(width: 4),
-                        Icon(Icons.insert_drive_file_outlined, size: 14, color: Colors.grey.shade500),
+                        const Icon(Icons.insert_drive_file_outlined, size: 14, color: AppColors.textColor2),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -408,7 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Text(
                           sizeStr,
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                          style: const TextStyle(fontSize: 11, color: AppColors.textColor2, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -420,13 +419,13 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(height: 24),
               Row(
                 children: [
-                  Icon(Icons.home_work, color: Colors.teal.shade700, size: 20),
+                  const Icon(Icons.home_work, color: AppColors.info, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Caché de Propiedades',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.teal.shade700,
+                      color: AppColors.info,
                     ),
                   ),
                 ],
@@ -446,13 +445,13 @@ class _HomeScreenState extends State<HomeScreen> {
               const Divider(height: 24),
               Row(
                 children: [
-                  Icon(Icons.sync, color: Colors.orange.shade700, size: 20),
+                  const Icon(Icons.sync, color: AppColors.warning, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     'Cola de Sincronización',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade700,
+                      color: AppColors.warning,
                     ),
                   ),
                 ],
@@ -461,7 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (queue.isEmpty)
                 const Text(
                   'La cola está vacía \u2714\ufe0f',
-                  style: TextStyle(color: Colors.green, fontSize: 14),
+                  style: TextStyle(color: AppColors.success, fontSize: 14),
                 )
               else
                 ...queue.map((op) {
@@ -474,19 +473,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   switch (action) {
                     case 'create':
                       icon = Icons.add_circle_outline;
-                      color = Colors.green;
+                      color = AppColors.success;
                       break;
                     case 'update':
                       icon = Icons.edit_outlined;
-                      color = Colors.blue;
+                      color = AppColors.info;
                       break;
                     case 'delete':
                       icon = Icons.delete_outline;
-                      color = Colors.red;
+                      color = AppColors.error;
                       break;
                     default:
                       icon = Icons.help_outline;
-                      color = Colors.grey;
+                      color = AppColors.textColor2;
                   }
 
                   return Padding(
@@ -514,9 +513,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (timestamp.isNotEmpty)
                                 Text(
                                   timestamp,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontSize: 10,
-                                    color: Colors.grey.shade500,
+                                    color: AppColors.textColor2,
                                   ),
                                 ),
                             ],
@@ -571,12 +570,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Cola eliminada'),
-                      backgroundColor: Colors.red,
+                      backgroundColor: AppColors.error,
                     ),
                   );
                 }
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
               child: const Text('Eliminar cola'),
             ),
           ],
@@ -592,17 +591,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildStorageRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 14, color: Colors.blue.shade600),
+        Icon(icon, size: 14, color: AppColors.primaryColor),
         const SizedBox(width: 6),
         Expanded(
           child: Text(label, style: const TextStyle(fontSize: 12)),
         ),
         Text(
           value,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.blue.shade800,
+            color: AppColors.dark,
           ),
         ),
       ],

@@ -77,14 +77,14 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
       appBar: AppBar(
         title: Text(_isEditing ? 'Editar Cita' : 'Nueva Cita'),
         backgroundColor: AppColors.primaryColor,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.pureWhite,
         actions: [
           TextButton(
             onPressed: _saveAppointment,
             child: const Text(
               'Guardar',
               style: TextStyle(
-                color: Colors.white,
+                color: AppColors.pureWhite,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -218,7 +218,7 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
               onPressed: _saveAppointment,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.pureWhite,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: AppTheme.cardBorderRadius,
@@ -226,10 +226,7 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
               ),
               child: Text(
                 _isEditing ? 'Actualizar Cita' : 'Crear Cita',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             
@@ -243,10 +240,8 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
-        fontSize: 16,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
         fontWeight: FontWeight.bold,
-        color: AppColors.textColor,
       ),
     );
   }
@@ -314,14 +309,12 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
                   const Text(
                     'Fecha',
                     style: TextStyle(
-                      fontSize: 11,
                       color: AppColors.textColor2,
                     ),
                   ),
                   Text(
                     dateFormat.format(_selectedDate),
                     style: const TextStyle(
-                      fontSize: 14,
                       color: AppColors.textColor,
                     ),
                   ),
@@ -359,14 +352,12 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
                   const Text(
                     'Hora',
                     style: TextStyle(
-                      fontSize: 11,
                       color: AppColors.textColor2,
                     ),
                   ),
                   Text(
                     _selectedTime.format(context),
                     style: const TextStyle(
-                      fontSize: 14,
                       color: AppColors.textColor,
                     ),
                   ),
@@ -404,7 +395,6 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
         const Text(
           'Duración',
           style: TextStyle(
-            fontSize: 13,
             color: AppColors.textColor2,
           ),
         ),

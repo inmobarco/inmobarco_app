@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.local)",
+      "Read(**/secrets/*)"
+    ]
+  },
+  "enabledPlugins": {
+    "ui-design@claude-code-workflows": true,
+    "multi-platform-apps@claude-code-workflows": true,
+    "frontend-mobile-development@claude-code-workflows": true
+  }
+}

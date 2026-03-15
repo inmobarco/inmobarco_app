@@ -42,7 +42,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         backgroundColor: AppColors.primaryColor,
         onPressed: _createNewAppointment,
         tooltip: 'Nueva Cita',
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add, color: AppColors.pureWhite),
       ),
       body: Consumer<AppointmentProvider>(
         builder: (context, provider, child) {
@@ -119,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           shape: BoxShape.circle,
         ),
         selectedTextStyle: const TextStyle(
-          color: Colors.white,
+          color: AppColors.pureWhite,
           fontWeight: FontWeight.bold,
         ),
         // Marcadores de eventos
@@ -197,7 +197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 margin: const EdgeInsets.only(right: 8),
                 decoration: BoxDecoration(
                   color: AppColors.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppTheme.badgeBorderRadius,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -246,8 +246,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: const Text(
                 'Hoy',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
+                  color: AppColors.pureWhite,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -533,7 +532,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.backgroundLevel3,
       builder: (context) => _AppointmentDetailsSheet(
         appointment: appointment,
         onEdit: () => _editAppointment(appointment),
@@ -636,7 +635,7 @@ class _AppointmentDetailsSheet extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppColors.backgroundLevel1,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -648,7 +647,7 @@ class _AppointmentDetailsSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: AppColors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -673,16 +672,15 @@ class _AppointmentDetailsSheet extends StatelessWidget {
                           Text(
                             appointment.title,
                             style: const TextStyle(
-                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: AppColors.textColor,
+                              fontSize: 20,
                             ),
                           ),
                           Text(
                             appointment.type.displayName,
                             style: const TextStyle(
                               color: AppColors.textColor2,
-                              fontSize: 14,
                             ),
                           ),
                         ],

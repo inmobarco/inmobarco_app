@@ -4,9 +4,13 @@ import '../constants/app_constants.dart';
 
 class AppTheme {
   // Border radius constants accesibles desde el theme
-  static BorderRadius get cardBorderRadius => BorderRadius.circular(AppConstants.cardBorderRadius);
+  static BorderRadius get cardBorderRadius   => BorderRadius.circular(AppConstants.cardBorderRadius);
   static BorderRadius get buttonBorderRadius => BorderRadius.circular(AppConstants.buttonBorderRadius);
-  static BorderRadius get inputBorderRadius => BorderRadius.circular(AppConstants.inputBorderRadius);
+  static BorderRadius get inputBorderRadius  => BorderRadius.circular(AppConstants.inputBorderRadius);
+  /// Pastilla / pill (chips de filtro, search bar, avatar tags)
+  static BorderRadius get pillBorderRadius   => BorderRadius.circular(20);
+  /// Insignias pequeñas (badges de referencia, contadores)
+  static BorderRadius get badgeBorderRadius  => BorderRadius.circular(6);
   
   static ThemeData get lightTheme {
     return ThemeData(
@@ -19,18 +23,20 @@ class AppTheme {
         secondary: AppColors.secondaryColor,
         surface: AppColors.backgroundLevel1,
         surfaceContainer: AppColors.backgroundLevel2,
-        onPrimary: AppColors.white,
-        onSecondary: AppColors.white,
+        onPrimary: AppColors.pureWhite,
+        onSecondary: AppColors.pureWhite,
         onSurface: AppColors.textColor,
+        error: AppColors.error,
+        outline: AppColors.border,
       ),
       
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.primaryColor,
-        foregroundColor: AppColors.white,
+        foregroundColor: AppColors.pureWhite,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
-          color: AppColors.white,
+          color: AppColors.pureWhite,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
@@ -47,7 +53,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryColor,
-          foregroundColor: AppColors.white,
+          foregroundColor: AppColors.pureWhite,
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: buttonBorderRadius,
@@ -72,11 +78,11 @@ class AppTheme {
         fillColor: AppColors.backgroundLevel1,
         border: OutlineInputBorder(
           borderRadius: inputBorderRadius,
-          borderSide: const BorderSide(color: AppColors.textColor2),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: inputBorderRadius,
-          borderSide: const BorderSide(color: AppColors.textColor2),
+          borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: inputBorderRadius,
@@ -144,6 +150,22 @@ class AppTheme {
           color: AppColors.textColor2,
           fontSize: 12,
         ),
+        labelSmall: TextStyle(
+          color: AppColors.textColor2,
+          fontSize: 11,
+        ),
+      ),
+
+      dividerTheme: const DividerThemeData(
+        color: AppColors.borderLight,
+        thickness: 1,
+      ),
+
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.backgroundLevel2,
+        selectedColor: AppColors.secondaryColor,
+        labelStyle: const TextStyle(color: AppColors.textColor, fontSize: 13),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

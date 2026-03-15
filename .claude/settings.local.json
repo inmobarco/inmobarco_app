@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc:*)",
+      "Bash(xargs -0 wc -l)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "dart",
+    "figma"
+  ]
+}

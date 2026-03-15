@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:inmobarco_app/core/theme/app_colors.dart';
 import 'package:path/path.dart' as p;
 import '../../data/services/api_service.dart';
 import '../../data/services/cache_service.dart';
@@ -1609,14 +1610,14 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                           onTap: () => handleRemovePhoto(index),
                                           child: Container(
                                             decoration: const BoxDecoration(
-                                              color: Colors.black54,
+                                              color: AppColors.overlayDark,
                                               shape: BoxShape.circle,
                                             ),
                                             padding: const EdgeInsets.all(4),
                                             child: const Icon(
                                               Icons.close,
                                               size: 16,
-                                              color: Colors.white,
+                                              color: AppColors.pureWhite,
                                             ),
                                           ),
                                         ),
@@ -1631,9 +1632,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.5,
-                                            ),
+                                            color: AppColors.overlayDark,
                                             borderRadius: BorderRadius.circular(
                                               6,
                                             ),
@@ -1643,7 +1642,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                              color: Colors.white,
+                                              color: AppColors.pureWhite,
                                               fontSize: 10,
                                             ),
                                             textAlign: TextAlign.center,
@@ -2542,12 +2541,12 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                       labelText: 'Nombre de la unidad',
                                       border: OutlineInputBorder(
                                         borderSide: _unitNameHasError
-                                            ? const BorderSide(color: Colors.red, width: 2)
+                                            ? const BorderSide(color: AppColors.error, width: 2)
                                             : const BorderSide(),
                                       ),
                                       enabledBorder: _unitNameHasError
                                           ? const OutlineInputBorder(
-                                              borderSide: BorderSide(color: Colors.red, width: 2),
+                                              borderSide: BorderSide(color: AppColors.error, width: 2),
                                             )
                                           : null,
                                       errorText: _unitNameHasError
@@ -2587,7 +2586,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 icon: const Icon(Icons.edit, size: 20),
                                 tooltip: 'Ingresar nueva unidad',
                                 style: IconButton.styleFrom(
-                                  backgroundColor: Colors.grey.shade200,
+                                  backgroundColor: AppColors.gray,
                                 ),
                                 onPressed: _enableManualUnitName,
                               ),
@@ -2724,8 +2723,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: (_fieldsLockedByComplex && _selectedCityId != null)
-                              ? Colors.grey.shade200
-                              : Colors.white,
+                              ? AppColors.gray
+                              : AppColors.backgroundLevel1,
                         ),
                         child: _loadingCities
                             ? const SizedBox(
@@ -2774,8 +2773,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 border: const OutlineInputBorder(),
                                 filled: true,
                                 fillColor: (_fieldsLockedByComplex && _selectedZoneId != null)
-                                    ? Colors.grey.shade200
-                                    : Colors.white,
+                                    ? AppColors.gray
+                                    : AppColors.backgroundLevel1,
                               ),
                               child: (_selectedCityId == null)
                                   ? const Text('Seleccione primero una ciudad')
@@ -2826,8 +2825,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                                 border: const OutlineInputBorder(),
                                 filled: true,
                                 fillColor: (_fieldsLockedByComplex && _selectedComplex?['stratum'] != null)
-                                    ? Colors.grey.shade200
-                                    : Colors.white,
+                                    ? AppColors.gray
+                                    : AppColors.backgroundLevel1,
                               ),
                               isExpanded: true,
                               items: List.generate(6, (index) {
@@ -2855,8 +2854,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: (_fieldsLockedByComplex && _addressController.text.isNotEmpty)
-                              ? Colors.grey.shade200
-                              : Colors.white,
+                              ? AppColors.gray
+                              : AppColors.backgroundLevel1,
                         ),
                         readOnly: _fieldsLockedByComplex && _addressController.text.isNotEmpty,
                         validator: (v) => (v == null || v.trim().isEmpty)
@@ -3335,8 +3334,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: (_fieldsLockedByComplex && _selectedComplex?['admin_email'] != null)
-                              ? Colors.grey.shade200
-                              : Colors.white,
+                              ? AppColors.gray
+                              : AppColors.backgroundLevel1,
                         ),
                         readOnly: _fieldsLockedByComplex && _selectedComplex?['admin_email'] != null,
                         keyboardType: TextInputType.emailAddress,
@@ -3349,8 +3348,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: (_fieldsLockedByComplex && _selectedComplex?['admin_phone'] != null)
-                              ? Colors.grey.shade200
-                              : Colors.white,
+                              ? AppColors.gray
+                              : AppColors.backgroundLevel1,
                         ),
                         readOnly: _fieldsLockedByComplex && _selectedComplex?['admin_phone'] != null,
                         keyboardType: TextInputType.phone,
@@ -3366,8 +3365,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                           border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: (_fieldsLockedByComplex && _selectedComplex?['front_desk_phone'] != null)
-                              ? Colors.grey.shade200
-                              : Colors.white,
+                              ? AppColors.gray
+                              : AppColors.backgroundLevel1,
                         ),
                         readOnly: _fieldsLockedByComplex && _selectedComplex?['front_desk_phone'] != null,
                         keyboardType: TextInputType.phone,
@@ -3420,8 +3419,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                         Text(
                           'Último guardado automático: ${_lastSaved!.hour.toString().padLeft(2, '0')}:${_lastSaved!.minute.toString().padLeft(2, '0')}:${_lastSaved!.second.toString().padLeft(2, '0')}',
                           style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
+                            color: AppColors.textColor2,
                           ),
                         ),
                       ],

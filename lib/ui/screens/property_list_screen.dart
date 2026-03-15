@@ -4,6 +4,7 @@ import '../providers/property_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/property_card.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import 'property_detail_screen.dart';
 import 'property_filter_screen.dart';
@@ -63,16 +64,16 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
           // Botón del ojo (navegación pública/privada) - solo si está logueado
           FloatingActionButton.small(
             heroTag: 'visibility_fab',
-            backgroundColor: _isPublicNavigation 
+            backgroundColor: _isPublicNavigation
                 ? AppColors.primaryColor.withValues(alpha: 0.8)
-                : Colors.grey.shade600,
+                : AppColors.textColor2,
             onPressed: _toggleNavigationVisibility,
             tooltip: _isPublicNavigation
                 ? 'Navegación pública'
                 : 'Navegación privada',
-            child: Icon(
-              _isPublicNavigation ? Icons.visibility : Icons.visibility_off,
-              color: Colors.white,
+            child: const Icon(
+              Icons.visibility,
+              color: AppColors.pureWhite,
             ),
           ),
           const SizedBox(height: 12),
@@ -89,7 +90,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               );
             },
             tooltip: 'Nuevo Apartamento',
-            child: const Icon(Icons.add, color: Colors.white),
+            child: const Icon(Icons.add, color: AppColors.pureWhite),
           ),
         ],
       ) : null,
@@ -228,7 +229,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               filled: true,
               fillColor: AppColors.backgroundLevel2,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: AppTheme.pillBorderRadius,
                 borderSide: BorderSide.none,
               ),
               contentPadding: const EdgeInsets.symmetric(
@@ -258,7 +259,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               color: AppColors.primaryColor,
               shape: const CircleBorder(),
               child: IconButton(
-                icon: const Icon(Icons.filter_list, color: Colors.white),
+                icon: const Icon(Icons.filter_list, color: AppColors.pureWhite),
                 tooltip: 'Filtros',
                 onPressed: () => _showFilterDialog(context),
               ),
@@ -360,7 +361,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.backgroundLevel3,
       builder: (context) => const PropertyFilterScreen(),
     );
   }
