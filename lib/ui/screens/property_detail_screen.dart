@@ -12,6 +12,8 @@ import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/encription.dart';
+import '../../data/services/webhook_service.dart';
+import '../widgets/photo_gallery.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
@@ -337,7 +339,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => _FullScreenImageGallery(
+        builder: (context) => FullScreenImageGallery(
           images: apartment!.imagenes,
           initialIndex: initialIndex,
         ),
@@ -701,41 +703,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       'comment': comment,
     };
 
-    try {
-      final dio = Dio();
-      final response = await dio.post(
-        'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/ap-delete',
-        data: body,
-        options: Options(
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
+    final result = await WebhookService.sendDelete(body);
 
-      if (mounted) {
-        if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
-          // Refrescar la lista de propiedades
-          context.read<PropertyProvider>().loadProperties(refresh: true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Solicitud de eliminación enviada correctamente.'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          Navigator.of(context).pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error al enviar solicitud: ${response.statusCode}'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+    if (mounted) {
+      if (result.success) {
+        context.read<PropertyProvider>().loadProperties(refresh: true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Solicitud de eliminación enviada correctamente.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.of(context).pop();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error de conexión: $e'),
+            content: Text(result.userFriendlyMessage),
             backgroundColor: AppColors.error,
           ),
         );
@@ -934,75 +917,5 @@ Ver más detalles: $propertyUrl''';
         });
       }
     }
-  }
-}
-
-// Widget para mostrar galería en pantalla completa
-class _FullScreenImageGallery extends StatefulWidget {
-  final List<String> images;
-  final int initialIndex;
-
-  const _FullScreenImageGallery({
-    required this.images,
-    required this.initialIndex,
-  });
-
-  @override
-  State<_FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
-}
-
-class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
-  late PageController _pageController;
-  late int _currentIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.dark,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: AppColors.pureWhite,
-        title: Text('${_currentIndex + 1} de ${widget.images.length}'),
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.images.length,
-        onPageChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        itemBuilder: (context, index) {
-          return Hero(
-            tag: 'property-image-$index',
-            child: InteractiveViewer(
-              child: CachedNetworkImage(
-                imageUrl: widget.images[index],
-                fit: BoxFit.contain,
-                placeholder: (context, url) => const Center(
-                  child: CircularProgressIndicator(color: AppColors.pureWhite),
-                ),
-                errorWidget: (context, url, error) => const Center(
-                  child: Icon(Icons.error, color: AppColors.pureWhite, size: 48),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
   }
 }

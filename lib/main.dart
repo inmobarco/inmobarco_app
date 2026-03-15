@@ -10,6 +10,7 @@ import 'core/services/notification_service.dart';
 import 'data/services/wasi_api_service.dart';
 import 'data/services/sync_service.dart';
 import 'ui/providers/property_provider.dart';
+import 'data/repositories/appointment_repository.dart';
 import 'ui/providers/appointment_provider.dart';
 import 'ui/providers/auth_provider.dart';
 import 'ui/screens/home_screen.dart';
@@ -67,7 +68,9 @@ class InmobarcoApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(
-          create: (context) => AppointmentProvider(),
+          create: (context) => AppointmentProvider(
+            repository: AppointmentRepository(),
+          ),
         ),
       ],
       child: MaterialApp(

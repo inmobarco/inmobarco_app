@@ -1,26 +1,31 @@
-import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/appointment.dart';
 import '../../core/services/notification_service.dart';
-import '../../data/services/api_service.dart';
-import '../../data/services/sync_service.dart';
+import '../../data/repositories/appointment_repository.dart';
 
 /// Provider para gestionar las citas del calendario.
-/// 
-/// Maneja la persistencia local de las citas y proporciona
-/// métodos para CRUD de citas.
+///
+/// Maneja el estado de UI y delega la persistencia y sincronización
+/// al [AppointmentRepository].
 class AppointmentProvider extends ChangeNotifier {
+  final AppointmentRepository _repository;
+
   List<Appointment> _appointments = [];
   bool _isLoading = false;
   String? _error;
 
-  static const String _storageKey = 'appointments_cache';
-
   List<Appointment> get appointments => List.unmodifiable(_appointments);
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  AppointmentProvider({required AppointmentRepository repository})
+      : _repository = repository {
+    _repository.onDataChanged = _reloadFromStorage;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Queries
+  // ---------------------------------------------------------------------------
 
   /// Obtiene las citas para un día específico
   List<Appointment> getAppointmentsForDay(DateTime day) {
@@ -35,7 +40,8 @@ class AppointmentProvider extends ChangeNotifier {
   /// Obtiene las citas para un rango de fechas
   List<Appointment> getAppointmentsInRange(DateTime start, DateTime end) {
     return _appointments.where((appointment) {
-      return appointment.dateTime.isAfter(start.subtract(const Duration(days: 1))) &&
+      return appointment.dateTime
+              .isAfter(start.subtract(const Duration(days: 1))) &&
           appointment.dateTime.isBefore(end.add(const Duration(days: 1)));
     }).toList()
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
@@ -56,166 +62,12 @@ class AppointmentProvider extends ChangeNotifier {
       ..sort((a, b) => a.dateTime.compareTo(b.dateTime));
   }
 
-  /// Carga las citas desde el almacenamiento local
-  Future<void> loadAppointments() async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_storageKey);
-      
-      if (jsonString != null) {
-        final List<dynamic> jsonList = json.decode(jsonString);
-        _appointments = jsonList
-            .map((json) => Appointment.fromJson(json as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (e) {
-      _error = 'Error al cargar citas: $e';
-      debugPrint(_error);
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-
-    // Registrar callback para recargar cuando SyncService hace pull del servidor
-    SyncService.instance.setOnPullCompleted(() {
-      _reloadFromStorage();
-    });
-  }
-
-  /// Recarga las citas desde SharedPreferences sin mostrar loading.
-  ///
-  /// Se usa cuando SyncService actualiza el caché tras un pull del servidor.
-  /// Solo llama [notifyListeners] si los datos realmente cambiaron.
-  Future<void> _reloadFromStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_storageKey);
-
-      if (jsonString != null) {
-        final List<dynamic> jsonList = json.decode(jsonString);
-        final newList = jsonList
-            .map((j) => Appointment.fromJson(j as Map<String, dynamic>))
-            .toList();
-
-        // Comparar rápido: si la cantidad o los ids/serverIds/updatedAt difieren → cambió
-        if (!_appointmentListEquals(_appointments, newList)) {
-          _appointments = newList;
-          notifyListeners();
-          debugPrint('🔄 AppointmentProvider: recargado tras pull (${_appointments.length} citas)');
-        } else {
-          debugPrint('⏭️ AppointmentProvider: sin cambios tras pull, skip rebuild');
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Error al recargar citas tras pull: $e');
-    }
-  }
-
-  /// Compara dos listas de citas de forma ligera (sin deep-equals en todos los campos).
-  ///
-  /// Retorna `true` si son equivalentes.
-  bool _appointmentListEquals(List<Appointment> a, List<Appointment> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i].id != b[i].id ||
-          a[i].serverId != b[i].serverId ||
-          a[i].title != b[i].title ||
-          a[i].status != b[i].status ||
-          a[i].dateTime != b[i].dateTime ||
-          a[i].updatedAt != b[i].updatedAt) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /// Guarda las citas en el almacenamiento local
-  Future<void> _saveToStorage() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = _appointments.map((a) => a.toJson()).toList();
-      await prefs.setString(_storageKey, json.encode(jsonList));
-    } catch (e) {
-      debugPrint('Error al guardar citas: $e');
-    }
-  }
-
-  /// Agrega una nueva cita (local + API en background).
-  Future<void> addAppointment(Appointment appointment) async {
-    // 1. Guardar localmente de inmediato
-    _appointments.add(appointment);
-    notifyListeners();
-    await _saveToStorage();
-
-    // 2. Programar notificación de recordatorio 30 minutos antes
-    await notificationService.scheduleAppointmentReminder(appointment);
-
-    // 3. Intentar sincronizar con la API en background
-    _syncCreateInBackground(appointment);
-  }
-
-  /// Actualiza una cita existente (local + API en background).
-  Future<void> updateAppointment(Appointment appointment) async {
-    final index = _appointments.indexWhere((a) => a.id == appointment.id);
-    if (index != -1) {
-      final updated = appointment.copyWith(updatedAt: DateTime.now());
-      _appointments[index] = updated;
-      notifyListeners();
-      await _saveToStorage();
-
-      // Reprogramar notificación con la nueva hora
-      await notificationService.rescheduleAppointmentReminder(updated);
-
-      // Intentar sincronizar con la API en background
-      _syncUpdateInBackground(updated);
-    }
-  }
-
-  /// Elimina una cita (local + API en background).
-  Future<void> deleteAppointment(String id) async {
-    // Obtener serverId antes de borrar
-    final appointment = getAppointmentById(id);
-    final serverId = appointment?.serverId;
-
-    // Cancelar notificación antes de eliminar
-    await notificationService.cancelAppointmentReminder(id);
-
-    _appointments.removeWhere((a) => a.id == id);
-    notifyListeners();
-    await _saveToStorage();
-
-    if (serverId != null) {
-      // Tiene serverId → intentar eliminar en la API
-      _syncDeleteInBackground(id, serverId);
-    } else {
-      // Sin serverId → nunca existió en el servidor.
-      // Purgar cualquier operación pendiente (CREATE/UPDATE) de la cola.
-      await SyncService.instance.purgeLocalId(id);
-    }
-  }
-
   /// Obtiene una cita por ID
   Appointment? getAppointmentById(String id) {
     try {
       return _appointments.firstWhere((a) => a.id == id);
     } catch (e) {
       return null;
-    }
-  }
-
-  /// Actualiza el estado de una cita
-  Future<void> updateAppointmentStatus(String id, AppointmentStatus status) async {
-    final appointment = getAppointmentById(id);
-    if (appointment != null) {
-      // Si se cancela la cita, cancelar la notificación
-      if (status == AppointmentStatus.cancelled) {
-        await notificationService.cancelAppointmentReminder(id);
-      }
-      await updateAppointment(appointment.copyWith(status: status));
     }
   }
 
@@ -233,6 +85,92 @@ class AppointmentProvider extends ChangeNotifier {
     return counts;
   }
 
+  // ---------------------------------------------------------------------------
+  // Carga
+  // ---------------------------------------------------------------------------
+
+  /// Carga las citas desde el almacenamiento local
+  Future<void> loadAppointments() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _appointments = await _repository.getAll();
+    } catch (e) {
+      _error = 'Error al cargar citas: $e';
+      debugPrint(_error);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // CRUD
+  // ---------------------------------------------------------------------------
+
+  /// Agrega una nueva cita (local + API en background).
+  Future<void> addAppointment(Appointment appointment) async {
+    _appointments.add(appointment);
+    notifyListeners();
+    await _repository.saveAll(_appointments);
+
+    // Programar notificación de recordatorio 30 minutos antes
+    await notificationService.scheduleAppointmentReminder(appointment);
+
+    // Sincronizar con la API en background
+    _syncCreateInBackground(appointment);
+  }
+
+  /// Actualiza una cita existente (local + API en background).
+  Future<void> updateAppointment(Appointment appointment) async {
+    final index = _appointments.indexWhere((a) => a.id == appointment.id);
+    if (index != -1) {
+      final updated = appointment.copyWith(updatedAt: DateTime.now());
+      _appointments[index] = updated;
+      notifyListeners();
+      await _repository.saveAll(_appointments);
+
+      // Reprogramar notificación con la nueva hora
+      await notificationService.rescheduleAppointmentReminder(updated);
+
+      // Sincronizar con la API en background
+      _repository.syncUpdate(updated);
+    }
+  }
+
+  /// Elimina una cita (local + API en background).
+  Future<void> deleteAppointment(String id) async {
+    final appointment = getAppointmentById(id);
+    final serverId = appointment?.serverId;
+
+    // Cancelar notificación antes de eliminar
+    await notificationService.cancelAppointmentReminder(id);
+
+    _appointments.removeWhere((a) => a.id == id);
+    notifyListeners();
+    await _repository.saveAll(_appointments);
+
+    if (serverId != null) {
+      _repository.syncDelete(id, serverId);
+    } else {
+      await _repository.purgeLocalId(id);
+    }
+  }
+
+  /// Actualiza el estado de una cita
+  Future<void> updateAppointmentStatus(
+      String id, AppointmentStatus status) async {
+    final appointment = getAppointmentById(id);
+    if (appointment != null) {
+      if (status == AppointmentStatus.cancelled) {
+        await notificationService.cancelAppointmentReminder(id);
+      }
+      await updateAppointment(appointment.copyWith(status: status));
+    }
+  }
+
   /// Limpia el error actual
   void clearError() {
     _error = null;
@@ -240,99 +178,56 @@ class AppointmentProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // Background API sync
+  // Helpers internos
   // ---------------------------------------------------------------------------
 
-  /// Intenta crear la cita en la API. Si falla, encola la operación.
+  /// Intenta crear en API; si tiene éxito, actualiza el serverId local.
   void _syncCreateInBackground(Appointment appointment) async {
-    try {
-      final response = await ApiService.createAppointment(appointment.toApiJson());
-
-      // Extraer el id generado por el servidor
-      final serverId = response['id'] as int?;
-      if (serverId != null) {
-        // Actualizar la cita local con el serverId
-        final index = _appointments.indexWhere((a) => a.id == appointment.id);
-        if (index != -1) {
-          _appointments[index] = _appointments[index].copyWith(serverId: serverId);
-          await _saveToStorage();
-          notifyListeners();
-          debugPrint('✅ Cita sincronizada con API (serverId: $serverId)');
-        }
+    final serverId = await _repository.syncCreate(appointment);
+    if (serverId != null) {
+      final index = _appointments.indexWhere((a) => a.id == appointment.id);
+      if (index != -1) {
+        _appointments[index] =
+            _appointments[index].copyWith(serverId: serverId);
+        await _repository.saveAll(_appointments);
+        notifyListeners();
       }
-    } on DioException catch (e) {
-      debugPrint('⚠️ Error al sincronizar cita con API: ${e.message}');
-      await SyncService.instance.enqueue(
-        action: 'create',
-        localId: appointment.id,
-        payload: appointment.toApiJson(),
-      );
-    } catch (e) {
-      debugPrint('⚠️ Error inesperado al sincronizar cita: $e');
-      await SyncService.instance.enqueue(
-        action: 'create',
-        localId: appointment.id,
-        payload: appointment.toApiJson(),
-      );
     }
   }
 
-  /// Intenta actualizar la cita en la API. Si falla, encola la operación.
-  void _syncUpdateInBackground(Appointment appointment) async {
-    if (appointment.serverId == null) {
-      debugPrint('⚠️ No se puede actualizar en API: falta serverId');
-      await SyncService.instance.enqueue(
-        action: 'update',
-        localId: appointment.id,
-        payload: appointment.toApiJson(),
-      );
-      return;
-    }
-
+  /// Recarga las citas desde storage sin mostrar loading.
+  /// Se invoca cuando SyncService completa un pull del servidor.
+  Future<void> _reloadFromStorage() async {
     try {
-      await ApiService.updateAppointment(
-        appointment.serverId!,
-        appointment.toApiJson(),
-      );
-      debugPrint('✅ Cita actualizada en API (serverId: ${appointment.serverId})');
-    } on DioException catch (e) {
-      debugPrint('⚠️ Error al actualizar cita en API: ${e.message}');
-      await SyncService.instance.enqueue(
-        action: 'update',
-        localId: appointment.id,
-        payload: appointment.toApiJson(),
-      );
+      final newList = await _repository.getAll();
+
+      if (!_appointmentListEquals(_appointments, newList)) {
+        _appointments = newList;
+        notifyListeners();
+        debugPrint(
+            '🔄 AppointmentProvider: recargado tras pull (${_appointments.length} citas)');
+      } else {
+        debugPrint(
+            '⏭️ AppointmentProvider: sin cambios tras pull, skip rebuild');
+      }
     } catch (e) {
-      debugPrint('⚠️ Error inesperado al actualizar cita: $e');
-      await SyncService.instance.enqueue(
-        action: 'update',
-        localId: appointment.id,
-        payload: appointment.toApiJson(),
-      );
+      debugPrint('❌ Error al recargar citas tras pull: $e');
     }
   }
 
-  /// Intenta eliminar la cita en la API. Si falla, encola la operación.
-  ///
-  /// Solo se llama cuando [serverId] no es null (la cita existe en el servidor).
-  void _syncDeleteInBackground(String localId, int serverId) async {
-    try {
-      await ApiService.deleteAppointment(serverId);
-      debugPrint('✅ Cita eliminada de API (serverId: $serverId)');
-    } on DioException catch (e) {
-      debugPrint('⚠️ Error al eliminar cita en API: ${e.message}');
-      await SyncService.instance.enqueue(
-        action: 'delete',
-        localId: localId,
-        payload: {'serverId': serverId},
-      );
-    } catch (e) {
-      debugPrint('⚠️ Error inesperado al eliminar cita: $e');
-      await SyncService.instance.enqueue(
-        action: 'delete',
-        localId: localId,
-        payload: {'serverId': serverId},
-      );
+  /// Compara dos listas de citas de forma ligera.
+  bool _appointmentListEquals(List<Appointment> a, List<Appointment> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id ||
+          a[i].serverId != b[i].serverId ||
+          a[i].title != b[i].title ||
+          a[i].status != b[i].status ||
+          a[i].dateTime != b[i].dateTime ||
+          a[i].updatedAt != b[i].updatedAt) {
+        return false;
+      }
     }
+    return true;
   }
 }
