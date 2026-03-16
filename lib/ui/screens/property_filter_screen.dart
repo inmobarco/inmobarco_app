@@ -5,6 +5,7 @@ import '../../domain/models/property_filter.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/global_data_service.dart';
 
 class PropertyFilterScreen extends StatefulWidget {
   const PropertyFilterScreen({super.key});
@@ -14,6 +15,7 @@ class PropertyFilterScreen extends StatefulWidget {
 }
 
 class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
+  late final GlobalDataService _globalData;
   late PropertyFilter _currentFilter;
   final _minPriceController = TextEditingController();
   final _maxPriceController = TextEditingController();
@@ -31,13 +33,14 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
   @override
   void initState() {
     super.initState();
+    _globalData = context.read<GlobalDataService>();
     _currentFilter = context.read<PropertyProvider>().currentFilter;
     _initializeValues();
-    
+
     // Verificar si las ciudades están cargadas, si no, inicializar
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!AppConstants.globalData.isInitialized || AppConstants.cities.isEmpty) {
-        AppConstants.globalData.initialize().then((_) {
+      if (!_globalData.isInitialized || _globalData.cities.isEmpty) {
+        _globalData.initialize().then((_) {
           if (mounted) setState(() {});
         });
       }
@@ -448,10 +451,10 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
 
   Widget _buildCiudadDropdown() {
     // Usar datos globales directamente con manejo defensivo
-    final globalCities = AppConstants.cities;
+    final globalCities = AppConstants.filterAllowedCities(_globalData.cities);
     
     // Verificar si las ciudades están disponibles
-    if (globalCities.isEmpty || !AppConstants.globalData.isInitialized) {
+    if (globalCities.isEmpty || !_globalData.isInitialized) {
       return Container(
         height: 60,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),

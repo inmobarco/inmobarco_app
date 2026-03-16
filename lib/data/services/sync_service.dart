@@ -18,11 +18,9 @@ import 'api_service.dart';
 /// 4. Antes de procesar la cola se **compacta** para evitar inconsistencias
 ///    (ej. CREATE + DELETE del mismo localId se cancelan mutuamente).
 class SyncService {
-  // ---------------------------------------------------------------------------
-  // Singleton
-  // ---------------------------------------------------------------------------
-  SyncService._();
-  static final SyncService instance = SyncService._();
+  final NotificationService notificationService;
+
+  SyncService({required this.notificationService});
 
   static const String _pendingQueueKey = 'appointments_pending_sync';
   static const String _appointmentsCacheKey = 'appointments_cache';

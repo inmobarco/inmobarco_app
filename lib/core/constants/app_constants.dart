@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../services/global_data_service.dart';
 
 class AppConstants {
-  static const String appVersion = '1.8.5.2';
+  static const String appVersion = '1.8.5.3';
   
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';
@@ -62,39 +60,8 @@ class AppConstants {
         .toList();
   }
   
-  // Global Data Access - Ciudades disponibles globalmente
-  static GlobalDataService get globalData => GlobalDataService();
-  static List<Map<String, dynamic>> get cities {
-    try {
-      return filterAllowedCities(GlobalDataService().cities);
-    } catch (e) {
-      debugPrint('Error accediendo a ciudades: $e');
-      return <Map<String, dynamic>>[];
-    }
-  }
-  
   // Share
   static String getPropertyShareUrl(String codigo) {
     return '$baseWebUrl/?id=$codigo';
-  }
-
-  // Features
-  static List<Map<String, dynamic>> get features {
-    try {
-      return List<Map<String, dynamic>>.from(GlobalDataService().features);
-    } catch (e) {
-      debugPrint('Error accediendo a características: $e');
-      return <Map<String, dynamic>>[];
-    }
-  }
-
-  // Residential Complexes (Unidades Residenciales)
-  static List<Map<String, dynamic>> get residentialComplexes {
-    try {
-      return List<Map<String, dynamic>>.from(GlobalDataService().residentialComplexes);
-    } catch (e) {
-      debugPrint('Error accediendo a unidades residenciales: $e');
-      return <Map<String, dynamic>>[];
-    }
   }
 }

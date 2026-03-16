@@ -4,11 +4,9 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import '../../domain/models/appointment.dart';
 
-/// Servicio singleton para gestionar notificaciones locales.
+/// Servicio para gestionar notificaciones locales.
 class NotificationService {
-  static final NotificationService _instance = NotificationService._internal();
-  factory NotificationService() => _instance;
-  NotificationService._internal();
+  NotificationService();
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   bool _isInitialized = false;
@@ -214,5 +212,3 @@ class NotificationService {
   }
 }
 
-/// Instancia global del servicio de notificaciones.
-final notificationService = NotificationService();

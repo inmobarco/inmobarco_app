@@ -4,19 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Flutter mobile/web application for Inmobarco Real Estate Company. Targets Android, iOS, Web, Windows, macOS, and Linux. Primary markets: Colombian cities (Medellín metro area). All user-facing text is in Spanish.
+Flutter Android application for Inmobarco Real Estate Company. Android-only target. Primary markets: Colombian cities (Medellín metro area). All user-facing text is in Spanish.
 
 ## Common Commands
 
 ```bash
 flutter pub get          # Install dependencies
 flutter run              # Run app (select device)
-flutter run -d chrome    # Run in web browser
 flutter analyze          # Static analysis / linting
 flutter test             # Run all tests
 flutter test test/widget_test.dart  # Run specific test file
 flutter build apk        # Build Android APK
-flutter build web        # Build web version
 ```
 
 ## Architecture
@@ -79,5 +77,3 @@ All date formatting uses `es_ES` locale via the `intl` package. Timezone is `Ame
 ## Build Scripts
 
 - `build_android.bat` — Android release build
-- `netlify_build.sh` — Web build for Netlify CI/CD (deploys `build/web/`)
-- `netlify.toml` — Configures SPA routing (`/* → /index.html`)

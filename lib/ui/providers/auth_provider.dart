@@ -7,9 +7,14 @@ import '../../data/services/api_service.dart';
 
 /// Provider de autenticación para gestionar el estado de sesión en toda la app
 class AuthProvider extends ChangeNotifier {
+  final CacheService _cacheService;
+
   User? _user;
   bool _isLoading = false;
   String? _error;
+
+  AuthProvider({required CacheService cacheService})
+      : _cacheService = cacheService;
 
   /// Usuario autenticado actual (null si no hay sesión)
   User? get user => _user;
@@ -32,7 +37,7 @@ class AuthProvider extends ChangeNotifier {
   /// Carga la sesión guardada en caché al iniciar la app
   Future<void> loadSession() async {
     try {
-      final userData = await CacheService.loadAuthSession();
+      final userData = await _cacheService.loadAuthSession();
       if (userData != null) {
         _user = User.fromJson(userData);
         debugPrint('✅ Sesión cargada desde caché: ${_user?.username}');
@@ -52,10 +57,10 @@ class AuthProvider extends ChangeNotifier {
     try {
       final user = await AuthService.login(username, password);
       _user = user;
-      
+
       // Guardar sesión en caché
-      await CacheService.saveAuthSession(user.toJson());
-      
+      await _cacheService.saveAuthSession(user.toJson());
+
       debugPrint('✅ Login exitoso: ${user.username}');
       _isLoading = false;
       notifyListeners();
@@ -75,7 +80,7 @@ class AuthProvider extends ChangeNotifier {
 
   /// Cierra la sesión actual
   Future<void> logout() async {
-    await CacheService.clearAuthSession();
+    await _cacheService.clearAuthSession();
     // Limpiar el token JWT
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');

@@ -11,8 +11,9 @@ import '../providers/property_provider.dart';
 /// Requiere un [PropertyProvider] para obtener info de caché y storage.
 Future<void> showCacheInfoDialog(
   BuildContext context,
-  PropertyProvider provider,
-) async {
+  PropertyProvider provider, {
+  required SyncService syncService,
+}) async {
   final cacheInfo = await provider.getCacheInfo();
   final storageInfo = await provider.getTotalStorageInfo();
   final prefs = await SharedPreferences.getInstance();
@@ -283,7 +284,7 @@ Future<void> showCacheInfoDialog(
           TextButton(
             onPressed: () async {
               final navigator = Navigator.of(dialogContext);
-              await SyncService.instance.syncPendingQueue();
+              await syncService.syncPendingQueue();
               navigator.pop();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(

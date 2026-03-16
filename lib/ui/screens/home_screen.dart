@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:inmobarco_app/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
+import '../../data/services/sync_service.dart';
 import '../providers/property_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/inmobarco_app_bar.dart';
@@ -297,7 +298,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showCacheInfo(BuildContext context) {
     final provider = context.read<PropertyProvider>();
-    showCacheInfoDialog(context, provider);
+    final syncService = context.read<SyncService>();
+    showCacheInfoDialog(context, provider, syncService: syncService);
   }
 
 }

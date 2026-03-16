@@ -4,11 +4,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 import '../../../data/services/api_service.dart';
 import '../../../data/services/cache_service.dart';
 import '../../../data/services/wasi_api_service.dart';
 import '../../../data/services/webhook_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/services/global_data_service.dart';
 import '../../../domain/models/apartment_photo.dart';
 import '../../../core/utils/formatters.dart';
 import '../widgets/add_apartment/basic_info_section.dart';
@@ -26,6 +28,8 @@ class AddApartmentScreen extends StatefulWidget {
 }
 
 class _AddApartmentScreenState extends State<AddApartmentScreen> {
+  late final GlobalDataService _globalData;
+  late final CacheService _cacheService;
   final _formKey = GlobalKey<FormState>();
 
   // ── Text controllers ──────────────────────────────────────────────────
@@ -142,6 +146,8 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   @override
   void initState() {
     super.initState();
+    _globalData = context.read<GlobalDataService>();
+    _cacheService = context.read<CacheService>();
     _loadInitialData();
     _startAutoSave();
   }
@@ -182,7 +188,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    final draft = await CacheService.loadAddApartmentDraft();
+    final draft = await _cacheService.loadAddApartmentDraft();
     if (draft != null) _restoreDraft(draft);
 
     await _loadUserProfile();
@@ -198,7 +204,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   }
 
   Future<void> _loadUserProfile() async {
-    final data = await CacheService.loadAuthSession();
+    final data = await _cacheService.loadAuthSession();
     if (!mounted) return;
     if (data == null) {
       setState(() {
@@ -220,7 +226,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   Future<void> _loadCities() async {
     if (mounted) setState(() => _loadingCities = true);
     try {
-      final cached = AppConstants.cities;
+      final cached = AppConstants.filterAllowedCities(_globalData.cities);
       if (cached.isNotEmpty) {
         _cities = List<Map<String, dynamic>>.from(cached);
       } else {
@@ -271,7 +277,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   Future<void> _loadFeatures() async {
     if (mounted) setState(() => _loadingFeatures = true);
     try {
-      List<Map<String, dynamic>> rawFeatures = AppConstants.features;
+      List<Map<String, dynamic>> rawFeatures = List<Map<String, dynamic>>.from(_globalData.features);
       if (rawFeatures.isEmpty) {
         final api = WasiApiService(
           apiToken: AppConstants.wasiApiToken,
@@ -335,7 +341,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
 
   Future<void> _loadResidentialComplexes() async {
     try {
-      final cached = AppConstants.residentialComplexes;
+      final cached = List<Map<String, dynamic>>.from(_globalData.residentialComplexes);
       if (cached.isNotEmpty) {
         _residentialComplexes = List<Map<String, dynamic>>.from(cached);
       } else {
@@ -866,7 +872,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       '_parking_lot_photo_base64': parkingLotPhotoBase64,
     };
     _saving = true;
-    await CacheService.saveAddApartmentDraft(data);
+    await _cacheService.saveAddApartmentDraft(data);
     _lastSaved = DateTime.now();
     if (mounted) setState(() => _saving = false);
   }
@@ -1387,7 +1393,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
       ),
     );
     if (shouldClear != true) return;
-    await CacheService.clearAddApartmentDraft();
+    await _cacheService.clearAddApartmentDraft();
     if (!mounted) return;
     setState(() => _resetFormState());
     _showSnackBarMessage('Borrador eliminado.');

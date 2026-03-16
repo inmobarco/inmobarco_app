@@ -13,23 +13,24 @@ class CacheService {
   static const String _addApartmentDraftFileName = 'add_apartment_draft.json'; // Borrador formulario nuevo apartamento
   static const String _userProfileFileName = 'user_profile.json';
   static const String _authSessionFileName = 'auth_session.json'; // Sesión de autenticación
-  
+
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
 
+  CacheService();
 
   /// Guarda las propiedades en caché
-  static Future<void> saveProperties(List<Apartment> properties) async {
+  Future<void> saveProperties(List<Apartment> properties) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Convertir propiedades a JSON
       final propertiesJson = properties.map((apartment) => apartment.toJson()).toList();
       final jsonString = jsonEncode(propertiesJson);
       // Guardar timestamp (solo timestamp en prefs; datos en archivo)
       await prefs.setInt(_lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
       await _writePropertiesFile(jsonString); // Archivo es la fuente canónica
-      
+
       debugPrint('✅ Propiedades guardadas en caché: ${properties.length}');
     } catch (e) {
       debugPrint('❌ Error guardando propiedades en caché: $e');
@@ -37,7 +38,7 @@ class CacheService {
   }
 
   /// Carga las propiedades desde caché
-  static Future<List<Apartment>?> loadProperties() async {
+  Future<List<Apartment>?> loadProperties() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final fileJson = await _readPropertiesFile();
@@ -50,7 +51,7 @@ class CacheService {
           await _writePropertiesFile(legacy);
           // Opcional: limpiar JSON duplicado antiguo para evitar incongruencias
           await prefs.remove(_propertiesKey);
-          debugPrint('� Migradas propiedades desde prefs al archivo.');
+          debugPrint('🔄 Migradas propiedades desde prefs al archivo.');
         }
       }
 
@@ -62,9 +63,9 @@ class CacheService {
       }
 
       // Verificar si el caché no ha expirado
-  final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
-  final cacheAge = DateTime.now().millisecondsSinceEpoch - lastUpdate;
-  final cacheAgeHours = cacheAge / (1000 * 60 * 60);
+      final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
+      final cacheAge = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+      final cacheAgeHours = cacheAge / (1000 * 60 * 60);
 
       if (cacheAgeHours > _cacheExpirationHours) {
         debugPrint('⏰ Caché expirado (${cacheAgeHours.toStringAsFixed(1)} horas)');
@@ -88,7 +89,7 @@ class CacheService {
   }
 
   /// Verifica si hay caché válido disponible
-  static Future<bool> hasCachedProperties() async {
+  Future<bool> hasCachedProperties() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
@@ -104,13 +105,13 @@ class CacheService {
   }
 
   /// Obtiene la información del caché
-  static Future<Map<String, dynamic>> getCacheInfo() async {
+  Future<Map<String, dynamic>> getCacheInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
       final propertiesCount = await loadProperties();
       final fileInfo = await _getPropertiesFileInfo();
-      
+
       return {
         'hasCache': await hasCachedProperties(),
         'lastUpdate': DateTime.fromMillisecondsSinceEpoch(lastUpdate),
@@ -132,7 +133,7 @@ class CacheService {
   }
 
   /// Limpia el caché de propiedades
-  static Future<void> clearCache() async {
+  Future<void> clearCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_lastUpdateKey);
@@ -150,7 +151,7 @@ class CacheService {
 
 
   // ================= Archivo de propiedades para búsquedas =================
-  static Future<void> _writePropertiesFile(String jsonString) async {
+  Future<void> _writePropertiesFile(String jsonString) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_propertiesFileName');
@@ -160,7 +161,7 @@ class CacheService {
     }
   }
 
-  static Future<String?> _readPropertiesFile() async {
+  Future<String?> _readPropertiesFile() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_propertiesFileName');
@@ -174,7 +175,7 @@ class CacheService {
     }
   }
 
-  static Future<Map<String, dynamic>> _getPropertiesFileInfo() async {
+  Future<Map<String, dynamic>> _getPropertiesFileInfo() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_propertiesFileName');
@@ -192,7 +193,7 @@ class CacheService {
   }
 
   // ================== Borrador formulario Agregar Apartamento ==================
-  static Future<void> saveAddApartmentDraft(Map<String, dynamic> data) async {
+  Future<void> saveAddApartmentDraft(Map<String, dynamic> data) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_addApartmentDraftFileName');
@@ -202,7 +203,7 @@ class CacheService {
     }
   }
 
-  static Future<Map<String, dynamic>?> loadAddApartmentDraft() async {
+  Future<Map<String, dynamic>?> loadAddApartmentDraft() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_addApartmentDraftFileName');
@@ -216,7 +217,7 @@ class CacheService {
     }
   }
 
-  static Future<void> clearAddApartmentDraft() async {
+  Future<void> clearAddApartmentDraft() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_addApartmentDraftFileName');
@@ -227,7 +228,7 @@ class CacheService {
   }
 
   // ================== Perfil usuario ==================
-  static Future<void> saveUserProfile(Map<String, dynamic> data) async {
+  Future<void> saveUserProfile(Map<String, dynamic> data) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_userProfileFileName');
@@ -237,7 +238,7 @@ class CacheService {
     }
   }
 
-  static Future<Map<String, dynamic>?> loadUserProfile() async {
+  Future<Map<String, dynamic>?> loadUserProfile() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_userProfileFileName');
@@ -251,7 +252,7 @@ class CacheService {
     }
   }
 
-  static Future<void> clearUserProfile() async {
+  Future<void> clearUserProfile() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_userProfileFileName');
@@ -262,9 +263,9 @@ class CacheService {
   }
 
   // ================== Sesión de autenticación ==================
-  
+
   /// Guarda la sesión de autenticación
-  static Future<void> saveAuthSession(Map<String, dynamic> data) async {
+  Future<void> saveAuthSession(Map<String, dynamic> data) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_authSessionFileName');
@@ -276,7 +277,7 @@ class CacheService {
   }
 
   /// Carga la sesión de autenticación guardada
-  static Future<Map<String, dynamic>?> loadAuthSession() async {
+  Future<Map<String, dynamic>?> loadAuthSession() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_authSessionFileName');
@@ -291,7 +292,7 @@ class CacheService {
   }
 
   /// Elimina la sesión de autenticación
-  static Future<void> clearAuthSession() async {
+  Future<void> clearAuthSession() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_authSessionFileName');
@@ -303,7 +304,7 @@ class CacheService {
   }
 
   /// Obtiene el tamaño total de todo el almacenamiento local (archivos + SharedPreferences)
-  static Future<Map<String, dynamic>> getTotalStorageInfo() async {
+  Future<Map<String, dynamic>> getTotalStorageInfo() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final prefs = await SharedPreferences.getInstance();
@@ -372,14 +373,14 @@ class CacheService {
   }
 
   /// Formatea bytes a unidad legible (B, KB, MB)
-  static String _formatBytes(int bytes) {
+  String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
   }
 
   /// Guarda filtros aplicados
-  static Future<void> saveFilter(Map<String, dynamic> filterData) async {
+  Future<void> saveFilter(Map<String, dynamic> filterData) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_filterKey, jsonEncode(filterData));
@@ -389,7 +390,7 @@ class CacheService {
   }
 
   /// Carga filtros guardados
-  static Future<Map<String, dynamic>?> loadFilter() async {
+  Future<Map<String, dynamic>?> loadFilter() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final filterString = prefs.getString(_filterKey);

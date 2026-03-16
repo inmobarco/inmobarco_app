@@ -4,9 +4,7 @@ import '../../data/services/wasi_api_service.dart';
 import '../constants/app_constants.dart';
 
 class GlobalDataService {
-  static final GlobalDataService _instance = GlobalDataService._internal();
-  factory GlobalDataService() => _instance;
-  GlobalDataService._internal();
+  GlobalDataService();
 
   List<Map<String, dynamic>> _cities = [];
   List<Map<String, dynamic>> _features = [];

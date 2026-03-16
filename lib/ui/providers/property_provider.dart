@@ -8,7 +8,8 @@ import '../../core/constants/app_constants.dart';
 
 class PropertyProvider extends ChangeNotifier {
   final WasiApiService _apiService;
-  
+  final CacheService _cacheService;
+
   List<Apartment> _properties = [];
   PropertyFilter _currentFilter = PropertyFilter();
   bool _isLoading = false;
@@ -21,8 +22,11 @@ class PropertyProvider extends ChangeNotifier {
 
   static const Duration _searchDebounceDuration = Duration(milliseconds: 350); // Ajustable
 
-  PropertyProvider({required WasiApiService apiService}) 
-      : _apiService = apiService {
+  PropertyProvider({
+    required WasiApiService apiService,
+    required CacheService cacheService,
+  })  : _apiService = apiService,
+       _cacheService = cacheService {
     _loadFromCache(); // Cargar caché al inicializar
   }
 
@@ -47,7 +51,7 @@ class PropertyProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final cachedProperties = await CacheService.loadProperties();
+      final cachedProperties = await _cacheService.loadProperties();
       if (cachedProperties != null && cachedProperties.isNotEmpty) {
         _properties = cachedProperties;
         _hasMoreData = false; // No intentar cargar más hasta hacer refresh
@@ -95,7 +99,7 @@ class PropertyProvider extends ChangeNotifier {
       // _currentPage se incrementó, así que cuando era página 1 ahora vale 2.
       if (_currentPage == 2) {
         // Persistimos únicamente la primera página (hasta 100 propiedades) como snapshot rápido de arranque.
-        await CacheService.saveProperties(_properties.take(AppConstants.pageSize).toList());
+        await _cacheService.saveProperties(_properties.take(AppConstants.pageSize).toList());
       }
 
       notifyListeners();
@@ -120,7 +124,7 @@ class PropertyProvider extends ChangeNotifier {
     _properties.clear();
     
     // Guardar filtros aplicados
-    await CacheService.saveFilter(newFilter.toJson());
+    await _cacheService.saveFilter(newFilter.toJson());
     
     await loadProperties();
   }
@@ -133,7 +137,7 @@ class PropertyProvider extends ChangeNotifier {
     _properties.clear();
     
     // Limpiar filtros guardados
-    await CacheService.saveFilter({});
+    await _cacheService.saveFilter({});
     
     await loadProperties();
   }
@@ -235,17 +239,17 @@ class PropertyProvider extends ChangeNotifier {
 
   /// Obtiene información del caché
   Future<Map<String, dynamic>> getCacheInfo() async {
-    return await CacheService.getCacheInfo();
+    return await _cacheService.getCacheInfo();
   }
 
   /// Obtiene información del almacenamiento total
   Future<Map<String, dynamic>> getTotalStorageInfo() async {
-    return await CacheService.getTotalStorageInfo();
+    return await _cacheService.getTotalStorageInfo();
   }
 
   /// Limpia el caché manualmente
   Future<void> clearCache() async {
-    await CacheService.clearCache();
+    await _cacheService.clearCache();
     _properties.clear();
     notifyListeners();
   }

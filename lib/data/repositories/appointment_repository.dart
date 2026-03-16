@@ -13,12 +13,15 @@ import '../services/sync_service.dart';
 class AppointmentRepository {
   static const String _storageKey = 'appointments_cache';
 
+  final SyncService _syncService;
+
   /// Callback que se invoca cuando SyncService completa un pull del servidor
   /// y el repositorio detecta cambios en el caché.
   VoidCallback? onDataChanged;
 
-  AppointmentRepository() {
-    SyncService.instance.setOnPullCompleted(_onPullCompleted);
+  AppointmentRepository({required SyncService syncService})
+      : _syncService = syncService {
+    _syncService.setOnPullCompleted(_onPullCompleted);
   }
 
   // ---------------------------------------------------------------------------
@@ -116,7 +119,7 @@ class AppointmentRepository {
 
   /// Purga operaciones pendientes de un localId que nunca llegó al servidor.
   Future<void> purgeLocalId(String localId) async {
-    await SyncService.instance.purgeLocalId(localId);
+    await _syncService.purgeLocalId(localId);
   }
 
   // ---------------------------------------------------------------------------
@@ -124,7 +127,7 @@ class AppointmentRepository {
   // ---------------------------------------------------------------------------
 
   Future<void> _enqueueCreate(Appointment appointment) async {
-    await SyncService.instance.enqueue(
+    await _syncService.enqueue(
       action: 'create',
       localId: appointment.id,
       payload: appointment.toApiJson(),
@@ -132,7 +135,7 @@ class AppointmentRepository {
   }
 
   Future<void> _enqueueUpdate(Appointment appointment) async {
-    await SyncService.instance.enqueue(
+    await _syncService.enqueue(
       action: 'update',
       localId: appointment.id,
       payload: appointment.toApiJson(),
@@ -140,7 +143,7 @@ class AppointmentRepository {
   }
 
   Future<void> _enqueueDelete(String localId, int serverId) async {
-    await SyncService.instance.enqueue(
+    await _syncService.enqueue(
       action: 'delete',
       localId: localId,
       payload: {'serverId': serverId},

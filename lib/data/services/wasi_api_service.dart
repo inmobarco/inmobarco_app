@@ -3,15 +3,18 @@ import 'package:flutter/material.dart';
 import '../../domain/models/apartment.dart';
 import '../../domain/models/property_filter.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/global_data_service.dart';
 
 class WasiApiService {
   final Dio _dio;
   final String apiToken;
   final String companyId;
+  final GlobalDataService? globalDataService;
 
   WasiApiService({
     required this.apiToken,
     required this.companyId,
+    this.globalDataService,
   }) : _dio = Dio() {
     _dio.options.baseUrl = AppConstants.wasiApiBaseUrl;
     _dio.options.headers = {
@@ -271,8 +274,8 @@ class WasiApiService {
       queryParams['min_area'] = filter.minArea!.toInt();
     }
 
-    if (filter.municipio != null && filter.municipio!.isNotEmpty) {
-      String? id = AppConstants.cities.firstWhere(
+    if (filter.municipio != null && filter.municipio!.isNotEmpty && globalDataService != null) {
+      String? id = AppConstants.filterAllowedCities(globalDataService!.cities).firstWhere(
         (city) => city['name'] == filter.municipio,
         orElse: () => {'id': null},
       )['id']?.toString();

@@ -9,6 +9,7 @@ import '../../data/repositories/appointment_repository.dart';
 /// al [AppointmentRepository].
 class AppointmentProvider extends ChangeNotifier {
   final AppointmentRepository _repository;
+  final NotificationService _notificationService;
 
   List<Appointment> _appointments = [];
   bool _isLoading = false;
@@ -18,8 +19,11 @@ class AppointmentProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  AppointmentProvider({required AppointmentRepository repository})
-      : _repository = repository {
+  AppointmentProvider({
+    required AppointmentRepository repository,
+    required NotificationService notificationService,
+  })  : _repository = repository,
+       _notificationService = notificationService {
     _repository.onDataChanged = _reloadFromStorage;
   }
 
@@ -117,7 +121,7 @@ class AppointmentProvider extends ChangeNotifier {
     await _repository.saveAll(_appointments);
 
     // Programar notificación de recordatorio 30 minutos antes
-    await notificationService.scheduleAppointmentReminder(appointment);
+    await _notificationService.scheduleAppointmentReminder(appointment);
 
     // Sincronizar con la API en background
     _syncCreateInBackground(appointment);
@@ -133,7 +137,7 @@ class AppointmentProvider extends ChangeNotifier {
       await _repository.saveAll(_appointments);
 
       // Reprogramar notificación con la nueva hora
-      await notificationService.rescheduleAppointmentReminder(updated);
+      await _notificationService.rescheduleAppointmentReminder(updated);
 
       // Sincronizar con la API en background
       _repository.syncUpdate(updated);
@@ -146,7 +150,7 @@ class AppointmentProvider extends ChangeNotifier {
     final serverId = appointment?.serverId;
 
     // Cancelar notificación antes de eliminar
-    await notificationService.cancelAppointmentReminder(id);
+    await _notificationService.cancelAppointmentReminder(id);
 
     _appointments.removeWhere((a) => a.id == id);
     notifyListeners();
@@ -165,7 +169,7 @@ class AppointmentProvider extends ChangeNotifier {
     final appointment = getAppointmentById(id);
     if (appointment != null) {
       if (status == AppointmentStatus.cancelled) {
-        await notificationService.cancelAppointmentReminder(id);
+        await _notificationService.cancelAppointmentReminder(id);
       }
       await updateAppointment(appointment.copyWith(status: status));
     }

@@ -6,7 +6,11 @@
       "Bash(flutter analyze:*)",
       "Bash(for f:*)",
       "Bash(do cp:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(flutter pub:*)",
+      "Bash(dart run:*)",
+      "Bash(flutter test:*)",
+      "Bash(ls -d \"d:/Inmobarco/Inmobarco Proyectos/inmobarco_app/\"*/)"
     ]
   },
   "enabledMcpjsonServers": [
