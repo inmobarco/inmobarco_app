@@ -137,6 +137,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   static const List<Map<String, String>> _statusOptions = [
     {'id': '1', 'label': 'Activo'},
     {'id': '2', 'label': 'Inactivo'},
+    {'id': '3', 'label': 'Destacado'},
   ];
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -1756,7 +1757,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Apartamento (WASI)'),
+        title: const Text('Nuevo Inmueble (WASI)'),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_forever),

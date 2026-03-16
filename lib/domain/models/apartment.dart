@@ -6,6 +6,7 @@ class Apartment {
   final double salePrice;
   final int cuartos;
   final int banos;
+  final int garages;
   final String barrio;
   final String municipio;
   final int estrato;
@@ -29,6 +30,7 @@ class Apartment {
     required this.salePrice,
     required this.cuartos,
     required this.banos,
+    required this.garages,
     required this.barrio,
     required this.municipio,
     required this.estrato,
@@ -55,6 +57,7 @@ class Apartment {
       salePrice: (json['salePrice'] ?? 0).toDouble(),
       cuartos: json['cuartos'] ?? 0,
       banos: json['banos'] ?? 0,
+      garages: json['garages'] ?? 0,
       barrio: json['barrio']?.toString() ?? '',
       municipio: json['municipio']?.toString() ?? '',
       estrato: json['estrato'] ?? 0,
@@ -106,6 +109,7 @@ class Apartment {
     double? salePrice,
     int? cuartos,
     int? banos,
+    int? garages,
     String? barrio,
     String? municipio,
     int? estrato,
@@ -129,6 +133,7 @@ class Apartment {
       salePrice: salePrice ?? this.salePrice,
       cuartos: cuartos ?? this.cuartos,
       banos: banos ?? this.banos,
+      garages: garages ?? this.garages,
       barrio: barrio ?? this.barrio,
       municipio: municipio ?? this.municipio,
       estrato: estrato ?? this.estrato,
@@ -157,6 +162,7 @@ class Apartment {
       'salePrice': salePrice,
       'cuartos': cuartos,
       'banos': banos,
+      'garages': garages,
       'barrio': barrio,
       'municipio': municipio,
       'estrato': estrato,

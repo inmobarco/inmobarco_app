@@ -47,6 +47,7 @@ dependencies:
   flutter_local_notifications: ^19.1.0
   timezone: ^0.10.1
   connectivity_plus: ^6.1.0   # Detectar cambios de red
+  google_fonts: ^6.3.2
 
 
 dev_dependencies:

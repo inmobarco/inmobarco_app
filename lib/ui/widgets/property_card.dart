@@ -130,6 +130,14 @@ class PropertyCard extends StatelessWidget {
                         value: apartment.banos.toString(),
                         label: apartment.banos == 1 ? 'baño' : 'baños',
                       ),
+                      if (apartment.garages > 0) ...[
+                        const SizedBox(width: 16),
+                        _buildFeature(
+                          icon: Icons.directions_car,
+                          value: apartment.garages.toString(),
+                          label: apartment.garages == 1 ? 'parqueo' : 'parqueos',
+                        ),
+                      ],
                       if (apartment.area > 0) ...[
                         const SizedBox(width: 16),
                         _buildFeature(

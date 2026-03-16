@@ -496,6 +496,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       value: apartment!.banos.toString(),
                     ),
                   ),
+                  if (apartment!.garages > 0)
+                    Expanded(
+                      child: _buildFeatureItem(
+                        icon: Icons.directions_car,
+                        label: 'Parqueos',
+                        value: apartment!.garages.toString(),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
