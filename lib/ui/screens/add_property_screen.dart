@@ -442,8 +442,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     if (draft['area'] != null) {
       _areaController.text = draft['area'].toString();
     }
-    if (draft['observations'] != null) {
-      _observationsController.text = draft['observations'];
+    if (draft['comment'] != null) {
+      _observationsController.text = draft['comment'];
     }
     if (draft['building_date'] != null) {
       _buildingDateController.text = draft['building_date'].toString();
@@ -979,7 +979,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       'bathrooms': _bathrooms,
       'garages': _garages,
       'stratum': _stratum,
-      'observations': '$propertyLabel en ${cityName ?? 'Medellin'}',
       'building_date': buildingDate,
       'service_room': serviceRoom.isEmpty ? null : serviceRoom,
       'service_room_photo': serviceRoomPhotoTuple,
