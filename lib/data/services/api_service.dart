@@ -105,6 +105,30 @@ class ApiService {
   // Residential Complexes API
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // Property Extras API
+  // ---------------------------------------------------------------------------
+
+  /// Obtiene extras de propiedades (cuarto útil, etc.) desde el VPS.
+  ///
+  /// Envía los wasi codes y retorna un mapa {wasiCode: bool?} indicando
+  /// si cada propiedad tiene cuarto útil.
+  static Future<Map<String, bool?>> getPropertyExtras(List<String> wasiCodes) async {
+    if (wasiCodes.isEmpty) return {};
+    final dio = await getInstance();
+    final response = await dio.get(
+      '/inventory/property-extras',
+      queryParameters: {'wasi_codes': wasiCodes.join(',')},
+    );
+    debugPrint('📦 GET /inventory/property-extras (${wasiCodes.length} codes) → ${response.statusCode}');
+    final Map<String, dynamic> data = Map<String, dynamic>.from(response.data);
+    return data.map((key, value) => MapEntry(key, value as bool?));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Residential Complexes API
+  // ---------------------------------------------------------------------------
+
   /// Obtiene las unidades residenciales disponibles.
   ///
   /// Retorna la lista de mapas tal como viene del servidor.

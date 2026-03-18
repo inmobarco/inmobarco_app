@@ -10,7 +10,11 @@
       "Bash(flutter pub:*)",
       "Bash(dart run:*)",
       "Bash(flutter test:*)",
-      "Bash(ls -d \"d:/Inmobarco/Inmobarco Proyectos/inmobarco_app/\"*/)"
+      "Bash(ls -d \"d:/Inmobarco/Inmobarco Proyectos/inmobarco_app/\"*/)",
+      "Bash(java -version)",
+      "Bash(./gradlew --version)",
+      "Bash(./gradlew -q javaToolchains)",
+      "Bash(flutter doctor:*)"
     ]
   },
   "enabledMcpjsonServers": [

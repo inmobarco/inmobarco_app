@@ -13,6 +13,7 @@ class CacheService {
   static const String _addApartmentDraftFileName = 'add_apartment_draft.json'; // Borrador formulario nuevo apartamento
   static const String _userProfileFileName = 'user_profile.json';
   static const String _authSessionFileName = 'auth_session.json'; // Sesión de autenticación
+  static const String _appVersionKey = 'cached_app_version';
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
@@ -300,6 +301,47 @@ class CacheService {
       debugPrint('🧹 Sesión de autenticación eliminada');
     } catch (e) {
       debugPrint('⚠️ No se pudo borrar sesión de autenticación: $e');
+    }
+  }
+
+  // ================= Versión de la app =================
+
+  /// Guarda la versión actual de la app en caché
+  Future<void> saveAppVersion(String version) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_appVersionKey, version);
+  }
+
+  /// Obtiene la versión guardada en caché
+  Future<String?> getAppVersion() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_appVersionKey);
+  }
+
+  /// Limpia todo el caché (archivos + SharedPreferences), excepto la sesión de autenticación
+  Future<void> clearAllCache() async {
+    try {
+      // Borrar archivos
+      final dir = await getApplicationDocumentsDirectory();
+      final fileNames = [
+        _propertiesFileName,
+        _addApartmentDraftFileName,
+        _userProfileFileName,
+      ];
+      for (final name in fileNames) {
+        final file = File('${dir.path}/$name');
+        if (await file.exists()) await file.delete();
+      }
+
+      // Borrar claves de SharedPreferences (excepto auth)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_propertiesKey);
+      await prefs.remove(_lastUpdateKey);
+      await prefs.remove(_filterKey);
+
+      debugPrint('🧹 Todo el caché limpiado por cambio de versión');
+    } catch (e) {
+      debugPrint('❌ Error limpiando todo el caché: $e');
     }
   }
 

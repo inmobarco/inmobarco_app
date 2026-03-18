@@ -21,6 +21,7 @@ class Apartment {
   final String departamento;
   final String coordenadas;
   final List<Map<String, dynamic>> caracteristicas;
+  final bool? hasStoreroom;
 
   Apartment({
     required this.id,
@@ -45,6 +46,7 @@ class Apartment {
     required this.departamento,
     required this.coordenadas,
     required this.caracteristicas,
+    this.hasStoreroom,
   });
 
   factory Apartment.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class Apartment {
       caracteristicas: List<Map<String, dynamic>>.from(
         json['caracteristicas']?.map((x) => Map<String, dynamic>.from(x)) ?? []
       ),
+      hasStoreroom: json['hasStoreroom'] as bool?,
     );
   }
 
@@ -124,6 +127,7 @@ class Apartment {
     String? departamento,
     String? coordenadas,
     List<Map<String, dynamic>>? caracteristicas,
+    bool? hasStoreroom,
   }) {
     return Apartment(
       id: id ?? this.id,
@@ -148,6 +152,7 @@ class Apartment {
       departamento: departamento ?? this.departamento,
       coordenadas: coordenadas ?? this.coordenadas,
       caracteristicas: caracteristicas ?? this.caracteristicas,
+      hasStoreroom: hasStoreroom ?? this.hasStoreroom,
     );
   }
 
@@ -177,6 +182,7 @@ class Apartment {
       'departamento': departamento,
       'coordenadas': coordenadas,
       'caracteristicas': caracteristicas,
+      'hasStoreroom': hasStoreroom,
     };
   }
 }

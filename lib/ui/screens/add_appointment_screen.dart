@@ -91,10 +91,12 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
           ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: SafeArea(
+        top: false,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
           children: [
             // Tipo de cita
             _buildSectionTitle('Tipo de Cita'),
@@ -233,6 +235,7 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
             const SizedBox(height: 16),
           ],
         ),
+      ),
       ),
     );
   }

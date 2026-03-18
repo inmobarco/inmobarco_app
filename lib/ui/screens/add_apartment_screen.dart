@@ -1775,16 +1775,18 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
             ),
         ],
       ),
-      body: _loadingDraft
-          ? const Center(child: CircularProgressIndicator())
-          : GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        top: false,
+        child: _loadingDraft
+            ? const Center(child: CircularProgressIndicator())
+            : GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       BasicInfoSection(
                         apartmentNumberController: _apartmentNumberController,
@@ -1922,6 +1924,7 @@ class _AddApartmentScreenState extends State<AddApartmentScreen> {
                 ),
               ),
             ),
+      ),
     );
   }
 }

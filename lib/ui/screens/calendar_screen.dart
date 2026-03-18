@@ -21,7 +21,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  CalendarFormat _calendarFormat = CalendarFormat.twoWeeks;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -470,7 +470,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: finishedAppointments.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final appt = finishedAppointments[index];
               final statusColor = Color(appt.status.colorValue);

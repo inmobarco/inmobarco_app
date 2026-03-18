@@ -116,7 +116,7 @@ class PropertyCard extends StatelessWidget {
                   
                   const SizedBox(height: 12),
                   
-                  // Características (cuartos, baños, área)
+                  // Características (cuartos, baños, parqueos, cuarto útil, área)
                   Row(
                     children: [
                       _buildFeature(
@@ -128,14 +128,23 @@ class PropertyCard extends StatelessWidget {
                       _buildFeature(
                         icon: Icons.bathtub,
                         value: apartment.banos.toString(),
-                        label: apartment.banos == 1 ? 'baño' : 'baños',
+                        label: (apartment.hasStoreroom == true && apartment.garages > 0) ? '' : (apartment.banos == 1 ? 'baño' : 'baños'),
                       ),
                       if (apartment.garages > 0) ...[
                         const SizedBox(width: 16),
                         _buildFeature(
                           icon: Icons.directions_car,
                           value: apartment.garages.toString(),
-                          label: apartment.garages == 1 ? 'parqueo' : 'parqueos',
+                          // Compactar label si también tiene cuarto útil
+                          label: apartment.hasStoreroom == true ? '' : (apartment.garages == 1 ? 'parqueo' : 'parqueos'),
+                        ),
+                      ],
+                      if (apartment.hasStoreroom == true) ...[
+                        const SizedBox(width: 16),
+                        _buildFeature(
+                          icon: Icons.warehouse,
+                          value: '',
+                          label: 'C. útil',
                         ),
                       ],
                       if (apartment.area > 0) ...[
@@ -237,7 +246,7 @@ class PropertyCard extends StatelessWidget {
         ),
         const SizedBox(width: 4),
         Text(
-          '$value $label',
+          value.isEmpty ? label : (label.isEmpty ? value : '$value $label'),
           style: const TextStyle(
             color: AppColors.textColor2,
             fontSize: 12,

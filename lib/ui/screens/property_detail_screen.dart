@@ -144,31 +144,34 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       return _buildNotFoundWidget();
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Galería de imágenes
-          _buildImageGallery(),
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Galería de imágenes
+            _buildImageGallery(),
 
-          // Información principal
-          _buildMainInfo(),
+            // Información principal
+            _buildMainInfo(),
 
-          // Características
-          _buildFeatures(),
+            // Características
+            _buildFeatures(),
 
-          // Descripción
-          if (apartment!.descripcion.isNotEmpty) _buildDescription(),
+            // Descripción
+            if (apartment!.descripcion.isNotEmpty) _buildDescription(),
 
-          // Botón de compartir
-          _buildShareButton(),
+            // Botón de compartir
+            _buildShareButton(),
 
-          // Botón de eliminar propiedad (solo si está logueado)
-          if (context.watch<AuthProvider>().isLoggedIn)
-            _buildDeleteButton(),
+            // Botón de eliminar propiedad (solo si está logueado)
+            if (context.watch<AuthProvider>().isLoggedIn)
+              _buildDeleteButton(),
 
-          const SizedBox(height: 32),
-        ],
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
@@ -405,7 +408,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     Expanded(
                       child: _showApartmentInfo
                           ? Text(
-                              '${apartment!.reference} - ID: ${apartment!.id}',
+                              '${apartment!.reference} \n ID: ${apartment!.id}',
                               style: Theme.of(context).textTheme.headlineMedium,
                             )
                           : Text(
@@ -515,6 +518,14 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                         icon: Icons.square_foot,
                         label: 'Área',
                         value: '${apartment!.area.toStringAsFixed(0)} m²',
+                      ),
+                    ),
+                  if (apartment!.hasStoreroom == true)
+                    Expanded(
+                      child: _buildFeatureItem(
+                        icon: Icons.warehouse,
+                        label: 'Cuarto útil',
+                        value: 'Sí',
                       ),
                     ),
                   if (apartment!.estrato > 0)

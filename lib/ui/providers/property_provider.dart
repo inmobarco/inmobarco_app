@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../domain/models/apartment.dart';
 import '../../domain/models/property_filter.dart';
 import '../../data/services/wasi_api_service.dart';
+import '../../data/services/api_service.dart';
 import '../../data/services/cache_service.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -95,6 +96,9 @@ class PropertyProvider extends ChangeNotifier {
       // Si recibimos menos elementos que el tamaño de página asumimos que no hay más datos.
       _hasMoreData = newProperties.length == AppConstants.pageSize;
 
+      // Enriquecer propiedades con extras del VPS (cuarto útil, etc.)
+      await _enrichWithExtras();
+
       // Guardar en caché sólo después de completar la primera página (ya en _properties) o en refresh.
       // _currentPage se incrementó, así que cuando era página 1 ahora vale 2.
       if (_currentPage == 2) {
@@ -154,7 +158,14 @@ class PropertyProvider extends ChangeNotifier {
 
       // Siempre traer detalle completo desde la API (short=false incluye galerías).
       try {
-        final detailedProperty = await _apiService.getPropertyById(id);
+        var detailedProperty = await _apiService.getPropertyById(id);
+
+        // Preservar extras del VPS (hasStoreroom, etc.) que WASI no tiene.
+        if (localProperty != null && localProperty.hasStoreroom != null) {
+          detailedProperty = detailedProperty.copyWith(
+            hasStoreroom: detailedProperty.hasStoreroom ?? localProperty.hasStoreroom,
+          );
+        }
 
         // Actualizar la entrada local con los datos completos.
         if (localIndex != -1) {
@@ -219,6 +230,27 @@ class PropertyProvider extends ChangeNotifier {
   void dispose() {
     _searchDebounceTimer?.cancel();
     super.dispose();
+  }
+
+  /// Enriquece las propiedades actuales con extras del VPS (cuarto útil, etc.)
+  Future<void> _enrichWithExtras() async {
+    try {
+      final wasiCodes = _properties.map((p) => p.id).where((id) => id.isNotEmpty).toList();
+      if (wasiCodes.isEmpty) return;
+
+      final extras = await ApiService.getPropertyExtras(wasiCodes);
+      if (extras.isEmpty) return;
+
+      for (int i = 0; i < _properties.length; i++) {
+        final code = _properties[i].id;
+        if (extras.containsKey(code)) {
+          _properties[i] = _properties[i].copyWith(hasStoreroom: extras[code]);
+        }
+      }
+      debugPrint('✅ Propiedades enriquecidas con extras: ${extras.length} resultados');
+    } catch (e) {
+      debugPrint('⚠️ No se pudieron obtener extras de propiedades: $e');
+    }
   }
 
   void _setLoading(bool loading) {

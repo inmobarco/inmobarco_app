@@ -275,24 +275,27 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
               ),
               
               // Actions
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancelar'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _applyFilters,
-                        child: const Text('Aplicar filtros'),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _applyFilters,
+                          child: const Text('Aplicar filtros'),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -526,18 +529,8 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
   }
 
   void _clearFilters() {
-    setState(() {
-      _selectedMinCuartos = null;
-      _selectedMinBanos = null;
-      _selectedMinGarages = null;
-      _selectedCiudad = null;
-      _forRent = null;
-      _forSale = null;
-      _minPriceController.clear();
-      _maxPriceController.clear();
-      _minAreaController.clear();
-      _ciudadController.clear(); // Limpiar también el campo de ciudad
-    });
+    context.read<PropertyProvider>().updateFilter(PropertyFilter());
+    Navigator.pop(context);
   }
 
   void _applyFilters() {

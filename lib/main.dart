@@ -31,6 +31,14 @@ void main() async {
   final cacheService = CacheService();
   final syncService = SyncService(notificationService: notificationService);
 
+  // Verificar versión: si cambió, limpiar caché
+  final cachedVersion = await cacheService.getAppVersion();
+  if (cachedVersion != AppConstants.appVersion) {
+    debugPrint('🔄 Versión cambió: $cachedVersion → ${AppConstants.appVersion}. Limpiando caché...');
+    await cacheService.clearAllCache();
+    await cacheService.saveAppVersion(AppConstants.appVersion);
+  }
+
   // Inicializar datos globales (ciudades, etc.)
   await globalDataService.initialize();
 

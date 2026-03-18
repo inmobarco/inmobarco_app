@@ -10,6 +10,7 @@ import '../widgets/cache_info_dialog.dart';
 import 'property_list_screen.dart';
 import 'calendar_screen.dart';
 import 'login_screen.dart';
+import 'permissions_screen.dart';
 
 /// Pantalla principal de la aplicación.
 /// 
@@ -262,6 +263,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: const Text('Ver y limpiar datos en caché'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showCacheInfo(context),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Sección de Permisos
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.security),
+                title: const Text('Permisos de la App'),
+                subtitle: const Text('Ver y gestionar permisos'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PermissionsScreen()),
+                ),
               ),
             ),
             const SizedBox(height: 12),
