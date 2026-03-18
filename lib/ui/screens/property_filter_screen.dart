@@ -6,6 +6,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/global_data_service.dart';
+import '../../data/services/wasi_api_service.dart';
 
 class PropertyFilterScreen extends StatefulWidget {
   const PropertyFilterScreen({super.key});
@@ -26,6 +27,11 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
   int? _selectedMinBanos;
   int? _selectedMinGarages;
   String? _selectedCiudad;
+  String? _selectedCityId;
+  String? _selectedZoneId;
+  String? _selectedPropertyTypeId;
+  List<Map<String, dynamic>> _zones = [];
+  bool _loadingZones = false;
   bool? _forRent;
   bool? _forSale;
 
@@ -61,6 +67,8 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
     _selectedMinBanos = _currentFilter.minBanos;
     _selectedCiudad = _currentFilter.municipio;
     _selectedMinGarages = _currentFilter.minGarages;
+    _selectedZoneId = _currentFilter.idZone;
+    _selectedPropertyTypeId = _currentFilter.idPropertyType;
     _forRent = _currentFilter.forRent;
     _forSale = _currentFilter.forSale;
 
@@ -79,6 +87,37 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
     // Inicializar el controlador de ciudad
     if (_currentFilter.municipio != null) {
       _ciudadController.text = _currentFilter.municipio!;
+      // Resolver city ID para cargar zonas
+      final globalCities = AppConstants.filterAllowedCities(_globalData.cities);
+      final match = globalCities.firstWhere(
+        (c) => c['name']?.toString() == _currentFilter.municipio,
+        orElse: () => <String, dynamic>{},
+      );
+      _selectedCityId = match['id']?.toString();
+      if (_selectedCityId != null) _loadZones(_selectedCityId!);
+    }
+  }
+
+  Future<void> _loadZones(String cityId) async {
+    if (cityId.isEmpty) return;
+    setState(() {
+      _loadingZones = true;
+      _zones = [];
+    });
+    try {
+      final api = WasiApiService(
+        apiToken: AppConstants.wasiApiToken,
+        companyId: AppConstants.wasiApiId,
+      );
+      _zones = await api.getZonesByCity(cityId);
+      if (_selectedZoneId != null &&
+          !_zones.any((z) => z['id'] == _selectedZoneId)) {
+        _selectedZoneId = null;
+      }
+    } catch (e) {
+      debugPrint('Error cargando zonas en filtros: $e');
+    } finally {
+      if (mounted) setState(() => _loadingZones = false);
     }
   }
 
@@ -237,11 +276,24 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                         _selectedCiudad != null,
                         () => setState(() {
                           _selectedCiudad = null;
-                          _ciudadController.clear(); // Limpiar también el controlador
+                          _selectedCityId = null;
+                          _selectedZoneId = null;
+                          _zones = [];
+                          _ciudadController.clear();
                         }),
                       ),
                       _buildCiudadDropdown(),
-                      
+
+                      const SizedBox(height: 24),
+
+                      // Barrio / Zona
+                      _buildSectionTitleWithClear(
+                        'Barrio / Zona',
+                        _selectedZoneId != null,
+                        () => setState(() => _selectedZoneId = null),
+                      ),
+                      _buildZoneDropdown(),
+
                       const SizedBox(height: 24),
                       
                       // Área
@@ -268,6 +320,16 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
                         ],
                       ),
                       
+                      const SizedBox(height: 24),
+
+                      // Tipo de inmueble
+                      _buildSectionTitleWithClear(
+                        'Tipo de inmueble',
+                        _selectedPropertyTypeId != null,
+                        () => setState(() => _selectedPropertyTypeId = null),
+                      ),
+                      _buildPropertyTypeDropdown(),
+
                       SizedBox(height: MediaQuery.of(context).size.height * 0.4),
                     ],
                   ),
@@ -516,12 +578,116 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
           onChanged: (value) {
             setState(() {
               _selectedCiudad = value;
+              _selectedZoneId = null;
+              _zones = [];
               if (value == null || value.isEmpty) {
                 _ciudadController.clear();
+                _selectedCityId = null;
               } else {
                 _ciudadController.text = value;
+                final match = globalCities.firstWhere(
+                  (c) => c['name']?.toString() == value,
+                  orElse: () => <String, dynamic>{},
+                );
+                _selectedCityId = match['id']?.toString();
+                if (_selectedCityId != null) _loadZones(_selectedCityId!);
               }
             });
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildZoneDropdown() {
+    if (_selectedCityId == null) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.textColor2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Seleccione ciudad primero',
+          style: TextStyle(color: AppColors.textColor2, fontSize: 14),
+        ),
+      );
+    }
+    if (_loadingZones) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.textColor2),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16, height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryColor),
+            ),
+            SizedBox(width: 12),
+            Text('Cargando barrios...'),
+          ],
+        ),
+      );
+    }
+    return InputDecorator(
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        labelText: 'Seleccione barrio',
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedZoneId,
+          hint: const Text('Todos los barrios'),
+          items: _zones
+              .map(
+                (z) => DropdownMenuItem<String>(
+                  value: z['id']?.toString(),
+                  child: Text(z['name']?.toString() ?? ''),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            setState(() => _selectedZoneId = value);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPropertyTypeDropdown() {
+    final enabledTypes = AppConstants.allPropertyTypes
+        .where((t) => AppConstants.enabledPropertyTypeIds.contains(t['id']))
+        .toList();
+
+    return InputDecorator(
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        labelText: 'Tipo de inmueble',
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: _selectedPropertyTypeId,
+          hint: const Text('Todos los tipos'),
+          items: enabledTypes
+              .map(
+                (t) => DropdownMenuItem<String>(
+                  value: t['id'],
+                  child: Text(t['label'] ?? ''),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            setState(() => _selectedPropertyTypeId = value);
           },
         ),
       ),
@@ -545,6 +711,8 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
           ? double.tryParse(_maxPriceController.text.replaceAll(',', ''))
           : null,
       municipio: _selectedCiudad,
+      idZone: _selectedZoneId,
+      idPropertyType: _selectedPropertyTypeId,
       minArea: _minAreaController.text.isNotEmpty
           ? double.tryParse(_minAreaController.text)
           : null,

@@ -8,7 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import 'property_detail_screen.dart';
 import 'property_filter_screen.dart';
-import 'add_apartment_screen.dart';
+import 'add_property_screen.dart';
 
 /// Widget que muestra la lista de propiedades con búsqueda y filtros.
 /// 
@@ -77,15 +77,15 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Botón de nuevo apartamento - solo si está logueado
+          // Botón de nueva propiedad - solo si está logueado
           FloatingActionButton(
-            heroTag: 'add_apartment_fab',
+            heroTag: 'add_property_fab',
             backgroundColor: AppColors.primaryColor,
             onPressed: () async {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const AddApartmentScreen(),
+                  builder: (_) => const AddPropertyScreen(),
                 ),
               );
             },
@@ -214,7 +214,7 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
           return TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Buscar por número de registro...',
+              hintText: 'Buscar por referencia...',
               prefixIcon: const Icon(Icons.search, color: AppColors.textColor2),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(

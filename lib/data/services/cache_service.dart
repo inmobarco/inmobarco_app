@@ -10,7 +10,7 @@ class CacheService {
   static const String _lastUpdateKey = 'last_update_timestamp';
   static const String _filterKey = 'cached_filter';
   static const String _propertiesFileName = 'properties_cache.json'; // Archivo persistente para búsquedas
-  static const String _addApartmentDraftFileName = 'add_apartment_draft.json'; // Borrador formulario nuevo apartamento
+  static const String _addPropertyDraftFileName = 'add_property_draft.json'; // Borrador formulario nueva propiedad
   static const String _userProfileFileName = 'user_profile.json';
   static const String _authSessionFileName = 'auth_session.json'; // Sesión de autenticación
   static const String _appVersionKey = 'cached_app_version';
@@ -193,21 +193,21 @@ class CacheService {
     }
   }
 
-  // ================== Borrador formulario Agregar Apartamento ==================
-  Future<void> saveAddApartmentDraft(Map<String, dynamic> data) async {
+  // ================== Borrador formulario Agregar Propiedad ==================
+  Future<void> saveAddPropertyDraft(Map<String, dynamic> data) async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      final file = File('${dir.path}/$_addPropertyDraftFileName');
       await file.writeAsString(jsonEncode(data), flush: true);
     } catch (e) {
       debugPrint('⚠️ No se pudo guardar borrador de apartamento: $e');
     }
   }
 
-  Future<Map<String, dynamic>?> loadAddApartmentDraft() async {
+  Future<Map<String, dynamic>?> loadAddPropertyDraft() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      final file = File('${dir.path}/$_addPropertyDraftFileName');
       if (!await file.exists()) return null;
       final content = await file.readAsString();
       if (content.trim().isEmpty) return null;
@@ -218,10 +218,10 @@ class CacheService {
     }
   }
 
-  Future<void> clearAddApartmentDraft() async {
+  Future<void> clearAddPropertyDraft() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_addApartmentDraftFileName');
+      final file = File('${dir.path}/$_addPropertyDraftFileName');
       if (await file.exists()) await file.delete();
     } catch (e) {
       debugPrint('⚠️ No se pudo borrar borrador de apartamento: $e');
@@ -325,7 +325,7 @@ class CacheService {
       final dir = await getApplicationDocumentsDirectory();
       final fileNames = [
         _propertiesFileName,
-        _addApartmentDraftFileName,
+        _addPropertyDraftFileName,
         _userProfileFileName,
       ];
       for (final name in fileNames) {
@@ -355,7 +355,7 @@ class CacheService {
       final files = <String, int>{};
       final fileNames = [
         _propertiesFileName,
-        _addApartmentDraftFileName,
+        _addPropertyDraftFileName,
         _userProfileFileName,
         _authSessionFileName,
       ];

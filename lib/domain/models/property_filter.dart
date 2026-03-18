@@ -5,6 +5,8 @@ class PropertyFilter {
   final double? minPrecio;
   final double? maxPrecio;
   final String? municipio;
+  final String? idZone;
+  final String? idPropertyType;
   final double? minArea;
   final bool? forRent;
   final bool? forSale;
@@ -15,10 +17,12 @@ class PropertyFilter {
     this.minPrecio,
     this.maxPrecio,
     this.municipio,
+    this.idZone,
+    this.idPropertyType,
     this.minArea,
     this.forRent,
     this.forSale,
-    this.minGarages
+    this.minGarages,
   });
 
   PropertyFilter copyWith({
@@ -28,10 +32,14 @@ class PropertyFilter {
     double? minPrecio,
     double? maxPrecio,
     String? municipio,
+    String? idZone,
+    String? idPropertyType,
     double? minArea,
     bool? forRent,
     bool? forSale,
     bool clearMunicipio = false,
+    bool clearIdZone = false,
+    bool clearIdPropertyType = false,
   }) {
     return PropertyFilter(
       minCuartos: minCuartos ?? this.minCuartos,
@@ -40,6 +48,8 @@ class PropertyFilter {
       minPrecio: minPrecio ?? this.minPrecio,
       maxPrecio: maxPrecio ?? this.maxPrecio,
       municipio: clearMunicipio ? null : (municipio ?? this.municipio),
+      idZone: clearIdZone ? null : (idZone ?? this.idZone),
+      idPropertyType: clearIdPropertyType ? null : (idPropertyType ?? this.idPropertyType),
       forRent: forRent ?? this.forRent,
       forSale: forSale ?? this.forSale,
       minArea: minArea ?? this.minArea,
@@ -52,6 +62,8 @@ class PropertyFilter {
         minPrecio != null ||
         maxPrecio != null ||
         municipio != null ||
+        idZone != null ||
+        idPropertyType != null ||
         minArea != null ||
         forRent != null ||
         forSale != null ||
@@ -69,6 +81,8 @@ class PropertyFilter {
       'min_precio': minPrecio,
       'max_precio': maxPrecio,
       'municipio': municipio,
+      'id_zone': idZone,
+      'id_property_type': idPropertyType,
       'min_area': minArea,
       'for_rent': forRent,
       'for_sale': forSale,

@@ -1,7 +1,7 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
-  static const String appVersion = '1.8.5.5';
+  static const String appVersion = '1.8.6';
   
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';
@@ -60,6 +60,57 @@ class AppConstants {
         .toList();
   }
   
+  // Property types
+  static const List<Map<String, String>> allPropertyTypes = [
+    {'id': '1', 'label': 'Casa', 'acronym': 'CS'},
+    {'id': '2', 'label': 'Apartamento', 'acronym': 'AP'},
+    {'id': '3', 'label': 'Local comercial', 'acronym': 'LC'},
+    {'id': '4', 'label': 'Oficina', 'acronym': 'OF'},
+    {'id': '5', 'label': 'Lote / Terreno', 'acronym': 'LT'},
+    {'id': '6', 'label': 'Lote Comercial', 'acronym': 'LCO'},
+    {'id': '7', 'label': 'Finca', 'acronym': 'FI'},
+    {'id': '8', 'label': 'Bodega', 'acronym': 'BG'},
+    {'id': '10', 'label': 'Chalet', 'acronym': 'CH'},
+    {'id': '11', 'label': 'Casa de Campo', 'acronym': 'CC'},
+    {'id': '12', 'label': 'Hoteles', 'acronym': 'HT'},
+    {'id': '13', 'label': 'Finca - Hoteles', 'acronym': 'FH'},
+    {'id': '14', 'label': 'Aparta-Estudio', 'acronym': 'AE'},
+    {'id': '15', 'label': 'Consultorio', 'acronym': 'CN'},
+    {'id': '16', 'label': 'Edificio', 'acronym': 'ED'},
+    {'id': '17', 'label': 'Lote de Playa', 'acronym': 'LP'},
+    {'id': '18', 'label': 'Hostal', 'acronym': 'HS'},
+    {'id': '19', 'label': 'Condominio', 'acronym': 'CM'},
+    {'id': '20', 'label': 'Duplex', 'acronym': 'DX'},
+    {'id': '21', 'label': 'Atico', 'acronym': 'AT'},
+    {'id': '22', 'label': 'Bungalow', 'acronym': 'BN'},
+    {'id': '23', 'label': 'Galpón Industrial', 'acronym': 'GI'},
+    {'id': '24', 'label': 'Casa de Playa', 'acronym': 'CP'},
+    {'id': '25', 'label': 'Piso', 'acronym': 'PS'},
+    {'id': '26', 'label': 'Garaje', 'acronym': 'GJ'},
+    {'id': '27', 'label': 'Cortijo', 'acronym': 'CJ'},
+    {'id': '28', 'label': 'Cabañas', 'acronym': 'CB'},
+    {'id': '29', 'label': 'Isla', 'acronym': 'IS'},
+    {'id': '30', 'label': 'Nave Industrial', 'acronym': 'NI'},
+    {'id': '31', 'label': 'Campos, Chacras y Quintas', 'acronym': 'CQ'},
+    {'id': '32', 'label': 'Terreno', 'acronym': 'TR'},
+  ];
+
+  static const Set<String> enabledPropertyTypeIds = {'1', '2', '3', '4', '14'};
+
+  // City center coordinates (lat, lng) for map picker default position
+  static const Map<String, List<double>> cityCenterCoordinates = {
+    '496': [6.2442, -75.5812],  // Medellín
+    '291': [6.1714, -75.5867],  // Envigado
+    '698': [6.1517, -75.6167],  // Sabaneta
+    '416': [6.1589, -75.6303],  // La Estrella
+    '389': [6.1681, -75.5983],  // Itagüí
+    '89':  [6.3383, -75.5511],  // Bello
+  };
+
+  // Default coordinates (Medellín center)
+  static const double defaultLatitude = 6.2442;
+  static const double defaultLongitude = -75.5812;
+
   // Share
   static String getPropertyShareUrl(String codigo) {
     return '$baseWebUrl/?id=$codigo';

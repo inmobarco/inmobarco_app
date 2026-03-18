@@ -282,6 +282,14 @@ class WasiApiService {
       queryParams['id_city'] = id;
     }
 
+    if (filter.idZone != null && filter.idZone!.isNotEmpty) {
+      queryParams['id_zone'] = filter.idZone;
+    }
+
+    if (filter.idPropertyType != null && filter.idPropertyType!.isNotEmpty) {
+      queryParams['id_property_type'] = filter.idPropertyType;
+    }
+
     if (filter.forRent != null) {
       queryParams['for_rent'] = filter.forRent;
     }

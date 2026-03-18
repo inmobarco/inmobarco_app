@@ -77,26 +77,26 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<void> saveAddApartmentDraft(Map<String, dynamic>? data) =>
+  _i3.Future<void> saveAddPropertyDraft(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
-            Invocation.method(#saveAddApartmentDraft, [data]),
+            Invocation.method(#saveAddPropertyDraft, [data]),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
           as _i3.Future<void>);
 
   @override
-  _i3.Future<Map<String, dynamic>?> loadAddApartmentDraft() =>
+  _i3.Future<Map<String, dynamic>?> loadAddPropertyDraft() =>
       (super.noSuchMethod(
-            Invocation.method(#loadAddApartmentDraft, []),
+            Invocation.method(#loadAddPropertyDraft, []),
             returnValue: _i3.Future<Map<String, dynamic>?>.value(),
           )
           as _i3.Future<Map<String, dynamic>?>);
 
   @override
-  _i3.Future<void> clearAddApartmentDraft() =>
+  _i3.Future<void> clearAddPropertyDraft() =>
       (super.noSuchMethod(
-            Invocation.method(#clearAddApartmentDraft, []),
+            Invocation.method(#clearAddPropertyDraft, []),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
@@ -149,6 +149,32 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
   _i3.Future<void> clearAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#clearAuthSession, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> saveAppVersion(String? version) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveAppVersion, [version]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<String?> getAppVersion() =>
+      (super.noSuchMethod(
+            Invocation.method(#getAppVersion, []),
+            returnValue: _i3.Future<String?>.value(),
+          )
+          as _i3.Future<String?>);
+
+  @override
+  _i3.Future<void> clearAllCache() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearAllCache, []),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
