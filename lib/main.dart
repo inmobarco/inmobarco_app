@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/encription.dart';
@@ -118,6 +119,15 @@ class InmobarcoApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         home: const HomeScreen(),
         debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          return DefaultTextStyle(
+            style: GoogleFonts.quicksand(
+              fontWeight: AppTheme.defaultFontWeight,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            child: child!,
+          );
+        },
       ),
     );
   }

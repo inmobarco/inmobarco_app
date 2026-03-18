@@ -22,6 +22,8 @@ class Apartment {
   final String coordenadas;
   final List<Map<String, dynamic>> caracteristicas;
   final bool? hasStoreroom;
+  final bool forRent;
+  final bool forSale;
 
   Apartment({
     required this.id,
@@ -47,6 +49,8 @@ class Apartment {
     required this.coordenadas,
     required this.caracteristicas,
     this.hasStoreroom,
+    this.forRent = false,
+    this.forSale = false,
   });
 
   factory Apartment.fromJson(Map<String, dynamic> json) {
@@ -77,6 +81,8 @@ class Apartment {
         json['caracteristicas']?.map((x) => Map<String, dynamic>.from(x)) ?? []
       ),
       hasStoreroom: json['hasStoreroom'] as bool?,
+      forRent: json['forRent'] == true,
+      forSale: json['forSale'] == true,
     );
   }
 
@@ -89,13 +95,13 @@ class Apartment {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]},',
     )}';
-    if (rentPrice > 0 && salePrice > 0) {
+    if (forRent && forSale && rentPrice > 0 && salePrice > 0) {
       return '$formatedRent / $formatedSale';
     }
-    if (rentPrice > 0) {
+    if (forRent && rentPrice > 0) {
       return formatedRent;
     }
-    if (salePrice > 0) {
+    if (forSale && salePrice > 0) {
       return formatedSale;
     }
     return '';
@@ -128,6 +134,8 @@ class Apartment {
     String? coordenadas,
     List<Map<String, dynamic>>? caracteristicas,
     bool? hasStoreroom,
+    bool? forRent,
+    bool? forSale,
   }) {
     return Apartment(
       id: id ?? this.id,
@@ -153,6 +161,8 @@ class Apartment {
       coordenadas: coordenadas ?? this.coordenadas,
       caracteristicas: caracteristicas ?? this.caracteristicas,
       hasStoreroom: hasStoreroom ?? this.hasStoreroom,
+      forRent: forRent ?? this.forRent,
+      forSale: forSale ?? this.forSale,
     );
   }
 
@@ -183,6 +193,8 @@ class Apartment {
       'coordenadas': coordenadas,
       'caracteristicas': caracteristicas,
       'hasStoreroom': hasStoreroom,
+      'forRent': forRent,
+      'forSale': forSale,
     };
   }
 }

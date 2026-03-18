@@ -458,6 +458,8 @@ class WasiApiService {
         departamento: region,
         coordenadas: coordenadas,
         caracteristicas: caracteristicas,
+        forRent: json['for_rent'] == true || json['for_rent'] == 'true',
+        forSale: json['for_sale'] == true || json['for_sale'] == 'true',
       );
     } catch (e) {
       debugPrint('Error mapeando propiedad de WASI: $e');

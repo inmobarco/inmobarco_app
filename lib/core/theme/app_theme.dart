@@ -155,6 +155,16 @@ class AppTheme {
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
+          labelLarge: TextStyle(
+            color: AppColors.textColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          labelMedium: TextStyle(
+            color: AppColors.textColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
           labelSmall: TextStyle(
             color: AppColors.textColor2,
             fontSize: 11,
@@ -171,9 +181,14 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.backgroundLevel2,
         selectedColor: AppColors.secondaryColor,
-        labelStyle: const TextStyle(color: AppColors.textColor, fontSize: 13),
+        labelStyle: const TextStyle(color: AppColors.textColor, fontSize: 13, fontWeight: FontWeight.w600),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
+
+  /// Peso base para todo texto en la app.
+  /// Usar en el builder de MaterialApp para garantizar que incluso
+  /// `TextStyle(fontSize: X)` sin fontWeight explícito herede w600.
+  static const FontWeight defaultFontWeight = FontWeight.w600;
 }
