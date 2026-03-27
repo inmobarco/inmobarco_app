@@ -72,11 +72,11 @@ class WebhookResult {
 }
 
 class WebhookService {
-  static const String _webhookUrl =
-      'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/wasi';
+  static String get _webhookUrl =>
+      '${AppConstants.webhookBaseUrl}/webhook/wasi';
 
-  static const String _deleteWebhookUrl =
-      'https://automa-inmobarco-n8n.druysh.easypanel.host/webhook/ap-delete';
+  static String get _deleteWebhookUrl =>
+      '${AppConstants.webhookBaseUrl}/webhook/ap-delete';
 
   static int estimatePayloadSizeBytes(Map<String, dynamic> data) {
     try {

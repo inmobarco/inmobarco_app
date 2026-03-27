@@ -70,14 +70,8 @@ class PropertyCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Precio
-                  Text(
-                    apartment.priceFormatted,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  // Precio y tipo de negocio
+                  _buildPriceSection(context),
                   
                   const SizedBox(height: 8),
                   
@@ -227,6 +221,74 @@ class PropertyCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceSection(BuildContext context) {
+    final priceStyle = Theme.of(context).textTheme.headlineSmall?.copyWith(
+      color: AppColors.primaryColor,
+      fontWeight: FontWeight.bold,
+    );
+
+    String formatPrice(double price) {
+      return '\$${price.toStringAsFixed(0).replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (Match m) => '${m[1]},',
+      )}';
+    }
+
+    final showRent = apartment.forRent && apartment.rentPrice > 0;
+    final showSale = apartment.forSale && apartment.salePrice > 0;
+
+    if (showRent && showSale) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(formatPrice(apartment.rentPrice), style: priceStyle),
+              const SizedBox(width: 8),
+              _buildBusinessTag('Alquiler'),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(formatPrice(apartment.salePrice), style: priceStyle),
+              const SizedBox(width: 8),
+              _buildBusinessTag('Venta'),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Text(apartment.priceFormatted, style: priceStyle),
+        if (showRent || showSale) ...[
+          const SizedBox(width: 8),
+          _buildBusinessTag(showRent ? 'Alquiler' : 'Venta'),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildBusinessTag(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primaryColor.withValues(alpha: 0.1),
+        borderRadius: AppTheme.badgeBorderRadius,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.primaryColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

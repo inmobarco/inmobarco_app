@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/app_constants.dart';
 import '../../domain/models/user.dart';
 
 /// Servicio de autenticación contra el backend
 class AuthService {
-  static const String _baseUrl = 'http://194.163.147.243:8080';
+  static String get _baseUrl => AppConstants.apiBaseUrl;
   static const String _loginEndpoint = '/login';
 
   static final Dio _dio = Dio(BaseOptions(

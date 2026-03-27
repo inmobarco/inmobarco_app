@@ -17,6 +17,8 @@ class PhotosSection extends StatelessWidget {
   final VoidCallback onOpenPhotosManager;
   final VoidCallback onPickServiceRoomPhoto;
   final VoidCallback onPickParkingLotPhoto;
+  final VoidCallback onClearServiceRoomPhoto;
+  final VoidCallback onClearParkingLotPhoto;
 
   const PhotosSection({
     super.key,
@@ -32,6 +34,8 @@ class PhotosSection extends StatelessWidget {
     required this.onOpenPhotosManager,
     required this.onPickServiceRoomPhoto,
     required this.onPickParkingLotPhoto,
+    required this.onClearServiceRoomPhoto,
+    required this.onClearParkingLotPhoto,
   });
 
   @override
@@ -117,6 +121,17 @@ class PhotosSection extends StatelessWidget {
                     ),
                     onPressed: isSubmitting ? null : onPickServiceRoomPhoto,
                   ),
+                  if (serviceRoomPhotoBytes != null) ...[
+                    const SizedBox(height: 4),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                      label: const Text('Limpiar foto', style: TextStyle(color: AppColors.error)),
+                      onPressed: isSubmitting ? null : onClearServiceRoomPhoto,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     serviceRoomPhotoBytes == null
@@ -153,6 +168,17 @@ class PhotosSection extends StatelessWidget {
                     ),
                     onPressed: isSubmitting ? null : onPickParkingLotPhoto,
                   ),
+                  if (parkingLotPhotoBytes != null) ...[
+                    const SizedBox(height: 4),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                      label: const Text('Limpiar foto', style: TextStyle(color: AppColors.error)),
+                      onPressed: isSubmitting ? null : onClearParkingLotPhoto,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 4),
                   Text(
                     parkingLotPhotoBytes == null

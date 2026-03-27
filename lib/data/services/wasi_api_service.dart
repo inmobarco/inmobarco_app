@@ -460,6 +460,7 @@ class WasiApiService {
         caracteristicas: caracteristicas,
         forRent: json['for_rent'] == true || json['for_rent'] == 'true',
         forSale: json['for_sale'] == true || json['for_sale'] == 'true',
+        hasStoreroom: (int.tryParse(json['tv_share']?.toString() ?? '0') ?? 0) >= 1,
       );
     } catch (e) {
       debugPrint('Error mapeando propiedad de WASI: $e');

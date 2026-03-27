@@ -1,11 +1,15 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
-  static const String appVersion = '1.8.6';
+  /// Versión de la app, inicializada desde pubspec.yaml vía package_info_plus.
+  /// Se carga en main() antes de runApp.
+  static String appVersion = '0.0.0';
   
   // URLs - loaded from .env
   static String get baseWebUrl => dotenv.env['INMOBARCO_WEB_BASE_URL'] ?? 'https://ficha.inmobarco.com';
   static String get wasiApiBaseUrl => dotenv.env['WASI_API_URL'] ?? 'https://api.wasi.co/v1';
+  static String get apiBaseUrl => dotenv.env['INMOBARCO_API_URL'] ?? 'http://194.163.147.243:8080';
+  static String get webhookBaseUrl => dotenv.env['INMOBARCO_WEBHOOK_URL'] ?? 'https://automa-inmobarco-n8n.druysh.easypanel.host';
   
   // API Configuration - loaded from .env
   static String get wasiApiToken => dotenv.env['WASI_API_TOKEN'] ?? '';

@@ -1646,6 +1646,20 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _showSnackBarMessage('Seleccione un barrio');
       return;
     }
+    // Auto-rellenar con 'si' si hay foto pero el campo está vacío
+    if (_serviceRoomPhotoBytes != null &&
+        _serviceRoomController.text.trim().isEmpty) {
+      setState(() => _serviceRoomController.text = 'si');
+    }
+    if (_parkingLotPhotoBytes != null &&
+        _parkingLotController.text.trim().isEmpty) {
+      setState(() => _parkingLotController.text = 'si');
+    }
+    // Auto-ajustar garages a 1 si hay foto de parqueo y estaba en 0
+    if (_parkingLotPhotoBytes != null && (int.tryParse(_garages) ?? 0) == 0) {
+      setState(() => _garages = '1');
+    }
+
     if (_serviceRoomController.text.trim().isNotEmpty &&
         _serviceRoomPhotoBytes == null) {
       _showSnackBarMessage(
@@ -1656,6 +1670,11 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         _parkingLotPhotoBytes == null) {
       _showSnackBarMessage(
           'Si ingresa información del parqueo, debe agregar su foto.');
+      return;
+    }
+    if ((int.tryParse(_garages) ?? 0) >= 1 && _parkingLotPhotoBytes == null) {
+      _showSnackBarMessage(
+          'Si hay parqueo, debe agregar la foto del parqueo.');
       return;
     }
 
@@ -1984,6 +2003,14 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         onOpenPhotosManager: _openPhotosManager,
                         onPickServiceRoomPhoto: _pickServiceRoomPhoto,
                         onPickParkingLotPhoto: _pickParkingLotPhoto,
+                        onClearServiceRoomPhoto: () => setState(() {
+                          _serviceRoomPhotoBytes = null;
+                          _serviceRoomPhotoFileName = null;
+                        }),
+                        onClearParkingLotPhoto: () => setState(() {
+                          _parkingLotPhotoBytes = null;
+                          _parkingLotPhotoFileName = null;
+                        }),
                       ),
                       const SizedBox(height: 16),
                       PrivateDataSection(

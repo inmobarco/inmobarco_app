@@ -50,6 +50,7 @@ dependencies:
   google_fonts: ^6.3.2
   flutter_map: ^7.0.2         # Mapa OpenStreetMap
   latlong2: ^0.9.1            # Coordenadas geográficas
+  package_info_plus: ^9.0.0
 
 
 dev_dependencies:
