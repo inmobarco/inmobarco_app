@@ -402,31 +402,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               ],
               
-              // Propiedad (si existe)
-              if (appointment.propertyAddress != null) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on,
-                      size: 16,
-                      color: AppColors.textColor2,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        appointment.propertyAddress!,
-                        style: const TextStyle(
-                          color: AppColors.textColor2,
-                          fontSize: 14,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -569,31 +544,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _deleteAppointment(Appointment appointment) async {
     Navigator.pop(context); // Cerrar el bottom sheet
-    
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar cita'),
-        content: Text('¿Estás seguro de que deseas eliminar "${appointment.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.error,
-            ),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+
+    final feedback = await _showFeedbackDialog(
+      title: 'Eliminar cita',
+      description: '¿Estás seguro de que deseas eliminar "${appointment.title}"?',
+      confirmLabel: 'Eliminar',
+      confirmColor: AppColors.error,
+      icon: Icons.delete_outline,
+      iconColor: AppColors.error,
     );
 
-    if (confirm == true && mounted) {
-      context.read<AppointmentProvider>().deleteAppointment(appointment.id);
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (feedback != null && mounted) {
+      final provider = context.read<AppointmentProvider>();
+      final messenger = ScaffoldMessenger.of(context);
+      // Guardar retroalimentación en notas antes de eliminar si se proporcionó
+      if (feedback.isNotEmpty) {
+        final updatedOutcome = _appendFeedback(appointment.outcome, 'Eliminada', feedback);
+        await provider.updateAppointment(
+          appointment.copyWith(outcome: updatedOutcome, updatedAt: DateTime.now()),
+        );
+      }
+      provider.deleteAppointment(appointment.id);
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Cita eliminada'),
           backgroundColor: AppColors.textColor2,
@@ -602,14 +574,148 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  void _changeAppointmentStatus(Appointment appointment, AppointmentStatus status) {
-    Navigator.pop(context); // Cerrar el bottom sheet
-    context.read<AppointmentProvider>().updateAppointmentStatus(appointment.id, status);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Estado cambiado a: ${status.displayName}'),
-        backgroundColor: Color(status.colorValue),
+  void _changeAppointmentStatus(Appointment appointment, AppointmentStatus status) async {
+    // Para completada y cancelada, pedir retroalimentación
+    if (status == AppointmentStatus.completed || status == AppointmentStatus.cancelled) {
+      Navigator.pop(context); // Cerrar el bottom sheet
+
+      final isCompleted = status == AppointmentStatus.completed;
+      final feedback = await _showFeedbackDialog(
+        title: isCompleted ? 'Completar cita' : 'Cancelar cita',
+        description: isCompleted
+            ? '¿Cómo fue la cita "${appointment.title}"?'
+            : '¿Por qué se cancela la cita "${appointment.title}"?',
+        confirmLabel: isCompleted ? 'Completar' : 'Cancelar cita',
+        confirmColor: Color(status.colorValue),
+        icon: isCompleted ? Icons.check_circle_outline : Icons.cancel_outlined,
+        iconColor: Color(status.colorValue),
+        hintText: isCompleted
+            ? 'Ej: El cliente mostró interés, se agenda segunda visita...'
+            : 'Ej: El cliente reprogramó, no hubo disponibilidad...',
+      );
+
+      if (feedback != null && mounted) {
+        final provider = context.read<AppointmentProvider>();
+        final messenger = ScaffoldMessenger.of(context);
+        if (feedback.isNotEmpty) {
+          final updatedOutcome = _appendFeedback(appointment.outcome, status.displayName, feedback);
+          await provider.updateAppointment(
+            appointment.copyWith(status: status, outcome: updatedOutcome, updatedAt: DateTime.now()),
+          );
+        } else {
+          await provider.updateAppointmentStatus(appointment.id, status);
+        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Estado cambiado a: ${status.displayName}'),
+            backgroundColor: Color(status.colorValue),
+          ),
+        );
+      }
+    } else {
+      // Para otros estados (pendiente, confirmada), cambiar directamente
+      Navigator.pop(context);
+      context.read<AppointmentProvider>().updateAppointmentStatus(appointment.id, status);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Estado cambiado a: ${status.displayName}'),
+          backgroundColor: Color(status.colorValue),
+        ),
+      );
+    }
+  }
+
+  /// Muestra un diálogo para solicitar retroalimentación/seguimiento.
+  /// Retorna el texto ingresado si se confirma, o null si se cancela.
+  Future<String?> _showFeedbackDialog({
+    required String title,
+    required String description,
+    required String confirmLabel,
+    required Color confirmColor,
+    required IconData icon,
+    required Color iconColor,
+    String hintText = 'Escribe tu seguimiento o retroalimentación...',
+  }) {
+    final controller = TextEditingController();
+
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(title, style: const TextStyle(fontSize: 18)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              description,
+              style: const TextStyle(
+                color: AppColors.textColor2,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: hintText,
+                hintStyle: TextStyle(
+                  color: AppColors.textColor2.withValues(alpha: 0.6),
+                  fontSize: 13,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: confirmColor),
+                ),
+                contentPadding: const EdgeInsets.all(12),
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Opcional: agrega seguimiento o retroalimentación',
+              style: TextStyle(
+                color: AppColors.textColor2.withValues(alpha: 0.5),
+                fontSize: 11,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: confirmColor),
+            child: Text(confirmLabel),
+          ),
+        ],
       ),
     );
+  }
+
+  /// Agrega retroalimentación al campo outcome existente.
+  String _appendFeedback(String? existing, String action, String feedback) {
+    final entry = feedback;
+    if (existing != null && existing.isNotEmpty) {
+      return '$existing\n$entry';
+    }
+    return entry;
   }
 }

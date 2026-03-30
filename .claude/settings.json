@@ -1,12 +1,13 @@
 {
   "permissions": {
+    "allow": [
+      "Read(//d/Inmobarco/Inmobarco Proyectos/inmobarco_app/assets/config/**)",
+      "Bash(grep -E \"\\\\.dart$\")"
+    ],
     "deny": [
       "Read(.env)",
       "Read(.env.local)",
       "Read(**/secrets/*)"
-    ],
-    "allow": [
-      "Read(//d/Inmobarco/Inmobarco Proyectos/inmobarco_app/assets/config/**)"
     ]
   },
   "enabledPlugins": {

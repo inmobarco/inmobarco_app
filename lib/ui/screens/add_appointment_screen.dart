@@ -27,8 +27,6 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
   final _descriptionController = TextEditingController();
   final _clientNameController = TextEditingController();
   final _clientPhoneController = TextEditingController();
-  final _propertyAddressController = TextEditingController();
-  final _notesController = TextEditingController();
 
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
@@ -48,8 +46,6 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
       _descriptionController.text = appointment.description ?? '';
       _clientNameController.text = appointment.clientName ?? '';
       _clientPhoneController.text = appointment.clientPhone ?? '';
-      _propertyAddressController.text = appointment.propertyAddress ?? '';
-      _notesController.text = appointment.notes ?? '';
       _selectedDate = appointment.dateTime;
       _selectedTime = TimeOfDay.fromDateTime(appointment.dateTime);
       _duration = appointment.duration;
@@ -66,8 +62,6 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
     _descriptionController.dispose();
     _clientNameController.dispose();
     _clientPhoneController.dispose();
-    _propertyAddressController.dispose();
-    _notesController.dispose();
     super.dispose();
   }
 
@@ -180,37 +174,6 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
                 Icons.phone,
               ),
               keyboardType: TextInputType.phone,
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Propiedad
-            _buildSectionTitle('Propiedad (Opcional)'),
-            const SizedBox(height: 12),
-            
-            TextFormField(
-              controller: _propertyAddressController,
-              decoration: _inputDecoration(
-                'Dirección de la propiedad',
-                Icons.location_on,
-                hint: 'Ej: Calle Principal #123',
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Notas
-            _buildSectionTitle('Notas Adicionales'),
-            const SizedBox(height: 12),
-            
-            TextFormField(
-              controller: _notesController,
-              decoration: _inputDecoration(
-                'Notas',
-                Icons.note,
-                hint: 'Recordatorios o información importante',
-              ),
-              maxLines: 4,
             ),
             
             const SizedBox(height: 32),
@@ -521,9 +484,10 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
     );
 
     final appointment = Appointment(
-      id: _isEditing 
-          ? widget.appointment!.id 
+      id: _isEditing
+          ? widget.appointment!.id
           : DateTime.now().millisecondsSinceEpoch.toString(),
+      serverId: _isEditing ? widget.appointment!.serverId : null,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isNotEmpty
           ? _descriptionController.text.trim()
@@ -532,18 +496,14 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
       duration: _duration,
       type: _selectedType,
       status: _isEditing ? widget.appointment!.status : AppointmentStatus.pending,
+      propertyId: _isEditing ? widget.appointment!.propertyId : null,
       clientName: _clientNameController.text.trim().isNotEmpty
           ? _clientNameController.text.trim()
           : null,
       clientPhone: _clientPhoneController.text.trim().isNotEmpty
           ? _clientPhoneController.text.trim()
           : null,
-      propertyAddress: _propertyAddressController.text.trim().isNotEmpty
-          ? _propertyAddressController.text.trim()
-          : null,
-      notes: _notesController.text.trim().isNotEmpty
-          ? _notesController.text.trim()
-          : null,
+      outcome: _isEditing ? widget.appointment!.outcome : null,
       createdAt: _isEditing ? widget.appointment!.createdAt : DateTime.now(),
       updatedAt: _isEditing ? DateTime.now() : null,
     );

@@ -119,14 +119,6 @@ class AppointmentDetailsSheet extends StatelessWidget {
                     appointment.clientPhone!,
                   ),
 
-                // Propiedad
-                if (appointment.propertyAddress != null)
-                  _buildDetailRow(
-                    Icons.location_on,
-                    'Propiedad',
-                    appointment.propertyAddress!,
-                  ),
-
                 // Descripción
                 if (appointment.description != null) ...[
                   const SizedBox(height: 12),
@@ -148,11 +140,11 @@ class AppointmentDetailsSheet extends StatelessWidget {
                   ),
                 ],
 
-                // Notas
-                if (appointment.notes != null) ...[
+                // Resultado/Seguimiento
+                if (appointment.outcome != null) ...[
                   const SizedBox(height: 12),
                   const Text(
-                    'Notas',
+                    'Seguimiento',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: AppColors.textColor2,
@@ -161,7 +153,7 @@ class AppointmentDetailsSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    appointment.notes!,
+                    appointment.outcome!,
                     style: const TextStyle(
                       color: AppColors.textColor,
                       fontSize: 14,

@@ -10,6 +10,7 @@ import '../widgets/cache_info_dialog.dart';
 import 'property_list_screen.dart';
 import 'calendar_screen.dart';
 import 'login_screen.dart';
+import 'layout_testing_screen.dart';
 import 'permissions_screen.dart';
 
 /// Pantalla principal de la aplicación.
@@ -276,6 +277,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const PermissionsScreen()),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Sección de Layout Testing
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.view_quilt),
+                title: const Text('Layout Testing'),
+                subtitle: const Text('Probar opciones de navegación'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LayoutTestingScreen()),
                 ),
               ),
             ),

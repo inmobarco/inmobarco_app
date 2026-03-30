@@ -1,5 +1,5 @@
 /// Modelo que representa una cita o evento en el calendario.
-/// 
+///
 /// Puede estar asociada a una propiedad específica y a un cliente.
 class Appointment {
   final String id;
@@ -12,10 +12,9 @@ class Appointment {
   final AppointmentType type;
   final AppointmentStatus status;
   final String? propertyId;
-  final String? propertyAddress;
   final String? clientName;
   final String? clientPhone;
-  final String? notes;
+  final String? outcome;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -29,10 +28,9 @@ class Appointment {
     this.type = AppointmentType.visit,
     this.status = AppointmentStatus.pending,
     this.propertyId,
-    this.propertyAddress,
     this.clientName,
     this.clientPhone,
-    this.notes,
+    this.outcome,
     required this.createdAt,
     this.updatedAt,
   });
@@ -48,10 +46,9 @@ class Appointment {
     AppointmentType? type,
     AppointmentStatus? status,
     String? propertyId,
-    String? propertyAddress,
     String? clientName,
     String? clientPhone,
-    String? notes,
+    String? outcome,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -65,10 +62,9 @@ class Appointment {
       type: type ?? this.type,
       status: status ?? this.status,
       propertyId: propertyId ?? this.propertyId,
-      propertyAddress: propertyAddress ?? this.propertyAddress,
       clientName: clientName ?? this.clientName,
       clientPhone: clientPhone ?? this.clientPhone,
-      notes: notes ?? this.notes,
+      outcome: outcome ?? this.outcome,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -86,10 +82,9 @@ class Appointment {
       'type': type.name,
       'status': status.name,
       'propertyId': propertyId,
-      'propertyAddress': propertyAddress,
       'clientName': clientName,
       'clientPhone': clientPhone,
-      'notes': notes,
+      'outcome': outcome,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -110,6 +105,7 @@ class Appointment {
       'client_phone': clientPhone,
       'appointment_type': type.name,
       'status': status.name,
+      if (outcome != null) 'outcome': outcome,
     };
   }
 
@@ -137,6 +133,7 @@ class Appointment {
       ),
       clientName: json['client_name'] as String?,
       clientPhone: json['client_phone'] as String?,
+      outcome: json['outcome'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String).toLocal()
           : DateTime.now(),
@@ -164,10 +161,9 @@ class Appointment {
         orElse: () => AppointmentStatus.pending,
       ),
       propertyId: json['propertyId'] as String?,
-      propertyAddress: json['propertyAddress'] as String?,
       clientName: json['clientName'] as String?,
       clientPhone: json['clientPhone'] as String?,
-      notes: json['notes'] as String?,
+      outcome: json['outcome'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: json['updatedAt'] != null 
           ? DateTime.parse(json['updatedAt'] as String) 
