@@ -182,11 +182,11 @@ class PrivateDataSection extends StatelessWidget {
             labelText: 'Correo Admin',
             border: const OutlineInputBorder(),
             filled: true,
-            fillColor: (fieldsLockedByComplex && selectedComplex?['admin_email'] != null)
+            fillColor: fieldsLockedByComplex
                 ? AppColors.gray
                 : AppColors.backgroundLevel1,
           ),
-          readOnly: fieldsLockedByComplex && selectedComplex?['admin_email'] != null,
+          readOnly: fieldsLockedByComplex,
           keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 16),
@@ -196,11 +196,11 @@ class PrivateDataSection extends StatelessWidget {
             labelText: 'Celular Admin',
             border: const OutlineInputBorder(),
             filled: true,
-            fillColor: (fieldsLockedByComplex && selectedComplex?['admin_phone'] != null)
+            fillColor: fieldsLockedByComplex
                 ? AppColors.gray
                 : AppColors.backgroundLevel1,
           ),
-          readOnly: fieldsLockedByComplex && selectedComplex?['admin_phone'] != null,
+          readOnly: fieldsLockedByComplex,
           keyboardType: TextInputType.phone,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
@@ -214,11 +214,11 @@ class PrivateDataSection extends StatelessWidget {
             labelText: 'Celular Porteria',
             border: const OutlineInputBorder(),
             filled: true,
-            fillColor: (fieldsLockedByComplex && selectedComplex?['front_desk_phone'] != null)
+            fillColor: fieldsLockedByComplex
                 ? AppColors.gray
                 : AppColors.backgroundLevel1,
           ),
-          readOnly: fieldsLockedByComplex && selectedComplex?['front_desk_phone'] != null,
+          readOnly: fieldsLockedByComplex,
           keyboardType: TextInputType.phone,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,

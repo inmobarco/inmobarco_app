@@ -7,7 +7,6 @@ class BasicInfoSection extends StatelessWidget {
   final TextEditingController apartmentNumberController;
   final TextEditingController unitNameController;
   final bool isResidentialComplex;
-  final bool isManualUnitName;
   final bool fieldsLockedByComplex;
   final bool unitNameHasError;
   final int? selectedComplexId;
@@ -19,15 +18,13 @@ class BasicInfoSection extends StatelessWidget {
   final ValueChanged<String> onPropertyTypeChanged;
   final ValueChanged<bool> onIsResidentialComplexChanged;
   final ValueChanged<Map<String, dynamic>> onComplexSelected;
-  final VoidCallback onEnableManualUnitName;
-  final VoidCallback onDisableManualUnitName;
+  final VoidCallback onCreateComplex;
 
   const BasicInfoSection({
     super.key,
     required this.apartmentNumberController,
     required this.unitNameController,
     required this.isResidentialComplex,
-    required this.isManualUnitName,
     required this.fieldsLockedByComplex,
     required this.unitNameHasError,
     required this.selectedComplexId,
@@ -39,8 +36,7 @@ class BasicInfoSection extends StatelessWidget {
     required this.onPropertyTypeChanged,
     required this.onIsResidentialComplexChanged,
     required this.onComplexSelected,
-    required this.onEnableManualUnitName,
-    required this.onDisableManualUnitName,
+    required this.onCreateComplex,
   });
 
   @override
@@ -130,85 +126,61 @@ class BasicInfoSection extends StatelessWidget {
                 ignoring: !isResidentialComplex,
                 child: Opacity(
                   opacity: isResidentialComplex ? 1.0 : 0.4,
-                  child: isManualUnitName || residentialComplexes.isEmpty
-                      ? TextFormField(
-                          controller: unitNameController,
-                          decoration: InputDecoration(
-                            labelText: 'Nombre de la unidad',
-                            border: const OutlineInputBorder(),
-                            hintText: 'Ingrese el nombre manualmente',
-                            suffixIcon: residentialComplexes.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.list, size: 20),
-                                    tooltip: 'Seleccionar de lista',
-                                    onPressed: onDisableManualUnitName,
-                                  )
-                                : null,
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                          validator: (v) {
-                            if (!isResidentialComplex) return null;
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Ingrese el nombre de la unidad';
-                            }
-                            return null;
-                          },
-                        )
-                      : InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Nombre de la unidad',
-                            border: OutlineInputBorder(
-                              borderSide: unitNameHasError
-                                  ? const BorderSide(color: AppColors.error, width: 2)
-                                  : const BorderSide(),
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Nombre de la unidad',
+                      border: OutlineInputBorder(
+                        borderSide: unitNameHasError
+                            ? const BorderSide(color: AppColors.error, width: 2)
+                            : const BorderSide(),
+                      ),
+                      enabledBorder: unitNameHasError
+                          ? const OutlineInputBorder(
+                              borderSide: BorderSide(color: AppColors.error, width: 2),
+                            )
+                          : null,
+                      errorText: unitNameHasError
+                          ? 'Seleccione una unidad residencial'
+                          : null,
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        isDense: true,
+                        value: selectedComplexId,
+                        isExpanded: true,
+                        hint: const Text('Seleccione una unidad'),
+                        items: residentialComplexes.map((complex) {
+                          return DropdownMenuItem<int>(
+                            value: complex['id'] as int,
+                            child: Text(
+                              complex['name']?.toString() ?? '',
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            enabledBorder: unitNameHasError
-                                ? const OutlineInputBorder(
-                                    borderSide: BorderSide(color: AppColors.error, width: 2),
-                                  )
-                                : null,
-                            errorText: unitNameHasError
-                                ? 'Seleccione una unidad residencial'
-                                : null,
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<int>(
-                              isDense: true,
-                              value: selectedComplexId,
-                              isExpanded: true,
-                              hint: const Text('Seleccione una unidad'),
-                              items: residentialComplexes.map((complex) {
-                                return DropdownMenuItem<int>(
-                                  value: complex['id'] as int,
-                                  child: Text(
-                                    complex['name']?.toString() ?? '',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                if (value == null) return;
-                                final complex = residentialComplexes.firstWhere(
-                                  (c) => c['id'] == value,
-                                );
-                                onComplexSelected(complex);
-                              },
-                            ),
-                          ),
-                        ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          final complex = residentialComplexes.firstWhere(
+                            (c) => c['id'] == value,
+                          );
+                          onComplexSelected(complex);
+                        },
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-            if (isResidentialComplex && !isManualUnitName && residentialComplexes.isNotEmpty)
+            if (isResidentialComplex)
               Padding(
                 padding: const EdgeInsets.only(left: 8, top: 4),
                 child: IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  tooltip: 'Ingresar nueva unidad',
+                  icon: const Icon(Icons.add, size: 20),
+                  tooltip: 'Nuevo residencial',
                   style: IconButton.styleFrom(
                     backgroundColor: AppColors.gray,
                   ),
-                  onPressed: onEnableManualUnitName,
+                  onPressed: onCreateComplex,
                 ),
               ),
           ],

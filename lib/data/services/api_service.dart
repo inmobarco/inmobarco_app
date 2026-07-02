@@ -106,11 +106,6 @@ class ApiService {
   // Residential Complexes API
   // ---------------------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-  // ---------------------------------------------------------------------------
-  // Residential Complexes API
-  // ---------------------------------------------------------------------------
-
   /// Obtiene las unidades residenciales disponibles.
   ///
   /// Retorna la lista de mapas tal como viene del servidor.
@@ -120,5 +115,31 @@ class ApiService {
     debugPrint('🏢 GET /inventory/residential-complexes → ${response.statusCode}');
     final List<dynamic> data = response.data as List<dynamic>;
     return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Crea un residencial. Obligatorios: name, address, id_city, id_zone, stratum.
+  static Future<Map<String, dynamic>> createResidentialComplex(
+      Map<String, dynamic> body) async {
+    final dio = await getInstance();
+    final response = await dio.post('/inventory/residential-complexes', data: body);
+    debugPrint('🏢 POST /inventory/residential-complexes → ${response.statusCode}');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Actualiza un residencial. Campos enviables: admin_phone, admin_email,
+  /// front_desk_phone, stratum, latitude, longitude.
+  static Future<Map<String, dynamic>> updateResidentialComplex(
+      int id, Map<String, dynamic> body) async {
+    final dio = await getInstance();
+    final response = await dio.put('/inventory/residential-complexes/$id', data: body);
+    debugPrint('🏢 PUT /inventory/residential-complexes/$id → ${response.statusCode}');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Elimina un residencial del servidor.
+  static Future<void> deleteResidentialComplex(int id) async {
+    final dio = await getInstance();
+    final response = await dio.delete('/inventory/residential-complexes/$id');
+    debugPrint('🏢 DELETE /inventory/residential-complexes/$id → ${response.statusCode}');
   }
 }

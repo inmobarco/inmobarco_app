@@ -56,7 +56,7 @@ class LocationSection extends StatelessWidget {
                   labelText: 'Ciudad',
                   border: const OutlineInputBorder(),
                   filled: true,
-                  fillColor: (fieldsLockedByComplex && selectedCityId != null)
+                  fillColor: fieldsLockedByComplex
                       ? AppColors.gray
                       : AppColors.backgroundLevel1,
                 ),
@@ -81,7 +81,7 @@ class LocationSection extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (fieldsLockedByComplex && selectedCityId != null)
+                          onChanged: fieldsLockedByComplex
                               ? null
                               : onCityChanged,
                         ),
@@ -96,7 +96,7 @@ class LocationSection extends StatelessWidget {
                   labelText: 'Zona / Barrio',
                   border: const OutlineInputBorder(),
                   filled: true,
-                  fillColor: (fieldsLockedByComplex && selectedZoneId != null)
+                  fillColor: fieldsLockedByComplex
                       ? AppColors.gray
                       : AppColors.backgroundLevel1,
                 ),
@@ -126,7 +126,7 @@ class LocationSection extends StatelessWidget {
                                 ),
                               )
                               .toList(),
-                          onChanged: (fieldsLockedByComplex && selectedZoneId != null)
+                          onChanged: fieldsLockedByComplex
                               ? null
                               : onZoneChanged,
                         ),
@@ -147,7 +147,7 @@ class LocationSection extends StatelessWidget {
                   labelText: 'Estrato',
                   border: const OutlineInputBorder(),
                   filled: true,
-                  fillColor: (fieldsLockedByComplex && selectedComplex?['stratum'] != null)
+                  fillColor: fieldsLockedByComplex
                       ? AppColors.gray
                       : AppColors.backgroundLevel1,
                 ),
@@ -159,7 +159,7 @@ class LocationSection extends StatelessWidget {
                     child: Text(value),
                   );
                 }),
-                onChanged: (fieldsLockedByComplex && selectedComplex?['stratum'] != null)
+                onChanged: fieldsLockedByComplex
                     ? null
                     : (value) {
                         if (value == null) return;
@@ -175,7 +175,7 @@ class LocationSection extends StatelessWidget {
                   labelText: 'Dirección',
                   border: const OutlineInputBorder(),
                   filled: true,
-                  fillColor: (fieldsLockedByComplex && addressController.text.isNotEmpty)
+                  fillColor: fieldsLockedByComplex
                       ? AppColors.gray
                       : AppColors.backgroundLevel1,
                 ),

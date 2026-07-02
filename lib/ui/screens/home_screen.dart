@@ -1,30 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:inmobarco_app/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-import '../../core/constants/app_constants.dart';
-import '../../data/services/sync_service.dart';
+import '../../core/theme/app_colors.dart';
 import '../providers/property_provider.dart';
-import '../providers/auth_provider.dart';
-import '../widgets/inmobarco_app_bar.dart';
-import '../widgets/cache_info_dialog.dart';
 import 'property_list_screen.dart';
 import 'calendar_screen.dart';
-import 'login_screen.dart';
-import 'layout_testing_screen.dart';
-import 'permissions_screen.dart';
+import 'clients_screen.dart';
+import 'dashboard_screen.dart';
+import 'calculators_screen.dart';
+import 'guides_screen.dart';
+import 'route_planner_screen.dart';
+import 'residentials_screen.dart';
+import 'notifications_screen.dart';
+import 'settings_screen.dart';
 
-/// Pantalla principal de la aplicación.
-/// 
-/// Contiene la estructura general de la app incluyendo:
-/// - AppBar con opciones de usuario y caché
-/// - Contenido principal (PropertyListScreen)
-/// - BottomNavigationBar con navegación
-/// 
-/// Esta pantalla está diseñada para ser extensible y permitir
-/// agregar navegación con tabs u otras secciones en el futuro.
 class HomeScreen extends StatefulWidget {
   final int initialTab;
-  
+
   const HomeScreen({super.key, this.initialTab = 0});
 
   @override
@@ -38,114 +29,126 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialTab;
-    
-    // Cargar datos iniciales
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PropertyProvider>();
-      // Solo hacer refresh si no hay propiedades cargadas desde caché
-      if (provider.properties.isEmpty) {
-        provider.refresh();
-      }
+      if (provider.properties.isEmpty) provider.refresh();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final isLoggedIn = authProvider.isLoggedIn;
-        
-        // Construir items de navegación dinámicamente
-        final navItems = <BottomNavigationBarItem>[
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_work),
-            label: 'Propiedades',
-          ),
-        ];
-        
-        if (isLoggedIn) {
-          navItems.addAll([
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month),
-              label: 'Agenda',
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Inmobarco'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
             ),
-            const BottomNavigationBarItem(
-              icon: Icon(Icons.people),
-              label: 'Clientes',
-            ),
-          ]);
-        }
-        
-        navItems.add(const BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: 'Configuración',
-        ));
-        
-        // Ajustar índice si cambia el número de tabs
-        final maxIndex = navItems.length - 1;
-        final safeIndex = _currentIndex > maxIndex ? 0 : _currentIndex;
-        
-        return Scaffold(
-          appBar: const InmobarcoAppBar(),
-          body: _buildBody(isLoggedIn, safeIndex, navItems.length),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: safeIndex,
-            onTap: _onTabTapped,
-            type: BottomNavigationBarType.fixed,
-            items: navItems,
           ),
-        );
-      },
+        ],
+      ),
+      drawer: _buildDrawer(context),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          PropertyListScreen(),
+          CalendarScreen(),
+          ResidentialsScreen(),
+          DashboardScreen(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_work), label: 'Propiedades'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Agenda'),
+          BottomNavigationBarItem(icon: Icon(Icons.apartment), label: 'Residenciales'),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+        ],
+      ),
     );
   }
 
-  Widget _buildBody(bool isLoggedIn, int index, int totalTabs) {
-    // Configuración siempre es el último tab
-    final configIndex = totalTabs - 1;
-    
-    if (index == 0) {
-      return const PropertyListScreen();
-    } else if (index == configIndex) {
-      return _buildSettingsScreen();
-    } else if (isLoggedIn) {
-      // Solo accesible si está logueado
-      if (index == 1) {
-        return const CalendarScreen();
-        //return _buildPlannerPlaceholder();
-      } else if (index == 2) {
-        return _buildClientsPlaceholder();
-      }
-    }
-    
-    return const PropertyListScreen();
-  }
-
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
-  Widget _buildClientsPlaceholder() {
-    return Center(
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.people,
-            size: 80,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
+            color: AppColors.primaryColor,
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Inmobarco',
+                  style: TextStyle(color: AppColors.pureWhite, fontSize: 22, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Herramientas del asesor',
+                  style: TextStyle(color: AppColors.pureWhite, fontSize: 13),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Clientes',
-            style: Theme.of(context).textTheme.headlineSmall,
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const SizedBox(height: 8),
+                _drawerItem(
+                  context,
+                  icon: Icons.calculate,
+                  title: 'Calculadoras',
+                  subtitle: 'Primer canon, pago propietario, comisiones',
+                  screen: const CalculatorsScreen(),
+                ),
+                _drawerItem(
+                  context,
+                  icon: Icons.checklist,
+                  title: 'Guías',
+                  subtitle: 'Checklists de visita y captación',
+                  screen: const GuidesScreen(),
+                ),
+                _drawerItem(
+                  context,
+                  icon: Icons.route,
+                  title: 'Rutero',
+                  subtitle: 'Ruta planeada del día',
+                  screen: const RoutePlannerScreen(),
+                ),
+                _drawerItem(
+                  context,
+                  icon: Icons.people,
+                  title: 'Clientes',
+                  subtitle: 'Ver y gestionar clientes',
+                  screen: const ClientsScreen(),
+                ),
+                const Divider(indent: 16, endIndent: 16),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Próximamente',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textColor2,
+          const Divider(height: 1),
+          SafeArea(
+            top: false,
+            child: ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Configuración'),
+              subtitle: const Text('Caché, permisos, versión'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
             ),
           ),
         ],
@@ -153,183 +156,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSettingsScreen() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Sección de autenticación
-            if (!authProvider.isLoggedIn)
-              // Botón para iniciar sesión
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.login),
-                  title: const Text('Iniciar Sesión'),
-                  subtitle: const Text('Accede para ver más funciones'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _navigateToLogin(),
-                ),
-              )
-            else
-              // Ficha de información del usuario
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            child: Text(
-                              authProvider.user?.firstName.isNotEmpty == true
-                                  ? authProvider.user!.firstName[0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                color: AppColors.pureWhite,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        authProvider.fullName,
-                                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    if (authProvider.user?.phone.isNotEmpty == true)
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.phone,
-                                            size: 16,
-                                            color: AppColors.textColor2,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            authProvider.user!.phone,
-                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                              color: AppColors.textColor2,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '@${authProvider.user?.username ?? ''}',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppColors.textColor2,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () async {
-                          await authProvider.logout();
-                        },
-                        child: const Text('Cerrar sesión'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            
-            const SizedBox(height: 12),
-            
-            // Sección de Caché
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.storage),
-                title: const Text('Información del Caché'),
-                subtitle: const Text('Ver y limpiar datos en caché'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showCacheInfo(context),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Sección de Permisos
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.security),
-                title: const Text('Permisos de la App'),
-                subtitle: const Text('Ver y gestionar permisos'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const PermissionsScreen()),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Sección de Layout Testing
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.view_quilt),
-                title: const Text('Layout Testing'),
-                subtitle: const Text('Probar opciones de navegación'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LayoutTestingScreen()),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Sección de Versión
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('Versión de la App'),
-                subtitle: Text('v${AppConstants.appVersion}'),
-              ),
-            ),
-            const SizedBox(height: 12),
-          ],
-        );
+  ListTile _drawerItem(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget screen,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: const Icon(Icons.chevron_right, color: AppColors.textColor2),
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
       },
     );
   }
-
-  Future<void> _navigateToLogin() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-    );
-    
-    if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('¡Bienvenido!'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    }
-  }
-
-  void _showCacheInfo(BuildContext context) {
-    final provider = context.read<PropertyProvider>();
-    final syncService = context.read<SyncService>();
-    showCacheInfoDialog(context, provider, syncService: syncService);
-  }
-
 }

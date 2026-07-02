@@ -20,6 +20,7 @@ import '../widgets/add_property/features_section.dart';
 import '../widgets/add_property/photos_section.dart';
 import '../widgets/add_property/private_data_section.dart';
 import '../../domain/models/geo_location.dart';
+import 'add_residential_screen.dart';
 import 'map_picker_screen.dart';
 
 class AddPropertyScreen extends StatefulWidget {
@@ -100,7 +101,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   List<Map<String, dynamic>> _residentialComplexes = [];
   Map<String, dynamic>? _selectedComplex;
   bool _isResidentialComplex = true;
-  bool _isManualUnitName = false;
   bool _fieldsLockedByComplex = false;
   int? _selectedComplexId;
   double? _selectedLatitude;
@@ -361,9 +361,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
           _residentialComplexes = [];
         }
       }
-      if (_residentialComplexes.isEmpty) {
-        _isManualUnitName = true;
-      } else if (_selectedComplexId != null) {
+      if (_selectedComplexId != null) {
         try {
           _selectedComplex = _residentialComplexes.firstWhere(
             (c) => c['id'] == _selectedComplexId,
@@ -379,7 +377,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     } catch (e) {
       debugPrint('Error cargando unidades residenciales: $e');
       _residentialComplexes = [];
-      _isManualUnitName = true;
     }
     if (mounted) setState(() {});
   }
@@ -585,7 +582,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     _isResidentialComplex = draft['_is_residential_complex'] != null
         ? parseBool(draft['_is_residential_complex'])
         : true;
-    _isManualUnitName = parseBool(draft['_is_manual_unit_name']);
     _fieldsLockedByComplex = parseBool(draft['_fields_locked_by_complex']);
     final storedLat = draft['_selected_latitude'];
     if (storedLat != null) {
@@ -881,7 +877,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       '_porter_phone_text': digitsOnly(_porterPhoneController.text),
       '_selected_complex_id': _selectedComplexId,
       '_is_residential_complex': _isResidentialComplex,
-      '_is_manual_unit_name': _isManualUnitName,
       '_fields_locked_by_complex': _fieldsLockedByComplex,
       '_selected_latitude': _selectedLatitude,
       '_selected_longitude': _selectedLongitude,
@@ -1294,41 +1289,36 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     setState(() {
       _selectedComplex = complex;
       _selectedComplexId = complex['id'] as int?;
-      _isManualUnitName = false;
       _fieldsLockedByComplex = true;
       _unitNameHasError = false;
 
-      final name = complex['name']?.toString() ?? '';
-      _unitNameController.text = name;
-      final address = complex['address']?.toString();
-      if (address != null && address.isNotEmpty) {
-        _addressController.text = address;
-      } else {
-        _addressController.clear();
-      }
+      // Asignar siempre cada campo (valor o vacío): los que el residencial
+      // no tenga quedan en blanco y bloqueados.
+      _unitNameController.text = complex['name']?.toString() ?? '';
+      _addressController.text = complex['address']?.toString() ?? '';
+
       final idCity = complex['id_city']?.toString();
-      if (idCity != null && idCity.isNotEmpty) _selectedCityId = idCity;
+      _selectedCityId = (idCity != null && idCity.isNotEmpty) ? idCity : null;
       final idZone = complex['id_zone']?.toString();
-      if (idZone != null && idZone.isNotEmpty) _selectedZoneId = idZone;
+      _selectedZoneId = (idZone != null && idZone.isNotEmpty) ? idZone : null;
+
       final stratum = complex['stratum']?.toString();
-      if (stratum != null && stratum.isNotEmpty) {
-        final stratumInt = int.tryParse(stratum);
-        if (stratumInt != null && stratumInt >= 1 && stratumInt <= 6) {
-          _stratum = stratum;
-        }
-      }
+      final stratumInt = int.tryParse(stratum ?? '');
+      _stratum = (stratumInt != null && stratumInt >= 1 && stratumInt <= 6)
+          ? stratum!
+          : '3';
+
       final adminPhone = complex['admin_phone']?.toString();
-      if (adminPhone != null && adminPhone.isNotEmpty) {
-        _adminPhoneController.text = digitsOnly(adminPhone);
-      }
+      _adminPhoneController.text =
+          (adminPhone != null && adminPhone.isNotEmpty) ? digitsOnly(adminPhone) : '';
       final adminEmail = complex['admin_email']?.toString();
-      if (adminEmail != null && adminEmail.isNotEmpty) {
-        _adminMailController.text = adminEmail;
-      }
+      _adminMailController.text =
+          (adminEmail != null && adminEmail.isNotEmpty) ? adminEmail : '';
       final frontDeskPhone = complex['front_desk_phone']?.toString();
-      if (frontDeskPhone != null && frontDeskPhone.isNotEmpty) {
-        _lodgePhoneController.text = digitsOnly(frontDeskPhone);
-      }
+      _lodgePhoneController.text = (frontDeskPhone != null && frontDeskPhone.isNotEmpty)
+          ? digitsOnly(frontDeskPhone)
+          : '';
+
       final lat = complex['latitude'];
       _selectedLatitude =
           lat is num ? lat.toDouble() : double.tryParse(lat?.toString() ?? '');
@@ -1371,9 +1361,8 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     });
   }
 
-  void _enableManualUnitName() {
+  void _clearComplexSelection() {
     setState(() {
-      _isManualUnitName = true;
       _selectedComplex = null;
       _selectedComplexId = null;
       _selectedLatitude = null;
@@ -1390,6 +1379,23 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _zones = [];
       _stratum = '3';
     });
+  }
+
+  Future<void> _createResidentialComplex() async {
+    final created = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddResidentialScreen()),
+    );
+    if (created == null || !mounted) return;
+    setState(() => _residentialComplexes =
+        List<Map<String, dynamic>>.from(_globalData.residentialComplexes));
+    Map<String, dynamic>? full;
+    try {
+      full = _residentialComplexes.firstWhere((c) => c['id'] == created['id']);
+    } catch (_) {
+      full = null;
+    }
+    if (full != null) _onResidentialComplexSelected(full);
   }
 
   void _resetFormState() {
@@ -1422,7 +1428,6 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     _selectedLatitude = null;
     _selectedLongitude = null;
     _isResidentialComplex = true;
-    _isManualUnitName = _residentialComplexes.isEmpty;
     _fieldsLockedByComplex = false;
     _unitNameHasError = false;
     _forRent = true;
@@ -1614,20 +1619,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       _showSnackBarMessage('Faltan campos obligatorios por completar.');
       return;
     }
-    if (_isResidentialComplex) {
-      if (!_isManualUnitName &&
-          _selectedComplexId == null &&
-          _residentialComplexes.isNotEmpty) {
-        setState(() => _unitNameHasError = true);
-        _showSnackBarMessage(
-            'Seleccione una unidad residencial o ingrese una nueva.');
-        return;
-      }
-      if (_unitNameController.text.trim().isEmpty) {
-        setState(() => _unitNameHasError = true);
-        _showSnackBarMessage('Ingrese el nombre de la unidad.');
-        return;
-      }
+    if (_isResidentialComplex && _selectedComplexId == null) {
+      setState(() => _unitNameHasError = true);
+      _showSnackBarMessage('Seleccione una unidad residencial.');
+      return;
     }
     if (_photos.length < 22) {
       _showSnackBarMessage(
@@ -1895,8 +1890,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         apartmentNumberController: _apartmentNumberController,
                         unitNameController: _unitNameController,
                         isResidentialComplex: _isResidentialComplex,
-                        isManualUnitName: _isManualUnitName,
-                        fieldsLockedByComplex: _fieldsLockedByComplex,
+                        fieldsLockedByComplex: _isResidentialComplex,
                         unitNameHasError: _unitNameHasError,
                         selectedComplexId: _selectedComplexId,
                         residentialComplexes: _residentialComplexes,
@@ -1909,13 +1903,10 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         },
                         onIsResidentialComplexChanged: (value) {
                           setState(() => _isResidentialComplex = value);
-                          if (!value) _enableManualUnitName();
+                          if (!value) _clearComplexSelection();
                         },
                         onComplexSelected: _onResidentialComplexSelected,
-                        onEnableManualUnitName: _enableManualUnitName,
-                        onDisableManualUnitName: () {
-                          setState(() => _isManualUnitName = false);
-                        },
+                        onCreateComplex: _createResidentialComplex,
                       ),
                       const SizedBox(height: 16),
                       LocationSection(
@@ -1927,7 +1918,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         zones: _zones,
                         loadingCities: _loadingCities,
                         loadingZones: _loadingZones,
-                        fieldsLockedByComplex: _fieldsLockedByComplex,
+                        fieldsLockedByComplex: _isResidentialComplex,
                         selectedComplex: _selectedComplex,
                         onCityChanged: (value) async {
                           if (value == _selectedCityId) return;
@@ -1944,7 +1935,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                             setState(() => _stratum = value),
                         selectedLatitude: _selectedLatitude,
                         selectedLongitude: _selectedLongitude,
-                        locationLockedByComplex: _fieldsLockedByComplex && _selectedLatitude != null,
+                        locationLockedByComplex: _isResidentialComplex,
                         onPickLocation: _openMapPicker,
                       ),
                       const SizedBox(height: 16),
@@ -2029,7 +2020,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
                         hasInternetOperators: _hasInternetOperators,
                         isSubmitting: _isSubmitting,
                         cooldownActive: _cooldownActive,
-                        fieldsLockedByComplex: _fieldsLockedByComplex,
+                        fieldsLockedByComplex: _isResidentialComplex,
                         selectedComplex: _selectedComplex,
                         lastSaved: _lastSaved,
                         onVeredalWaterChanged: (v) {

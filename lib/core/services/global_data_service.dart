@@ -9,6 +9,7 @@ class GlobalDataService {
   List<Map<String, dynamic>> _cities = [];
   List<Map<String, dynamic>> _features = [];
   List<Map<String, dynamic>> _residentialComplexes = [];
+  List<Map<String, dynamic>> _zones = [];
   bool _isLoading = false;
   bool _isInitialized = false;
 
@@ -16,6 +17,7 @@ class GlobalDataService {
   List<Map<String, dynamic>> get cities => _cities;
   List<Map<String, dynamic>> get features => _features;
   List<Map<String, dynamic>> get residentialComplexes => _residentialComplexes;
+  List<Map<String, dynamic>> get zones => _zones;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
 
@@ -61,15 +63,8 @@ class GlobalDataService {
         debugPrint('🔖 Primera característica: ${_features.first['name']} (${_features.first['category']})');
       }
       
-      // Cargar unidades residenciales desde API propia
-      debugPrint('🏢 Cargando unidades residenciales...');
-      try {
-        _residentialComplexes = await ApiService.getResidentialComplexes();
-        debugPrint('✅ Unidades residenciales cargadas: ${_residentialComplexes.length}');
-      } catch (e) {
-        debugPrint('⚠️ Error cargando unidades residenciales (no bloqueante): $e');
-        _residentialComplexes = [];
-      }
+      // Cargar unidades residenciales + zonas
+      await _loadResidentialsAndZones(apiService);
 
       _isInitialized = true;
       
@@ -80,6 +75,7 @@ class GlobalDataService {
       _cities = [];
       _features = [];
       _residentialComplexes = [];
+      _zones = [];
       _isInitialized = false; // Permitir reintento
     } finally {
       _isLoading = false;
@@ -90,6 +86,41 @@ class GlobalDataService {
   Future<void> refresh() async {
     _isInitialized = false;
     await initialize();
+  }
+
+  /// Carga unidades residenciales y las zonas (barrios) de sus ciudades.
+  Future<void> _loadResidentialsAndZones(WasiApiService api) async {
+    debugPrint('🏢 Cargando unidades residenciales...');
+    try {
+      _residentialComplexes = await ApiService.getResidentialComplexes();
+      debugPrint('✅ Unidades residenciales cargadas: ${_residentialComplexes.length}');
+    } catch (e) {
+      debugPrint('⚠️ Error cargando unidades residenciales (no bloqueante): $e');
+      _residentialComplexes = [];
+    }
+
+    try {
+      final cityIds = _residentialComplexes
+          .map((c) => c['id_city']?.toString())
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      final results = await Future.wait(cityIds.map(api.getZonesByCity));
+      _zones = results.expand((z) => z).toList();
+      debugPrint('✅ Zonas cargadas: ${_zones.length}');
+    } catch (e) {
+      debugPrint('⚠️ Error cargando zonas (no bloqueante): $e');
+      _zones = [];
+    }
+  }
+
+  /// Recarga solo los residenciales y sus zonas (tras crear/editar/eliminar).
+  Future<void> reloadResidentials() async {
+    final api = WasiApiService(
+      apiToken: AppConstants.wasiApiToken,
+      companyId: AppConstants.wasiApiId,
+    );
+    await _loadResidentialsAndZones(api);
   }
 
   /// Busca una ciudad por nombre
