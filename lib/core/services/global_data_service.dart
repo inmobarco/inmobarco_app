@@ -1,10 +1,14 @@
 import 'package:flutter/foundation.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/cache_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../constants/app_constants.dart';
 
 class GlobalDataService {
-  GlobalDataService();
+  GlobalDataService({required CacheService cacheService})
+      : _cacheService = cacheService;
+
+  final CacheService _cacheService;
 
   List<Map<String, dynamic>> _cities = [];
   List<Map<String, dynamic>> _features = [];
@@ -45,14 +49,20 @@ class GlobalDataService {
         companyId: AppConstants.wasiApiId,
       );
       
-      // Cargar ciudades
+      // Cargar ciudades: primero desde caché (arranque instantáneo), luego
+      // refrescar en background si está vencido o no hay caché.
       debugPrint('🏙️ Cargando ciudades...');
-  final fetchedCities = await apiService.getCities();
-  _cities = AppConstants.filterAllowedCities(fetchedCities);
-      
-      debugPrint('✅ Ciudades cargadas: ${_cities.length}');
-      if (_cities.isNotEmpty) {
-        debugPrint('📍 Primera ciudad: ${_cities.first}');
+      final cached = await _cacheService.loadAllowedCities();
+      if (cached != null) {
+        _cities = (cached['cities'] as List).cast<Map<String, dynamic>>();
+        debugPrint('📦 Ciudades desde caché: ${_cities.length} (stale: ${cached['isStale']})');
+      }
+      if (cached == null) {
+        // Arranque en frío sin caché: esperar para tener ciudades listas.
+        await _refreshAllowedCities();
+      } else if (cached['isStale'] == true) {
+        // Hay caché servible: refrescar en background sin bloquear el arranque.
+        _refreshAllowedCities();
       }
 
       // Cargar características
@@ -86,6 +96,22 @@ class GlobalDataService {
   Future<void> refresh() async {
     _isInitialized = false;
     await initialize();
+    await _refreshAllowedCities();
+  }
+
+  /// Refresca las ciudades habilitadas desde el backend y actualiza el caché.
+  /// Si el backend falla, conserva las ciudades ya cargadas (last-known-good).
+  Future<void> _refreshAllowedCities() async {
+    try {
+      final fresh = await ApiService.getAllowedCities();
+      if (fresh.isNotEmpty) {
+        _cities = fresh;
+        await _cacheService.saveAllowedCities(fresh);
+        debugPrint('✅ Ciudades refrescadas desde backend: ${fresh.length}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error refrescando ciudades (se conserva caché): $e');
+    }
   }
 
   /// Carga unidades residenciales y las zonas (barrios) de sus ciudades.

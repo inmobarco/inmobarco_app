@@ -236,17 +236,12 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   Future<void> _loadCities() async {
     if (mounted) setState(() => _loadingCities = true);
     try {
-      final cached = AppConstants.filterAllowedCities(_globalData.cities);
+      final cached = _globalData.cities;
       if (cached.isNotEmpty) {
         _cities = List<Map<String, dynamic>>.from(cached);
       } else {
-        final api = WasiApiService(
-          apiToken: AppConstants.wasiApiToken,
-          companyId: AppConstants.wasiApiId,
-        );
-        _cities = await api.getCities();
+        _cities = await ApiService.getAllowedCities();
       }
-      _cities = AppConstants.filterAllowedCities(_cities);
       if (_selectedCityId != null &&
           !_cities.any((city) => city['id']?.toString() == _selectedCityId)) {
         _selectedCityId = null;

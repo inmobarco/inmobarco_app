@@ -57,6 +57,11 @@ class _AddResidentialScreenState extends State<AddResidentialScreen> {
     _stratum = c['stratum']?.toString() ?? '3';
     _lat = _toDouble(c['latitude']);
     _lng = _toDouble(c['longitude']);
+    // Cargar barrios de la ciudad (bloqueada) para permitir cambiar el barrio.
+    if (_selectedCityId != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _loadZones(_selectedCityId!, preserveZone: true));
+    }
   }
 
   double? _toDouble(dynamic v) {
@@ -74,12 +79,12 @@ class _AddResidentialScreenState extends State<AddResidentialScreen> {
     super.dispose();
   }
 
-  Future<void> _loadZones(String cityId) async {
+  Future<void> _loadZones(String cityId, {bool preserveZone = false}) async {
     if (cityId.isEmpty) return;
     setState(() {
       _loadingZones = true;
       _zones = [];
-      _selectedZoneId = null;
+      if (!preserveZone) _selectedZoneId = null;
     });
     try {
       final api = WasiApiService(
@@ -150,6 +155,7 @@ class _AddResidentialScreenState extends State<AddResidentialScreen> {
       if (_isEdit) {
         // Solo campos editables; null para limpiar.
         final body = <String, dynamic>{
+          'id_zone': int.parse(_selectedZoneId!),
           'admin_phone': adminPhone.isEmpty ? null : adminPhone,
           'admin_email': adminEmail.isEmpty ? null : adminEmail,
           'front_desk_phone': frontDesk.isEmpty ? null : frontDesk,
@@ -244,13 +250,10 @@ class _AddResidentialScreenState extends State<AddResidentialScreen> {
                   (v == null || v.trim().isEmpty) ? 'Ingrese la dirección' : null,
             ),
             const SizedBox(height: 16),
-            if (_isEdit) ...[
-              _lockedField('Ciudad',
-                  lookupNameById(cities, _selectedCityId) ?? '—'),
-              const SizedBox(height: 16),
-              _lockedField('Barrio',
-                  lookupNameById(globalData.zones, _selectedZoneId) ?? '—'),
-            ] else ...[
+            // Ciudad: bloqueada en edición, dropdown al crear.
+            if (_isEdit)
+              _lockedField('Ciudad', lookupNameById(cities, _selectedCityId) ?? '—')
+            else
               DropdownButtonFormField<String>(
                 initialValue: _selectedCityId,
                 isExpanded: true,
@@ -271,38 +274,38 @@ class _AddResidentialScreenState extends State<AddResidentialScreen> {
                   _loadZones(value);
                 },
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedZoneId,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Barrio *',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: _loadingZones
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : null,
-                ),
-                hint: Text(_selectedCityId == null
-                    ? 'Seleccione una ciudad primero'
-                    : 'Seleccione un barrio'),
-                items: _zones
-                    .map((z) => DropdownMenuItem(
-                          value: z['id'] as String,
-                          child: Text(z['name'] as String),
-                        ))
-                    .toList(),
-                onChanged: (_loadingZones || _zones.isEmpty)
-                    ? null
-                    : (value) => setState(() => _selectedZoneId = value),
+            const SizedBox(height: 16),
+            // Barrio: dropdown dependiente de la ciudad (editable también en edición).
+            DropdownButtonFormField<String>(
+              initialValue: _selectedZoneId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Barrio *',
+                border: const OutlineInputBorder(),
+                suffixIcon: _loadingZones
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
               ),
-            ],
+              hint: Text(_selectedCityId == null
+                  ? 'Seleccione una ciudad primero'
+                  : 'Seleccione un barrio'),
+              items: _zones
+                  .map((z) => DropdownMenuItem(
+                        value: z['id'] as String,
+                        child: Text(z['name'] as String),
+                      ))
+                  .toList(),
+              onChanged: (_loadingZones || _zones.isEmpty)
+                  ? null
+                  : (value) => setState(() => _selectedZoneId = value),
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _stratum,

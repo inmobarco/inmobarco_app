@@ -114,41 +114,6 @@ class WasiApiService {
     }
   }
 
-  /// Obtiene la lista de ciudades para Antioquia (ID: 2)
-  Future<List<Map<String, dynamic>>> getCities() async {
-    try {
-      final queryParams = <String, dynamic>{
-        'wasi_token': apiToken,
-        'id_company': companyId
-      };
-      //'id_region': 2, // Antioquia
-      final response = await _dio.get('/location/cities-from-region/2', queryParameters: queryParams);
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        if (data['status'] == 'success') {
-          List<Map<String, dynamic>> cities = [];
-          data.forEach((key, value) {
-            if (key != 'status' && value is Map<String, dynamic>) {
-              cities.add({
-                'id': value['id_city']?.toString() ?? '',
-                'name': value['name']?.toString() ?? '',
-              });
-            }
-          });
-          final sanitized = cities
-              .where((city) => (city['name'] as String).isNotEmpty)
-              .toList();
-          return AppConstants.filterAllowedCities(sanitized);
-        }
-      }
-      return [];
-    } catch (e) {
-      debugPrint('Error obteniendo ciudades: $e');
-      return [];
-    }
-  }
-
   /// Obtiene la lista completa de características disponibles en WASI
   Future<List<Map<String, dynamic>>> getFeatures() async {
     try {
@@ -275,7 +240,7 @@ class WasiApiService {
     }
 
     if (filter.municipio != null && filter.municipio!.isNotEmpty && globalDataService != null) {
-      String? id = AppConstants.filterAllowedCities(globalDataService!.cities).firstWhere(
+      String? id = globalDataService!.cities.firstWhere(
         (city) => city['name'] == filter.municipio,
         orElse: () => {'id': null},
       )['id']?.toString();

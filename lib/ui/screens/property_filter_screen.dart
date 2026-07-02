@@ -88,7 +88,7 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
     if (_currentFilter.municipio != null) {
       _ciudadController.text = _currentFilter.municipio!;
       // Resolver city ID para cargar zonas
-      final globalCities = AppConstants.filterAllowedCities(_globalData.cities);
+      final globalCities = _globalData.cities;
       final match = globalCities.firstWhere(
         (c) => c['name']?.toString() == _currentFilter.municipio,
         orElse: () => <String, dynamic>{},
@@ -516,7 +516,7 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
 
   Widget _buildCiudadDropdown() {
     // Usar datos globales directamente con manejo defensivo
-    final globalCities = AppConstants.filterAllowedCities(_globalData.cities);
+    final globalCities = _globalData.cities;
     
     // Verificar si las ciudades están disponibles
     if (globalCities.isEmpty || !_globalData.isInitialized) {

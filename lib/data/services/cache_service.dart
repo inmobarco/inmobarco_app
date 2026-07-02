@@ -14,9 +14,14 @@ class CacheService {
   static const String _userProfileFileName = 'user_profile.json';
   static const String _authSessionFileName = 'auth_session.json'; // Sesión de autenticación
   static const String _appVersionKey = 'cached_app_version';
+  static const String _allowedCitiesFileName = 'allowed_cities_cache.json'; // Ciudades habilitadas
+  static const String _allowedCitiesUpdateKey = 'last_allowed_cities_update';
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
+
+  // Tiempo de expiración del caché de ciudades (minutos)
+  static const int _allowedCitiesExpirationMinutes = 10;
 
   CacheService();
 
@@ -304,6 +309,50 @@ class CacheService {
     }
   }
 
+  // ================== Ciudades habilitadas ==================
+
+  /// Guarda las ciudades habilitadas en caché (archivo + timestamp).
+  Future<void> saveAllowedCities(List<Map<String, dynamic>> cities) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_allowedCitiesFileName');
+      await file.writeAsString(jsonEncode(cities), flush: true);
+      await prefs.setInt(_allowedCitiesUpdateKey, DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar ciudades en caché: $e');
+    }
+  }
+
+  /// Carga las ciudades habilitadas desde caché.
+  ///
+  /// Retorna `{ 'cities': List<Map>, 'isStale': bool }`, o `null` si no hay caché.
+  /// A diferencia de las propiedades, NO borra el caché al vencer: sirve para
+  /// entregar el último valor conocido si el backend no responde.
+  Future<Map<String, dynamic>?> loadAllowedCities() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_allowedCitiesFileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+
+      final cities = (jsonDecode(content) as List).cast<Map<String, dynamic>>();
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastUpdate = prefs.getInt(_allowedCitiesUpdateKey) ?? 0;
+      final ageMinutes = (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60);
+
+      return {
+        'cities': cities,
+        'isStale': ageMinutes > _allowedCitiesExpirationMinutes,
+      };
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar ciudades desde caché: $e');
+      return null;
+    }
+  }
+
   // ================= Versión de la app =================
 
   /// Guarda la versión actual de la app en caché
@@ -327,6 +376,7 @@ class CacheService {
         _propertiesFileName,
         _addPropertyDraftFileName,
         _userProfileFileName,
+        _allowedCitiesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -338,6 +388,7 @@ class CacheService {
       await prefs.remove(_propertiesKey);
       await prefs.remove(_lastUpdateKey);
       await prefs.remove(_filterKey);
+      await prefs.remove(_allowedCitiesUpdateKey);
 
       debugPrint('🧹 Todo el caché limpiado por cambio de versión');
     } catch (e) {
@@ -358,6 +409,7 @@ class CacheService {
         _addPropertyDraftFileName,
         _userProfileFileName,
         _authSessionFileName,
+        _allowedCitiesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

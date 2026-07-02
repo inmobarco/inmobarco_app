@@ -32,9 +32,9 @@ void main() async {
   propertyEncryption.init();
 
   // Crear instancias de servicios
-  final globalDataService = GlobalDataService();
-  final notificationService = NotificationService();
   final cacheService = CacheService();
+  final globalDataService = GlobalDataService(cacheService: cacheService);
+  final notificationService = NotificationService();
   final syncService = SyncService(notificationService: notificationService);
 
   // Verificar versión: si cambió, limpiar caché

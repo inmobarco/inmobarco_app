@@ -37,33 +37,6 @@ class AppConstants {
   static const double buttonBorderRadius = 8.0;
   static const double inputBorderRadius = 8.0;
 
-  // City allowlist
-  static const Set<String> allowedCityIds = {
-    '291', // Envigado
-    '496', // Medellín
-    '698', // Sabaneta
-    '416', // La Estrella
-    '389', // Itagüí
-    '89', // Bello
-  };
-
-  static bool isCityAllowed(String? cityId) {
-    if (allowedCityIds.isEmpty) return true;
-    if (cityId == null || cityId.isEmpty) return false;
-    return allowedCityIds.contains(cityId);
-  }
-
-  static List<Map<String, dynamic>> filterAllowedCities(List<Map<String, dynamic>> cities) {
-    if (cities.isEmpty) return const <Map<String, dynamic>>[];
-    if (allowedCityIds.isEmpty) {
-      return List<Map<String, dynamic>>.from(cities);
-    }
-    return cities
-        .where((city) => isCityAllowed(city['id']?.toString()))
-        .map((city) => Map<String, dynamic>.from(city))
-        .toList();
-  }
-  
   // Property types
   static const List<Map<String, String>> allPropertyTypes = [
     {'id': '1', 'label': 'Casa', 'acronym': 'CS'},

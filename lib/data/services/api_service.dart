@@ -106,6 +106,25 @@ class ApiService {
   // Residential Complexes API
   // ---------------------------------------------------------------------------
 
+  /// Obtiene las ciudades habilitadas (allowlist) desde el backend.
+  ///
+  /// Mapea cada elemento a `{id, name}` usando `city_id_wasi` / `city_name`,
+  /// que es lo que consume el resto de la app (el `id` es el id de ciudad WASI).
+  static Future<List<Map<String, dynamic>>> getAllowedCities() async {
+    final dio = await getInstance();
+    final response = await dio.get('/inventory/allowed-cities');
+    debugPrint('🏙️ GET /inventory/allowed-cities → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data
+        .cast<Map<String, dynamic>>()
+        .map((c) => {
+              'id': c['city_id_wasi']?.toString() ?? '',
+              'name': c['city_name']?.toString() ?? '',
+            })
+        .where((c) => (c['id'] as String).isNotEmpty)
+        .toList();
+  }
+
   /// Obtiene las unidades residenciales disponibles.
   ///
   /// Retorna la lista de mapas tal como viene del servidor.
