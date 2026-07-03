@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter/rendering.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/apartment.dart';
+import '../../domain/models/client.dart';
 
 class CacheService {
   static const String _propertiesKey = 'cached_properties';
@@ -16,6 +17,8 @@ class CacheService {
   static const String _appVersionKey = 'cached_app_version';
   static const String _allowedCitiesFileName = 'allowed_cities_cache.json'; // Ciudades habilitadas
   static const String _allowedCitiesUpdateKey = 'last_allowed_cities_update';
+  static const String _clientsFileName = 'clients_cache.json'; // Clientes CRM (ya cruzados con WASI)
+  static const String _clientsUpdateKey = 'last_clients_update';
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
@@ -353,6 +356,71 @@ class CacheService {
     }
   }
 
+  // ================== Clientes CRM ==================
+
+  /// Guarda los clientes CRM (ya cruzados con WASI) en caché.
+  Future<void> saveClients(List<Client> clients) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_clientsFileName');
+      final jsonString = jsonEncode(clients.map((c) => c.toJson()).toList());
+      await file.writeAsString(jsonString, flush: true);
+      await prefs.setInt(_clientsUpdateKey, DateTime.now().millisecondsSinceEpoch);
+      debugPrint('✅ Clientes guardados en caché: ${clients.length}');
+    } catch (e) {
+      debugPrint('❌ Error guardando clientes en caché: $e');
+    }
+  }
+
+  /// Carga los clientes CRM desde caché. Retorna null si no hay o expiró (TTL 6h).
+  Future<List<Client>?> loadClients() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_clientsFileName');
+      if (!await file.exists()) {
+        debugPrint('📭 No hay clientes en caché');
+        return null;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastUpdate = prefs.getInt(_clientsUpdateKey) ?? 0;
+      final cacheAgeHours =
+          (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60 * 60);
+      if (cacheAgeHours > _cacheExpirationHours) {
+        debugPrint('⏰ Caché de clientes expirado (${cacheAgeHours.toStringAsFixed(1)} horas)');
+        await clearClientsCache();
+        return null;
+      }
+
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+      final clients = (jsonDecode(content) as List)
+          .map((json) => Client.fromJson(json as Map<String, dynamic>))
+          .toList();
+      debugPrint('📦 Clientes cargados desde caché: ${clients.length}');
+      return clients;
+    } catch (e) {
+      debugPrint('❌ Error cargando clientes desde caché: $e');
+      await clearClientsCache(); // Limpiar caché corrupto
+      return null;
+    }
+  }
+
+  /// Limpia el caché de clientes CRM.
+  Future<void> clearClientsCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_clientsUpdateKey);
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_clientsFileName');
+      if (await file.exists()) await file.delete();
+      debugPrint('🧹 Caché de clientes limpiado');
+    } catch (e) {
+      debugPrint('❌ Error limpiando caché de clientes: $e');
+    }
+  }
+
   // ================= Versión de la app =================
 
   /// Guarda la versión actual de la app en caché
@@ -377,6 +445,7 @@ class CacheService {
         _addPropertyDraftFileName,
         _userProfileFileName,
         _allowedCitiesFileName,
+        _clientsFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -389,6 +458,7 @@ class CacheService {
       await prefs.remove(_lastUpdateKey);
       await prefs.remove(_filterKey);
       await prefs.remove(_allowedCitiesUpdateKey);
+      await prefs.remove(_clientsUpdateKey);
 
       debugPrint('🧹 Todo el caché limpiado por cambio de versión');
     } catch (e) {
@@ -410,6 +480,7 @@ class CacheService {
         _userProfileFileName,
         _authSessionFileName,
         _allowedCitiesFileName,
+        _clientsFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

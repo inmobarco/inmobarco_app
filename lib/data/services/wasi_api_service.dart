@@ -114,6 +114,71 @@ class WasiApiService {
     }
   }
 
+  /// Obtiene todos los clientes de la compañía en WASI, paginando internamente.
+  ///
+  /// Retorna los mapas crudos de WASI (first_name, last_name, id_client, etc.);
+  /// el cruce con el CRM interno se hace en el provider.
+  // ponytail: trae toda la compañía para el join; si crece a miles de
+  // clientes, cambiar a getClientById por cada id_client_wasi del backend.
+  Future<List<Map<String, dynamic>>> getAllClients() async {
+    const int pageSize = 100;
+    final List<Map<String, dynamic>> allClients = [];
+    try {
+      int skip = 0;
+      while (true) {
+        final response = await _dio.get('/client/search', queryParameters: {
+          'wasi_token': apiToken,
+          'id_company': companyId,
+          'skip': skip,
+          'take': pageSize,
+        });
+
+        if (response.statusCode != 200) {
+          throw Exception('Error al obtener clientes: ${response.statusCode}');
+        }
+        final responseData = response.data;
+        if (responseData['status'] != 'success') {
+          throw Exception('Error en respuesta de WASI: ${responseData['status']}');
+        }
+
+        final List<Map<String, dynamic>> pageClients = [];
+        responseData.forEach((key, value) {
+          if (key != 'status' && key != 'total' && value is Map<String, dynamic>) {
+            pageClients.add(value);
+          }
+        });
+
+        allClients.addAll(pageClients);
+        if (pageClients.length < pageSize) break;
+        skip += pageSize;
+      }
+      return allClients;
+    } on DioException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    }
+  }
+
+  /// Obtiene un cliente específico de WASI por su id_client.
+  Future<Map<String, dynamic>> getClientById(String id) async {
+    try {
+      final response = await _dio.get('/client/get/$id', queryParameters: {
+        'wasi_token': apiToken,
+        'id_company': companyId,
+      });
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al obtener cliente: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data['status'] != 'success') {
+        throw Exception('Error en respuesta de WASI: ${data['status']}');
+      }
+      return data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    }
+  }
+
   /// Obtiene la lista completa de características disponibles en WASI
   Future<List<Map<String, dynamic>>> getFeatures() async {
     try {

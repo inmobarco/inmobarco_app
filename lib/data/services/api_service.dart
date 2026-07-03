@@ -161,4 +161,38 @@ class ApiService {
     final response = await dio.delete('/inventory/residential-complexes/$id');
     debugPrint('🏢 DELETE /inventory/residential-complexes/$id → ${response.statusCode}');
   }
+
+  // ---------------------------------------------------------------------------
+  // CRM API
+  // ---------------------------------------------------------------------------
+
+  /// Obtiene los clientes CRM del asesor autenticado (scoping por JWT).
+  ///
+  /// Cada fila trae: id, id_client_wasi, operation_type, budget_min,
+  /// budget_max, bedrooms, zones, property_type, needs_note.
+  static Future<List<Map<String, dynamic>>> getCrmClients() async {
+    final dio = await getInstance();
+    final response = await dio.get('/crm/clients');
+    debugPrint('👥 GET /crm/clients → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Obtiene las notas de un cliente (por su id de WASI).
+  static Future<List<Map<String, dynamic>>> getClientNotes(int idClientWasi) async {
+    final dio = await getInstance();
+    final response = await dio.get('/crm/clients/$idClientWasi/notes');
+    debugPrint('👥 GET /crm/clients/$idClientWasi/notes → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Obtiene la última nota de cada cliente del asesor.
+  static Future<List<Map<String, dynamic>>> getLatestClientNotes() async {
+    final dio = await getInstance();
+    final response = await dio.get('/crm/clients/latest-notes');
+    debugPrint('👥 GET /crm/clients/latest-notes → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
 }

@@ -16,6 +16,7 @@ import 'ui/providers/property_provider.dart';
 import 'data/repositories/appointment_repository.dart';
 import 'ui/providers/appointment_provider.dart';
 import 'ui/providers/auth_provider.dart';
+import 'ui/providers/client_provider.dart';
 import 'ui/screens/home_screen.dart';
 
 void main() async {
@@ -116,6 +117,16 @@ class InmobarcoApp extends StatelessWidget {
           create: (context) => AppointmentProvider(
             repository: AppointmentRepository(syncService: syncService),
             notificationService: notificationService,
+          ),
+        ),
+        ChangeNotifierProvider(
+          // La carga se dispara al abrir la pantalla de Clientes (ensureLoaded)
+          create: (context) => ClientProvider(
+            apiService: WasiApiService(
+              apiToken: AppConstants.wasiApiToken,
+              companyId: AppConstants.wasiApiId,
+            ),
+            cacheService: cacheService,
           ),
         ),
       ],

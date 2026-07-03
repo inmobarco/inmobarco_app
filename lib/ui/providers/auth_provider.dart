@@ -81,6 +81,8 @@ class AuthProvider extends ChangeNotifier {
   /// Cierra la sesión actual
   Future<void> logout() async {
     await _cacheService.clearAuthSession();
+    // Clientes CRM son por asesor: no dejarlos para otra cuenta
+    await _cacheService.clearClientsCache();
     // Limpiar el token JWT
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
