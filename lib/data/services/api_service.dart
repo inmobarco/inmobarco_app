@@ -166,16 +166,15 @@ class ApiService {
   // CRM API
   // ---------------------------------------------------------------------------
 
-  /// Obtiene los clientes CRM del asesor autenticado (scoping por JWT).
+  /// Obtiene la propiedad dummy del asesor autenticado (scoping por JWT).
   ///
-  /// Cada fila trae: id, id_client_wasi, operation_type, budget_min,
-  /// budget_max, bedrooms, zones, property_type, needs_note.
-  static Future<List<Map<String, dynamic>>> getCrmClients() async {
+  /// Retorna `{id_property_wasi, property_label}`; ese id se usa como filtro
+  /// en WASI para traer los clientes del asesor.
+  static Future<Map<String, dynamic>> getAdvisorMap() async {
     final dio = await getInstance();
-    final response = await dio.get('/crm/clients');
-    debugPrint('👥 GET /crm/clients → ${response.statusCode}');
-    final List<dynamic> data = response.data as List<dynamic>;
-    return data.cast<Map<String, dynamic>>();
+    final response = await dio.get('/crm/advisor-map');
+    debugPrint('👥 GET /crm/advisor-map → ${response.statusCode}');
+    return response.data as Map<String, dynamic>;
   }
 
   /// Obtiene las notas de un cliente (por su id de WASI).

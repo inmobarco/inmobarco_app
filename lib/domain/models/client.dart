@@ -1,18 +1,7 @@
-/// Cliente del CRM: cruce entre la tabla interna (backend Inmobarco)
-/// y los datos personales de WASI (`/client/search`).
+/// Cliente del CRM: datos personales de WASI (`/client/search` filtrado por
+/// la propiedad dummy del asesor).
 class Client {
-  // Backend CRM (tabla interna)
-  final int id;
   final int idClientWasi;
-  final String? operationType;
-  final double? budgetMin;
-  final double? budgetMax;
-  final int? bedrooms;
-  final String? zones;
-  final String? propertyType;
-  final String? needsNote;
-
-  // WASI
   final String firstName;
   final String lastName;
   final String? email;
@@ -23,15 +12,7 @@ class Client {
   final String? identification;
 
   Client({
-    required this.id,
     required this.idClientWasi,
-    this.operationType,
-    this.budgetMin,
-    this.budgetMax,
-    this.bedrooms,
-    this.zones,
-    this.propertyType,
-    this.needsNote,
     required this.firstName,
     required this.lastName,
     this.email,
@@ -43,12 +24,6 @@ class Client {
   });
 
   String get fullName => '$firstName $lastName'.trim();
-
-  static double? _parseDouble(dynamic value) {
-    if (value == null) return null;
-    if (value is num) return value.toDouble();
-    return double.tryParse(value.toString());
-  }
 
   static int? _parseInt(dynamic value) {
     if (value == null) return null;
@@ -62,18 +37,10 @@ class Client {
     return s.isEmpty ? null : s;
   }
 
-  /// Construye el cliente cruzando la fila del backend CRM con el JSON de WASI.
-  factory Client.fromCrmAndWasi(Map<String, dynamic> crm, Map<String, dynamic> wasi) {
+  /// Construye el cliente desde el JSON crudo de WASI.
+  factory Client.fromWasi(Map<String, dynamic> wasi) {
     return Client(
-      id: _parseInt(crm['id']) ?? 0,
-      idClientWasi: _parseInt(crm['id_client_wasi']) ?? 0,
-      operationType: _parseString(crm['operation_type']),
-      budgetMin: _parseDouble(crm['budget_min']),
-      budgetMax: _parseDouble(crm['budget_max']),
-      bedrooms: _parseInt(crm['bedrooms']),
-      zones: _parseString(crm['zones']),
-      propertyType: _parseString(crm['property_type']),
-      needsNote: _parseString(crm['needs_note']),
+      idClientWasi: _parseInt(wasi['id_client']) ?? 0,
       firstName: _parseString(wasi['first_name']) ?? '',
       lastName: _parseString(wasi['last_name']) ?? '',
       email: _parseString(wasi['email']),
@@ -87,15 +54,7 @@ class Client {
 
   /// Serialización camelCase para el caché local.
   Map<String, dynamic> toJson() => {
-        'id': id,
         'idClientWasi': idClientWasi,
-        'operationType': operationType,
-        'budgetMin': budgetMin,
-        'budgetMax': budgetMax,
-        'bedrooms': bedrooms,
-        'zones': zones,
-        'propertyType': propertyType,
-        'needsNote': needsNote,
         'firstName': firstName,
         'lastName': lastName,
         'email': email,
@@ -108,15 +67,7 @@ class Client {
 
   factory Client.fromJson(Map<String, dynamic> json) {
     return Client(
-      id: _parseInt(json['id']) ?? 0,
       idClientWasi: _parseInt(json['idClientWasi']) ?? 0,
-      operationType: _parseString(json['operationType']),
-      budgetMin: _parseDouble(json['budgetMin']),
-      budgetMax: _parseDouble(json['budgetMax']),
-      bedrooms: _parseInt(json['bedrooms']),
-      zones: _parseString(json['zones']),
-      propertyType: _parseString(json['propertyType']),
-      needsNote: _parseString(json['needsNote']),
       firstName: _parseString(json['firstName']) ?? '',
       lastName: _parseString(json['lastName']) ?? '',
       email: _parseString(json['email']),

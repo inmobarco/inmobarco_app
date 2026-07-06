@@ -17,8 +17,9 @@ class CacheService {
   static const String _appVersionKey = 'cached_app_version';
   static const String _allowedCitiesFileName = 'allowed_cities_cache.json'; // Ciudades habilitadas
   static const String _allowedCitiesUpdateKey = 'last_allowed_cities_update';
-  static const String _clientsFileName = 'clients_cache.json'; // Clientes CRM (ya cruzados con WASI)
+  static const String _clientsFileName = 'clients_cache.json'; // Clientes CRM (desde WASI)
   static const String _clientsUpdateKey = 'last_clients_update';
+  static const String _advisorMapFileName = 'advisor_map_cache.json'; // Propiedad dummy del asesor (sin TTL)
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
@@ -407,6 +408,46 @@ class CacheService {
     }
   }
 
+  /// Guarda la propiedad dummy del asesor (advisor-map). Sin TTL: solo se
+  /// invalida al cerrar sesión, la relación asesor↔propiedad no cambia.
+  Future<void> saveAdvisorMap(Map<String, dynamic> data) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_advisorMapFileName');
+      await file.writeAsString(jsonEncode(data), flush: true);
+      debugPrint('✅ Advisor-map guardado en caché');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar advisor-map: $e');
+    }
+  }
+
+  /// Carga la propiedad dummy del asesor desde caché.
+  Future<Map<String, dynamic>?> loadAdvisorMap() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_advisorMapFileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+      return jsonDecode(content) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('⚠️ No se pudo cargar advisor-map: $e');
+      return null;
+    }
+  }
+
+  /// Elimina el advisor-map (al cerrar sesión).
+  Future<void> clearAdvisorMap() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$_advisorMapFileName');
+      if (await file.exists()) await file.delete();
+      debugPrint('🧹 Advisor-map eliminado');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo borrar advisor-map: $e');
+    }
+  }
+
   /// Limpia el caché de clientes CRM.
   Future<void> clearClientsCache() async {
     try {
@@ -446,6 +487,7 @@ class CacheService {
         _userProfileFileName,
         _allowedCitiesFileName,
         _clientsFileName,
+        _advisorMapFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -481,6 +523,7 @@ class CacheService {
         _authSessionFileName,
         _allowedCitiesFileName,
         _clientsFileName,
+        _advisorMapFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

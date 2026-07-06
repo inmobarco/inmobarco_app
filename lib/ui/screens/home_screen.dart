@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../providers/property_provider.dart';
+import '../providers/client_provider.dart';
 import 'property_list_screen.dart';
 import 'calendar_screen.dart';
 import 'clients_screen.dart';
@@ -32,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PropertyProvider>();
       if (provider.properties.isEmpty) provider.refresh();
+      // Prefetch no bloqueante de la propiedad CRM del asesor
+      context.read<ClientProvider>().ensureAdvisorMap();
     });
   }
 

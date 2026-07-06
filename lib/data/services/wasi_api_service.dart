@@ -114,13 +114,11 @@ class WasiApiService {
     }
   }
 
-  /// Obtiene todos los clientes de la compañía en WASI, paginando internamente.
+  /// Obtiene los clientes asociados a una propiedad (la dummy del asesor),
+  /// paginando internamente.
   ///
-  /// Retorna los mapas crudos de WASI (first_name, last_name, id_client, etc.);
-  /// el cruce con el CRM interno se hace en el provider.
-  // ponytail: trae toda la compañía para el join; si crece a miles de
-  // clientes, cambiar a getClientById por cada id_client_wasi del backend.
-  Future<List<Map<String, dynamic>>> getAllClients() async {
+  /// Retorna los mapas crudos de WASI (first_name, last_name, id_client, etc.).
+  Future<List<Map<String, dynamic>>> getClientsByProperty(String idProperty) async {
     const int pageSize = 100;
     final List<Map<String, dynamic>> allClients = [];
     try {
@@ -129,6 +127,7 @@ class WasiApiService {
         final response = await _dio.get('/client/search', queryParameters: {
           'wasi_token': apiToken,
           'id_company': companyId,
+          'id_property': idProperty,
           'skip': skip,
           'take': pageSize,
         });

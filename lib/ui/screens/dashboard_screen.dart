@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../providers/client_provider.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -81,7 +82,10 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () => auth.logout(),
+                      onPressed: () {
+                        context.read<ClientProvider>().clear();
+                        auth.logout();
+                      },
                       child: const Text('Salir', style: TextStyle(color: AppColors.error)),
                     ),
                   ],
