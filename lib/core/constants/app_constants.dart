@@ -15,6 +15,9 @@ class AppConstants {
   static String get wasiApiToken => dotenv.env['WASI_API_TOKEN'] ?? '';
   static String get wasiApiId => dotenv.env['WASI_API_ID'] ?? '';
 
+  // Usuario WASI dueño de los clientes creados desde el app (requerido por /client/add)
+  static const int wasiUserId = 271266;
+
   // Paginación
   static const int pageSize = 100;
   static const int loadMoreThreshold = 200; // pixels from bottom to trigger load more

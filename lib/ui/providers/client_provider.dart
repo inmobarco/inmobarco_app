@@ -30,6 +30,9 @@ class ClientProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Propiedad dummy del asesor activo (null si aún no se ha obtenido).
+  String? get advisorPropertyId => _advisorPropertyId;
+
   /// Resuelve la propiedad dummy del asesor: memoria → caché → backend.
   /// Idempotente y silencioso ante error (p. ej. sin sesión aún); se llama
   /// no bloqueante al iniciar la app y se reintenta desde loadClients.
@@ -40,6 +43,7 @@ class ClientProvider extends ChangeNotifier {
       final cachedId = cached?['id_property_wasi']?.toString();
       if (cachedId != null && cachedId.isNotEmpty) {
         _advisorPropertyId = cachedId;
+        notifyListeners();
         return _advisorPropertyId;
       }
 
@@ -48,9 +52,12 @@ class ClientProvider extends ChangeNotifier {
       if (id != null && id.isNotEmpty) {
         _advisorPropertyId = id;
         await _cacheService.saveAdvisorMap(advisorMap);
+        notifyListeners();
+      } else {
+        debugPrint('⚠️ advisor-map sin id_property_wasi: $advisorMap');
       }
-    } catch (e) {
-      debugPrint('⚠️ No se pudo obtener advisor-map: $e');
+    } catch (e, st) {
+      debugPrint('⚠️ No se pudo obtener advisor-map: $e\n$st');
     }
     return _advisorPropertyId;
   }
@@ -84,9 +91,12 @@ class ClientProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Primero resolver la propiedad del asesor (memoria → caché → backend).
+      // Sin propiedad no se llama a WASI: lista vacía ("No hay clientes").
       final propertyId = await ensureAdvisorMap();
       if (propertyId == null) {
-        throw Exception('El asesor no tiene propiedad CRM asignada');
+        _clients = [];
+        return;
       }
 
       final wasiClients = await _apiService.getClientsByProperty(propertyId);

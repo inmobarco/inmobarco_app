@@ -169,6 +169,7 @@ class WasiApiService {
   }) async {
     try {
       final body = <String, dynamic>{
+        'id_user': AppConstants.wasiUserId,
         'id_country': 1, // Colombia
         'id_region': 2, // Antioquia
         'id_city': 496, // Envigado
@@ -190,7 +191,8 @@ class WasiApiService {
       }
       final data = response.data;
       if (data['status'] != 'success') {
-        throw Exception('Error en respuesta de WASI: ${data['status']}');
+        throw Exception(
+            'Error en respuesta de WASI: ${data['message'] ?? data['status']}');
       }
       final idClient = data['id_client']?.toString();
       if (idClient == null || idClient.isEmpty) {
@@ -215,7 +217,8 @@ class WasiApiService {
       }
       final data = response.data;
       if (data['status'] != 'success') {
-        throw Exception('Error en respuesta de WASI: ${data['status']}');
+        throw Exception(
+            'Error en respuesta de WASI: ${data['message'] ?? data['status']}');
       }
     } on DioException catch (e) {
       throw Exception('Error de conexión: ${e.message}');

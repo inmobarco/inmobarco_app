@@ -173,7 +173,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getAdvisorMap() async {
     final dio = await getInstance();
     final response = await dio.get('/crm/advisor-map');
-    debugPrint('👥 GET /crm/advisor-map → ${response.statusCode}');
+    debugPrint('👥 GET /crm/advisor-map → ${response.statusCode}: ${response.data}');
     return response.data as Map<String, dynamic>;
   }
 
