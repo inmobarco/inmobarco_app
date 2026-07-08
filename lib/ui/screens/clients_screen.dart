@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../providers/client_provider.dart';
+import 'add_client_screen.dart';
 
 class ClientsScreen extends StatefulWidget {
   const ClientsScreen({super.key});
@@ -19,10 +20,33 @@ class _ClientsScreenState extends State<ClientsScreen> {
     });
   }
 
+  Future<void> _createNew() async {
+    final created = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddClientScreen()),
+    );
+    if (created == true && mounted) {
+      // La lista ya se refrescó dentro de createClient
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cliente creado'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Clientes')),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'add_client_fab',
+        backgroundColor: AppColors.primaryColor,
+        onPressed: _createNew,
+        tooltip: 'Nuevo cliente',
+        child: const Icon(Icons.add, color: AppColors.pureWhite),
+      ),
       body: Consumer<ClientProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading && provider.clients.isEmpty) {

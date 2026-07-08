@@ -157,6 +157,71 @@ class WasiApiService {
     }
   }
 
+  /// Crea un cliente en WASI y retorna el id_client generado.
+  ///
+  /// Ubicación fija: Colombia / Antioquia / Envigado.
+  Future<String> createClient({
+    required String firstName,
+    required String cellPhone,
+    String? lastName,
+    String? email,
+    String? query,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'id_country': 1, // Colombia
+        'id_region': 2, // Antioquia
+        'id_city': 496, // Envigado
+        'first_name': firstName,
+        'cell_phone': cellPhone,
+        if (lastName != null && lastName.isNotEmpty) 'last_name': lastName,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (query != null && query.isNotEmpty) 'query': query,
+      };
+
+      final response = await _dio.post(
+        '/client/add',
+        queryParameters: {'wasi_token': apiToken, 'id_company': companyId},
+        data: body,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al crear cliente: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data['status'] != 'success') {
+        throw Exception('Error en respuesta de WASI: ${data['status']}');
+      }
+      final idClient = data['id_client']?.toString();
+      if (idClient == null || idClient.isEmpty) {
+        throw Exception('WASI no retornó id_client');
+      }
+      return idClient;
+    } on DioException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    }
+  }
+
+  /// Asocia una propiedad (la dummy del asesor) a un cliente en WASI.
+  Future<void> addPropertyToClient(String idClient, String idProperty) async {
+    try {
+      final response = await _dio.post(
+        '/client/$idClient/add-property/$idProperty',
+        queryParameters: {'wasi_token': apiToken, 'id_company': companyId},
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al asociar propiedad: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data['status'] != 'success') {
+        throw Exception('Error en respuesta de WASI: ${data['status']}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    }
+  }
+
   /// Obtiene un cliente específico de WASI por su id_client.
   Future<Map<String, dynamic>> getClientById(String id) async {
     try {

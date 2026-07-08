@@ -105,6 +105,32 @@ class ClientProvider extends ChangeNotifier {
     }
   }
 
+  /// Crea un cliente en WASI, le asocia la propiedad dummy del asesor y
+  /// refresca la lista. Lanza excepción si el asesor no tiene propiedad
+  /// asignada o si alguna llamada falla.
+  Future<void> createClient({
+    required String firstName,
+    required String cellPhone,
+    String? lastName,
+    String? email,
+    String? query,
+  }) async {
+    final propertyId = await ensureAdvisorMap();
+    if (propertyId == null) {
+      throw Exception('El asesor no tiene propiedad CRM asignada');
+    }
+
+    final idClient = await _apiService.createClient(
+      firstName: firstName,
+      cellPhone: cellPhone,
+      lastName: lastName,
+      email: email,
+      query: query,
+    );
+    await _apiService.addPropertyToClient(idClient, propertyId);
+    await loadClients();
+  }
+
   /// Refresh forzado (pull-to-refresh).
   Future<void> refresh() => loadClients();
 
