@@ -189,9 +189,28 @@ class ApiService {
   /// Obtiene la última nota de cada cliente del asesor.
   static Future<List<Map<String, dynamic>>> getLatestClientNotes() async {
     final dio = await getInstance();
-    final response = await dio.get('/crm/clients/latest-notes');
-    debugPrint('👥 GET /crm/clients/latest-notes → ${response.statusCode}');
+    final response = await dio.get('/crm/latest-notes');
+    debugPrint('👥 GET /crm/latest-notes → ${response.statusCode}');
     final List<dynamic> data = response.data as List<dynamic>;
     return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Crea una nota en la bitácora de un cliente.
+  ///
+  /// El advisor_id lo deriva el backend del JWT.
+  static Future<Map<String, dynamic>> createClientNote(
+      int idClientWasi, String note, String noteType) async {
+    final dio = await getInstance();
+    final response = await dio.post('/crm/clients/$idClientWasi/notes', data: {
+      'note': note,
+      'note_type': noteType,
+    });
+    debugPrint('👥 POST /crm/clients/$idClientWasi/notes → ${response.statusCode}');
+    // El backend retorna la nota creada envuelta en una lista
+    final data = response.data;
+    if (data is List && data.isNotEmpty) {
+      return data.first as Map<String, dynamic>;
+    }
+    return data as Map<String, dynamic>;
   }
 }

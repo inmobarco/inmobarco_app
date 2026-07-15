@@ -40,6 +40,27 @@ class PropertyCard extends StatelessWidget {
                   ),
                   child: _buildPropertyImage(),
                 ),
+                // WASI id badge en esquina superior izquierda si navegación es privada
+                if (!isPublicNavigation && apartment.id.isNotEmpty)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.overlayDark,
+                        borderRadius: AppTheme.badgeBorderRadius,
+                      ),
+                      child: Text(
+                        'ID ${apartment.id}',
+                        style: const TextStyle(
+                          color: AppColors.pureWhite,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Reference badge en esquina inferior izquierda si navegación es privada
                 if (!isPublicNavigation && apartment.reference.isNotEmpty)
                   Positioned(

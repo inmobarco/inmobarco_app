@@ -32,11 +32,13 @@ class PropertyProvider extends ChangeNotifier {
 
   // Getters
   List<Apartment> get properties => _properties;
-  // Lista visible (aplica filtro de búsqueda por registration_number/reference si existe query)
+  // Lista visible (aplica filtro de búsqueda por reference/registration_number o WASI id si existe query)
   List<Apartment> get filteredProperties {
     if (_searchQuery.isEmpty) return _properties;
     final q = _searchQuery.toLowerCase();
-    return _properties.where((p) => p.reference.toLowerCase().contains(q)).toList();
+    return _properties
+        .where((p) => p.reference.toLowerCase().contains(q) || p.id.contains(q))
+        .toList();
   }
   PropertyFilter get currentFilter => _currentFilter;
   bool get isLoading => _isLoading;
@@ -175,12 +177,6 @@ class PropertyProvider extends ChangeNotifier {
     } catch (e) {
       throw Exception('Error obteniendo propiedad: $e');
     }
-  }
-
-  /// Busca propiedades en la lista actual
-  List<Apartment> searchProperties(String query) {
-    // Compatibilidad: delega a la lógica específica por reference
-    return _properties.where((p) => p.reference.toLowerCase().contains(query.toLowerCase())).toList();
   }
 
   /// Limpia la búsqueda activa

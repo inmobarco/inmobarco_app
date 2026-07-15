@@ -3,6 +3,7 @@ import '../../data/services/api_service.dart';
 import '../../data/services/cache_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../../domain/models/client.dart';
+import '../../domain/models/client_note.dart';
 
 /// Provider de clientes CRM: obtiene la propiedad dummy del asesor desde el
 /// backend (`/crm/advisor-map`, cacheada sin TTL hasta logout) y con ella
@@ -19,6 +20,7 @@ class ClientProvider extends ChangeNotifier {
   String? _error;
   Future<void>? _initialLoad;
   String? _advisorPropertyId;
+  Map<int, ClientNote> _latestNotes = {};
 
   ClientProvider({
     required WasiApiService apiService,
@@ -32,6 +34,35 @@ class ClientProvider extends ChangeNotifier {
 
   /// Propiedad dummy del asesor activo (null si aún no se ha obtenido).
   String? get advisorPropertyId => _advisorPropertyId;
+
+  /// Última entrada de bitácora del cliente (null si no tiene).
+  ClientNote? latestNoteFor(int idClientWasi) => _latestNotes[idClientWasi];
+
+  /// Carga la última nota de cada cliente del asesor. Falla silenciosa:
+  /// la bitácora es un enriquecimiento, no debe tumbar la lista.
+  Future<void> loadLatestNotes() async {
+    try {
+      final rows = await ApiService.getLatestClientNotes();
+      _latestNotes = {
+        for (final row in rows)
+          if (row['id_client_wasi'] != null)
+            int.parse(row['id_client_wasi'].toString()):
+                ClientNote.fromJson(row),
+      };
+      notifyListeners();
+    } catch (e) {
+      debugPrint('⚠️ No se pudieron cargar las últimas notas: $e');
+    }
+  }
+
+  /// Crea una nota en la bitácora del cliente y actualiza la última
+  /// entrada visible en la lista.
+  Future<void> addNote(int idClientWasi, String note, String noteType) async {
+    final created =
+        await ApiService.createClientNote(idClientWasi, note, noteType);
+    _latestNotes[idClientWasi] = ClientNote.fromJson(created);
+    notifyListeners();
+  }
 
   /// Resuelve la propiedad dummy del asesor: memoria → caché → backend.
   /// Idempotente y silencioso ante error (p. ej. sin sesión aún); se llama
@@ -74,6 +105,8 @@ class ClientProvider extends ChangeNotifier {
       if (cached != null && cached.isNotEmpty) {
         _clients = cached;
         notifyListeners();
+        // Lista desde caché, pero las notas siempre frescas (query liviana)
+        await loadLatestNotes();
         return;
       }
     } catch (e) {
@@ -99,7 +132,11 @@ class ClientProvider extends ChangeNotifier {
         return;
       }
 
-      final wasiClients = await _apiService.getClientsByProperty(propertyId);
+      final results = await Future.wait([
+        _apiService.getClientsByProperty(propertyId),
+        loadLatestNotes(),
+      ]);
+      final wasiClients = results[0] as List<Map<String, dynamic>>;
       final clients = wasiClients.map(Client.fromWasi).toList()
         ..sort((a, b) =>
             a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
@@ -151,6 +188,7 @@ class ClientProvider extends ChangeNotifier {
     _error = null;
     _initialLoad = null;
     _advisorPropertyId = null;
+    _latestNotes = {};
     notifyListeners();
   }
 }
