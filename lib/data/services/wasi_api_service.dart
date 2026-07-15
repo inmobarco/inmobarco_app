@@ -204,6 +204,28 @@ class WasiApiService {
     }
   }
 
+  /// Actualiza un cliente en WASI (campos editables + id_client_status).
+  Future<void> updateClient(String idClient, Map<String, dynamic> fields) async {
+    try {
+      final response = await _dio.put(
+        '/client/update/$idClient',
+        queryParameters: {'wasi_token': apiToken, 'id_company': companyId},
+        data: fields,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Error al actualizar cliente: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data['status'] != 'success') {
+        throw Exception(
+            'Error en respuesta de WASI: ${data['message'] ?? data['status']}');
+      }
+    } on DioException catch (e) {
+      throw Exception('Error de conexión: ${e.message}');
+    }
+  }
+
   /// Asocia una propiedad (la dummy del asesor) a un cliente en WASI.
   Future<void> addPropertyToClient(String idClient, String idProperty) async {
     try {

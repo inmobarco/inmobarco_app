@@ -201,8 +201,27 @@ class _ClientsScreenState extends State<ClientsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => _ClientDetailSheet(client: client),
+      builder: (_) => _ClientDetailSheet(
+        client: client,
+        onEdit: () => _editClient(client),
+      ),
     );
+  }
+
+  Future<void> _editClient(Client client) async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => AddClientScreen(client: client)),
+    );
+    if (updated == true && mounted) {
+      // La lista ya se refrescó dentro de updateClient
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cliente actualizado'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   Widget _buildErrorWidget(ClientProvider provider) {
@@ -235,8 +254,9 @@ class _ClientsScreenState extends State<ClientsScreen> {
 /// El historial se carga solo al abrir el sheet (lazy).
 class _ClientDetailSheet extends StatefulWidget {
   final Client client;
+  final VoidCallback onEdit;
 
-  const _ClientDetailSheet({required this.client});
+  const _ClientDetailSheet({required this.client, required this.onEdit});
 
   @override
   State<_ClientDetailSheet> createState() => _ClientDetailSheetState();
@@ -420,12 +440,25 @@ class _ClientDetailSheetState extends State<_ClientDetailSheet> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        'Cliente #${client.idClientWasi}',
-                        style: const TextStyle(
-                            color: AppColors.textColor2, fontSize: 13),
+                      Row(
+                        children: [
+                          Text(
+                            'Cliente #${client.idClientWasi}',
+                            style: const TextStyle(
+                                color: AppColors.textColor2, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context); // cierra el sheet
+                              widget.onEdit();
+                            },
+                            icon: const Icon(Icons.edit, size: 18),
+                            label: const Text('Editar'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       if (client.cellPhone != null)
                         _detailRow(Icons.phone_android, 'Celular', client.cellPhone!),
                       if (client.phone != null)

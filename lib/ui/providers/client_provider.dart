@@ -178,6 +178,26 @@ class ClientProvider extends ChangeNotifier {
     await loadClients();
   }
 
+  /// Actualiza un cliente en WASI y refresca la lista. El celular no se
+  /// envía (bloqueado en edición).
+  Future<void> updateClient(
+    int idClientWasi, {
+    required String firstName,
+    required String lastName,
+    String? email,
+    String? query,
+    required int idClientStatus,
+  }) async {
+    await _apiService.updateClient(idClientWasi.toString(), {
+      'first_name': firstName,
+      'last_name': lastName,
+      'email': email ?? '',
+      'query': query ?? '',
+      'id_client_status': idClientStatus,
+    });
+    await loadClients();
+  }
+
   /// Refresh forzado (pull-to-refresh).
   Future<void> refresh() => loadClients();
 
