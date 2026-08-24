@@ -74,22 +74,42 @@ void main() {
   });
 
   group('syncCreate', () {
+    // ApiService is static and unmockable. Without dotenv loaded it throws
+    // NotInitializedError while resolving the base URL, before opening any
+    // socket, so the failure path is deterministic and offline.
     test('enqueues on failure', () async {
-      // ApiService.createAppointment is static, so we test the enqueue path
-      // by verifying that syncService.enqueue is called when API fails.
-      // Since ApiService is static and not mockable, we test the enqueue behavior.
       when(mockSyncService.enqueue(
         action: anyNamed('action'),
         localId: anyNamed('localId'),
         payload: anyNamed('payload'),
       )).thenAnswer((_) async {});
 
-      // syncCreate will fail because there's no real API, which triggers enqueue
       final result = await repository.syncCreate(sampleAppointment());
 
-      // Either returns serverId (unlikely without real API) or enqueues
-      // We verify it doesn't throw
-      expect(result, anyOf(isNull, isA<int>()));
+      expect(result, isNull);
+      verify(mockSyncService.enqueue(
+        action: 'create',
+        localId: 'apt_1',
+        payload: anyNamed('payload'),
+      )).called(1);
+    });
+  });
+
+  group('syncUpdate', () {
+    test('enqueues without hitting the API when serverId is missing', () async {
+      when(mockSyncService.enqueue(
+        action: anyNamed('action'),
+        localId: anyNamed('localId'),
+        payload: anyNamed('payload'),
+      )).thenAnswer((_) async {});
+
+      await repository.syncUpdate(sampleAppointment());
+
+      verify(mockSyncService.enqueue(
+        action: 'update',
+        localId: 'apt_1',
+        payload: anyNamed('payload'),
+      )).called(1);
     });
   });
 

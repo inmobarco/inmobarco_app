@@ -7,6 +7,7 @@ import 'dart:async' as _i3;
 
 import 'package:inmobarco_app/data/services/cache_service.dart' as _i2;
 import 'package:inmobarco_app/domain/models/apartment.dart' as _i4;
+import 'package:inmobarco_app/domain/models/client.dart' as _i5;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -149,6 +150,75 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
   _i3.Future<void> clearAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#clearAuthSession, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveAllowedCities, [cities]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<Map<String, dynamic>?> loadAllowedCities() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadAllowedCities, []),
+            returnValue: _i3.Future<Map<String, dynamic>?>.value(),
+          )
+          as _i3.Future<Map<String, dynamic>?>);
+
+  @override
+  _i3.Future<void> saveClients(List<_i5.Client>? clients) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveClients, [clients]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<List<_i5.Client>?> loadClients() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadClients, []),
+            returnValue: _i3.Future<List<_i5.Client>?>.value(),
+          )
+          as _i3.Future<List<_i5.Client>?>);
+
+  @override
+  _i3.Future<void> saveAdvisorMap(Map<String, dynamic>? data) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveAdvisorMap, [data]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<Map<String, dynamic>?> loadAdvisorMap() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadAdvisorMap, []),
+            returnValue: _i3.Future<Map<String, dynamic>?>.value(),
+          )
+          as _i3.Future<Map<String, dynamic>?>);
+
+  @override
+  _i3.Future<void> clearAdvisorMap() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearAdvisorMap, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> clearClientsCache() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearClientsCache, []),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )

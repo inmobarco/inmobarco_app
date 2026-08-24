@@ -26,6 +26,9 @@ void main() {
         'caracteristicas': [
           {'id': '1', 'name': 'Piscina', 'category': 'external'}
         ],
+        'hasStoreroom': true,
+        'forRent': true,
+        'forSale': true,
       };
 
   group('Apartment.fromJson', () {
@@ -53,6 +56,9 @@ void main() {
       expect(apartment.departamento, 'Antioquia');
       expect(apartment.coordenadas, '6.2,-75.5');
       expect(apartment.caracteristicas.length, 1);
+      expect(apartment.hasStoreroom, isTrue);
+      expect(apartment.forRent, isTrue);
+      expect(apartment.forSale, isTrue);
     });
 
     test('handles null/missing fields with defaults', () {
@@ -67,6 +73,9 @@ void main() {
       expect(apartment.banos, 0);
       expect(apartment.imagenes, isEmpty);
       expect(apartment.caracteristicas, isEmpty);
+      expect(apartment.hasStoreroom, isNull);
+      expect(apartment.forRent, isFalse);
+      expect(apartment.forSale, isFalse);
     });
 
     test('handles completely empty json', () {
@@ -143,6 +152,17 @@ void main() {
     test('priceFormatted returns empty when both are zero', () {
       final apt = Apartment.fromJson(sampleJson()).copyWith(rentPrice: 0, salePrice: 0);
       expect(apt.priceFormatted, '');
+    });
+
+    test('priceFormatted returns empty when neither flag is set', () {
+      final apt = Apartment.fromJson(sampleJson())
+          .copyWith(forRent: false, forSale: false);
+      expect(apt.priceFormatted, '');
+    });
+
+    test('priceFormatted groups thousands with commas', () {
+      final apt = Apartment.fromJson(sampleJson()).copyWith(forSale: false);
+      expect(apt.priceFormatted, '\$1,500,000');
     });
 
     test('ubicacion combines barrio and municipio', () {

@@ -15,7 +15,13 @@ flutter analyze          # Static analysis / linting
 flutter test             # Run all tests
 flutter test test/widget_test.dart  # Run specific test file
 flutter build apk        # Build Android APK
+
+dart run build_runner build --delete-conflicting-outputs  # Regenerate *.mocks.dart
 ```
+
+Run `build_runner` after changing any class that a test mocks (`CacheService`,
+`SyncService`, `WasiApiService`, `AppointmentRepository`, `NotificationService`).
+Stale mocks still compile — they fail at runtime with `MissingStubError`.
 
 ## Architecture
 

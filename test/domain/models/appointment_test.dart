@@ -12,10 +12,9 @@ void main() {
         type: AppointmentType.visit,
         status: AppointmentStatus.confirmed,
         propertyId: 'prop_123',
-        propertyAddress: 'Cra 43A #1-50',
         clientName: 'María López',
         clientPhone: '3001234567',
-        notes: 'Llevar llaves',
+        outcome: 'Cliente interesado',
         createdAt: DateTime(2026, 3, 15, 8, 0),
         updatedAt: DateTime(2026, 3, 16, 9, 0),
       );
@@ -35,10 +34,9 @@ void main() {
       expect(restored.type, original.type);
       expect(restored.status, original.status);
       expect(restored.propertyId, original.propertyId);
-      expect(restored.propertyAddress, original.propertyAddress);
       expect(restored.clientName, original.clientName);
       expect(restored.clientPhone, original.clientPhone);
-      expect(restored.notes, original.notes);
+      expect(restored.outcome, original.outcome);
       expect(restored.createdAt, original.createdAt);
       expect(restored.updatedAt, original.updatedAt);
     });
@@ -57,7 +55,7 @@ void main() {
       expect(restored.description, isNull);
       expect(restored.propertyId, isNull);
       expect(restored.clientName, isNull);
-      expect(restored.notes, isNull);
+      expect(restored.outcome, isNull);
       expect(restored.updatedAt, isNull);
       expect(restored.type, AppointmentType.visit);
       expect(restored.status, AppointmentStatus.pending);
@@ -77,11 +75,22 @@ void main() {
       expect(apiJson['client_phone'], '3001234567');
       expect(apiJson['appointment_type'], 'visit');
       expect(apiJson['status'], 'confirmed');
+      expect(apiJson['outcome'], 'Cliente interesado');
       // Should NOT contain local-only fields
       expect(apiJson.containsKey('id'), isFalse);
       expect(apiJson.containsKey('serverId'), isFalse);
       expect(apiJson.containsKey('propertyId'), isFalse);
-      expect(apiJson.containsKey('notes'), isFalse);
+    });
+
+    test('omits outcome when null', () {
+      final apiJson = Appointment(
+        id: 'min_1',
+        title: 'Test',
+        dateTime: DateTime(2026, 4, 1),
+        createdAt: DateTime(2026, 3, 15),
+      ).toApiJson();
+
+      expect(apiJson.containsKey('outcome'), isFalse);
     });
   });
 
@@ -97,6 +106,7 @@ void main() {
         'status': 'pending',
         'client_name': 'Carlos Pérez',
         'client_phone': '3109876543',
+        'outcome': 'Contrato firmado',
         'created_at': '2026-03-10T10:00:00.000Z',
         'updated_at': '2026-03-11T12:00:00.000Z',
       };
@@ -112,6 +122,7 @@ void main() {
       expect(apt.status, AppointmentStatus.pending);
       expect(apt.clientName, 'Carlos Pérez');
       expect(apt.clientPhone, '3109876543');
+      expect(apt.outcome, 'Contrato firmado');
       expect(apt.createdAt, isNotNull);
       expect(apt.updatedAt, isNotNull);
     });
@@ -146,6 +157,7 @@ void main() {
       expect(apt.description, isNull);
       expect(apt.clientName, isNull);
       expect(apt.clientPhone, isNull);
+      expect(apt.outcome, isNull);
       expect(apt.updatedAt, isNull);
     });
   });

@@ -84,6 +84,9 @@ void main() {
       expect(provider.isLoggedIn, isFalse);
       expect(provider.user, isNull);
       verify(mockCacheService.clearAuthSession()).called(1);
+      // Los datos CRM son por asesor: no deben sobrevivir al logout.
+      verify(mockCacheService.clearClientsCache()).called(1);
+      verify(mockCacheService.clearAdvisorMap()).called(1);
     });
   });
 
