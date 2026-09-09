@@ -56,15 +56,35 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
 
 ---
 
-## P1 — Arranque instantáneo
+## P1 — Arranque instantáneo ✅
 
-- [ ] **P1.5 — Catálogos WASI y residenciales a disco**
+> Completado. `flutter analyze` limpio y `flutter test` en verde (144 tests,
+> con `test/core/services/global_data_service_test.dart` nuevo).
+> Extra no planeado: el pull-to-refresh de Residenciales ahora usa
+> `reloadResidentials()` en vez de recargar también ciudades y características.
+
+- [x] **P1.5 — Catálogos WASI y residenciales a disco**
   - `features_cache.json`, `zones_cache.json`, `residentials_cache.json` con
-    TTL de 7 días y stale-while-revalidate (cambian casi nunca).
+    stale-while-revalidate y un TTL por catálogo según su volatilidad real:
+    - características: **7 días**
+    - ciudades y barrios: **24 h**
+    - residenciales: **10 min** — varios asesores los crean para captar
+      inmuebles (proyectos nuevos son frecuentes); si uno no ve el que acabó de
+      crear otro, lo sube duplicado.
   - Helper genérico de caché con TTL en `CacheService` que reemplaza los ~7
     bloques duplicados de read/write/clear.
+  - Disparadores del TTL de 10 min (un TTL corto solo sirve si algo lo
+    consulta): al entrar a la pestaña de Residenciales, al abrir Agregar
+    propiedad (no bloqueante, repuebla el desplegable al terminar) y al
+    arrancar. `GlobalDataService` es `ChangeNotifier`, así que el refresco en
+    background repinta las pantallas que lo escuchan.
+  - Las zonas no se re-descargan en cada ciclo de residenciales: solo si
+    vencieron (24 h) o si llegó un residencial cuyo barrio no está en el caché.
+  - Forzado manual: pull-to-refresh en Residenciales, y **Configuración →
+    Actualizar datos maestros** para ciudades y barrios (que no tenían otra
+    forma de forzarse), con conteos y aviso si no hay sesión.
 
-- [ ] **P1.6 — `main()` sin red en el camino crítico**
+- [x] **P1.6 — `main()` sin red en el camino crítico**
   - `GlobalDataService.initialize()` se parte en `hydrateFromCache()` (local, se
     espera) y `refreshStale()` (background, después de `runApp`). Hoy `main()`
     espera features + residenciales + ~6 llamadas de zonas: sin cobertura son
@@ -72,7 +92,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
   - Corregir también el doble fetch de ciudades en `refresh()` (usar un flag
     `force` en lugar de llamar `_refreshAllowedCities()` dos veces).
 
-- [ ] **P1.7 — Fin de la carrera del arranque de propiedades**
+- [x] **P1.7 — Fin de la carrera del arranque de propiedades**
   - `PropertyProvider` expone el `Future` de hidratación y `HomeScreen` lo
     espera antes de decidir si refresca (hoy evalúa `properties.isEmpty` en el
     mismo frame, así que el caché casi nunca se aprovecha).

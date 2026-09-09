@@ -33,12 +33,25 @@ class CacheService {
   static const String _clientsFileName = 'clients_cache.json'; // Clientes CRM (desde WASI)
   static const String _clientsUpdateKey = 'last_clients_update';
   static const String _advisorMapFileName = 'advisor_map_cache.json'; // Propiedad dummy del asesor (sin TTL)
+  static const String _featuresFileName = 'features_cache.json'; // Características WASI
+  static const String _featuresUpdateKey = 'last_features_update';
+  static const String _zonesFileName = 'zones_cache.json'; // Barrios de las ciudades con residenciales
+  static const String _zonesUpdateKey = 'last_zones_update';
+  static const String _residentialsFileName = 'residentials_cache.json'; // Unidades residenciales
+  static const String _residentialsUpdateKey = 'last_residentials_update';
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
 
-  // Tiempo de expiración del caché de ciudades (minutos)
-  static const int _allowedCitiesExpirationMinutes = 10;
+  /// TTL por catálogo, según lo seguido que cambie cada uno en la práctica.
+  ///
+  /// Los residenciales son la excepción: varios asesores los crean para captar
+  /// inmuebles, y si uno no ve el que acaba de crear otro lo vuelve a subir
+  /// duplicado. De ahí los 10 minutos.
+  static const Duration _featuresTtl = Duration(days: 7);
+  static const Duration _citiesTtl = Duration(hours: 24);
+  static const Duration _zonesTtl = Duration(hours: 24);
+  static const Duration _residentialsTtl = Duration(minutes: 10);
 
   CacheService();
 
@@ -326,65 +339,128 @@ class CacheService {
     }
   }
 
+  // ================== Helper genérico de caché con TTL ==================
+
+  /// Escribe [data] como JSON en [fileName] y sella la marca de tiempo en
+  /// [updateKey]. Base de todos los cachés con TTL.
+  Future<void> _writeJsonCache(
+    String fileName,
+    String updateKey,
+    Object data,
+  ) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(jsonEncode(data), flush: true);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(updateKey, DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('⚠️ No se pudo escribir caché $fileName: $e');
+    }
+  }
+
+  /// Lee [fileName] y marca el resultado como `isStale` si superó [ttl].
+  ///
+  /// Retorna null solo si no hay archivo, está vacío o no se pudo decodificar:
+  /// un caché vencido igual se entrega (last-known-good).
+  Future<CachedResult<dynamic>?> _readJsonCache(
+    String fileName,
+    String updateKey,
+    Duration ttl,
+  ) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+
+      final prefs = await SharedPreferences.getInstance();
+      final lastUpdate = prefs.getInt(updateKey) ?? 0;
+      final ageMs = DateTime.now().millisecondsSinceEpoch - lastUpdate;
+
+      return CachedResult(
+        data: jsonDecode(content),
+        isStale: ageMs > ttl.inMilliseconds,
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo leer caché $fileName: $e');
+      return null;
+    }
+  }
+
+  /// Igual que [_readJsonCache], tipado para las listas de mapas que usan los
+  /// catálogos (ciudades, características, zonas, residenciales).
+  Future<CachedResult<List<Map<String, dynamic>>>?> _readMapListCache(
+    String fileName,
+    String updateKey,
+    Duration ttl,
+  ) async {
+    final raw = await _readJsonCache(fileName, updateKey, ttl);
+    if (raw == null) return null;
+    try {
+      final list = (raw.data as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      return CachedResult(data: list, isStale: raw.isStale);
+    } catch (e) {
+      debugPrint('⚠️ Caché $fileName con formato inesperado: $e');
+      return null;
+    }
+  }
+
+  // ================== Catálogos ==================
+
+  /// Guarda las características de WASI.
+  Future<void> saveFeatures(List<Map<String, dynamic>> features) =>
+      _writeJsonCache(_featuresFileName, _featuresUpdateKey, features);
+
+  /// Carga las características de WASI.
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadFeatures() =>
+      _readMapListCache(_featuresFileName, _featuresUpdateKey, _featuresTtl);
+
+  /// Guarda las zonas (barrios) ya consolidadas.
+  Future<void> saveZones(List<Map<String, dynamic>> zones) =>
+      _writeJsonCache(_zonesFileName, _zonesUpdateKey, zones);
+
+  /// Carga las zonas (barrios).
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadZones() =>
+      _readMapListCache(_zonesFileName, _zonesUpdateKey, _zonesTtl);
+
+  /// Guarda las unidades residenciales.
+  Future<void> saveResidentialComplexes(List<Map<String, dynamic>> complexes) =>
+      _writeJsonCache(_residentialsFileName, _residentialsUpdateKey, complexes);
+
+  /// Carga las unidades residenciales.
+  Future<CachedResult<List<Map<String, dynamic>>>?>
+      loadResidentialComplexes() => _readMapListCache(
+          _residentialsFileName, _residentialsUpdateKey, _residentialsTtl);
+
   // ================== Ciudades habilitadas ==================
 
   /// Guarda las ciudades habilitadas en caché (archivo + timestamp).
-  Future<void> saveAllowedCities(List<Map<String, dynamic>> cities) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_allowedCitiesFileName');
-      await file.writeAsString(jsonEncode(cities), flush: true);
-      await prefs.setInt(_allowedCitiesUpdateKey, DateTime.now().millisecondsSinceEpoch);
-    } catch (e) {
-      debugPrint('⚠️ No se pudo guardar ciudades en caché: $e');
-    }
-  }
+  Future<void> saveAllowedCities(List<Map<String, dynamic>> cities) =>
+      _writeJsonCache(_allowedCitiesFileName, _allowedCitiesUpdateKey, cities);
 
   /// Carga las ciudades habilitadas desde caché.
   ///
   /// Retorna null si no hay caché; si venció, los datos van marcados como
   /// `isStale` para entregar el último valor conocido cuando el backend no
   /// responde.
-  Future<CachedResult<List<Map<String, dynamic>>>?> loadAllowedCities() async {
-    try {
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_allowedCitiesFileName');
-      if (!await file.exists()) return null;
-      final content = await file.readAsString();
-      if (content.trim().isEmpty) return null;
-
-      final cities = (jsonDecode(content) as List).cast<Map<String, dynamic>>();
-
-      final prefs = await SharedPreferences.getInstance();
-      final lastUpdate = prefs.getInt(_allowedCitiesUpdateKey) ?? 0;
-      final ageMinutes = (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60);
-
-      return CachedResult(
-        data: cities,
-        isStale: ageMinutes > _allowedCitiesExpirationMinutes,
-      );
-    } catch (e) {
-      debugPrint('⚠️ No se pudo cargar ciudades desde caché: $e');
-      return null;
-    }
-  }
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadAllowedCities() =>
+      _readMapListCache(
+          _allowedCitiesFileName, _allowedCitiesUpdateKey, _citiesTtl);
 
   // ================== Clientes CRM ==================
 
   /// Guarda los clientes CRM (ya cruzados con WASI) en caché.
   Future<void> saveClients(List<Client> clients) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_clientsFileName');
-      final jsonString = jsonEncode(clients.map((c) => c.toJson()).toList());
-      await file.writeAsString(jsonString, flush: true);
-      await prefs.setInt(_clientsUpdateKey, DateTime.now().millisecondsSinceEpoch);
-      debugPrint('✅ Clientes guardados en caché: ${clients.length}');
-    } catch (e) {
-      debugPrint('❌ Error guardando clientes en caché: $e');
-    }
+    await _writeJsonCache(
+      _clientsFileName,
+      _clientsUpdateKey,
+      clients.map((c) => c.toJson()).toList(),
+    );
+    debugPrint('✅ Clientes guardados en caché: ${clients.length}');
   }
 
   /// Carga los clientes CRM desde caché.
@@ -501,6 +577,9 @@ class CacheService {
         _allowedCitiesFileName,
         _clientsFileName,
         _advisorMapFileName,
+        _featuresFileName,
+        _zonesFileName,
+        _residentialsFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -514,6 +593,9 @@ class CacheService {
       await prefs.remove(_filterKey);
       await prefs.remove(_allowedCitiesUpdateKey);
       await prefs.remove(_clientsUpdateKey);
+      await prefs.remove(_featuresUpdateKey);
+      await prefs.remove(_zonesUpdateKey);
+      await prefs.remove(_residentialsUpdateKey);
 
       debugPrint('🧹 Todo el caché limpiado por cambio de versión');
     } catch (e) {
@@ -537,6 +619,9 @@ class CacheService {
         _allowedCitiesFileName,
         _clientsFileName,
         _advisorMapFileName,
+        _featuresFileName,
+        _zonesFileName,
+        _residentialsFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

@@ -19,7 +19,9 @@ class _ResidentialsScreenState extends State<ResidentialsScreen> {
   Future<void> _refresh() async {
     final globalData = context.read<GlobalDataService>();
     setState(() => _refreshing = true);
-    await globalData.refresh();
+    // Solo residenciales y sus zonas: no hace falta traer ciudades y
+    // características para actualizar esta lista.
+    await globalData.reloadResidentials();
     if (mounted) setState(() => _refreshing = false);
   }
 
@@ -40,8 +42,18 @@ class _ResidentialsScreenState extends State<ResidentialsScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Trae residenciales si el caché ya pasó su TTL de 10 min.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<GlobalDataService>().refreshStale();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final globalData = context.read<GlobalDataService>();
+    // watch, no read: un refresco en background debe repintar la lista.
+    final globalData = context.watch<GlobalDataService>();
     // ponytail: filter active only if the field exists; endpoint may already return active
     final complexes = globalData.residentialComplexes
         .where((c) => c['active'] != false)

@@ -4,7 +4,11 @@ import '../../data/services/cache_service.dart';
 import '../../data/services/wasi_api_service.dart';
 import '../constants/app_constants.dart';
 
-class GlobalDataService {
+/// Catálogos compartidos (ciudades, barrios, características, residenciales).
+///
+/// Es un [ChangeNotifier] para que un refresco en segundo plano se refleje en
+/// las pantallas que los muestran sin que cada una tenga que recargar a mano.
+class GlobalDataService extends ChangeNotifier {
   GlobalDataService({required CacheService cacheService})
       : _cacheService = cacheService;
 
@@ -14,8 +18,17 @@ class GlobalDataService {
   List<Map<String, dynamic>> _features = [];
   List<Map<String, dynamic>> _residentialComplexes = [];
   List<Map<String, dynamic>> _zones = [];
+
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _hydrated = false;
+  Future<void>? _inFlightRefresh;
+
+  // Qué necesita ir a la red: sin caché o con caché vencido.
+  bool _citiesStale = true;
+  bool _featuresStale = true;
+  bool _zonesStale = true;
+  bool _residentialsStale = true;
 
   // Getter para acceder a las ciudades desde cualquier parte
   List<Map<String, dynamic>> get cities => _cities;
@@ -25,78 +38,119 @@ class GlobalDataService {
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
 
-  /// Inicializa los datos globales al arrancar la aplicación
-  Future<void> initialize() async {
-    if (_isInitialized) {
-      debugPrint('🌍 GlobalDataService ya inicializado');
-      return; // Ya inicializado
-    }
-    
-    _isLoading = true;
-    
-    try {
-      debugPrint('🌍 Iniciando carga de datos globales...');
-      
-      // Verificar que las variables de entorno estén cargadas
-      if (AppConstants.wasiApiToken.isEmpty) {
-        debugPrint('❌ WASI API Token no está disponible');
-        throw Exception('WASI API Token no configurado');
-      }
-      
-      // Crear instancia del servicio API
-      final apiService = WasiApiService(
+  WasiApiService _buildWasiApi() => WasiApiService(
         apiToken: AppConstants.wasiApiToken,
         companyId: AppConstants.wasiApiId,
       );
-      
-      // Cargar ciudades: primero desde caché (arranque instantáneo), luego
-      // refrescar en background si está vencido o no hay caché.
-      debugPrint('🏙️ Cargando ciudades...');
-      final cached = await _cacheService.loadAllowedCities();
-      if (cached != null) {
-        _cities = cached.data;
-        debugPrint('📦 Ciudades desde caché: ${_cities.length} (stale: ${cached.isStale})');
+
+  /// Carga todos los catálogos desde disco. **No toca la red.**
+  ///
+  /// Es lo único que `main()` espera antes de `runApp`: la versión anterior
+  /// esperaba características + residenciales + una llamada de zonas por
+  /// ciudad, así que sin cobertura el primer frame tardaba ~30 s.
+  Future<void> hydrateFromCache() async {
+    if (_hydrated) return;
+    _hydrated = true;
+
+    final results = await Future.wait([
+      _cacheService.loadAllowedCities(),
+      _cacheService.loadFeatures(),
+      _cacheService.loadZones(),
+      _cacheService.loadResidentialComplexes(),
+    ]);
+
+    final cachedCities = results[0];
+    final cachedFeatures = results[1];
+    final cachedZones = results[2];
+    final cachedResidentials = results[3];
+
+    if (cachedCities != null) {
+      _cities = cachedCities.data;
+      _citiesStale = cachedCities.isStale;
+    }
+    if (cachedFeatures != null) {
+      _features = cachedFeatures.data;
+      _featuresStale = cachedFeatures.isStale;
+    }
+    if (cachedZones != null) {
+      _zones = cachedZones.data;
+      _zonesStale = cachedZones.isStale;
+    }
+    if (cachedResidentials != null) {
+      _residentialComplexes = cachedResidentials.data;
+      _residentialsStale = cachedResidentials.isStale;
+    }
+
+    _isInitialized = true;
+    notifyListeners();
+    debugPrint('🌍 Datos globales desde caché: ${_cities.length} ciudades, '
+        '${_features.length} características, ${_zones.length} zonas, '
+        '${_residentialComplexes.length} residenciales '
+        '(pendiente de red: ${_stalePartsLabel()})');
+  }
+
+  /// Refresca desde la red solo lo que esté vencido o falte.
+  ///
+  /// Se llama después de `runApp` sin esperarla. Con [force] refresca todo.
+  Future<void> refreshStale({bool force = false}) async {
+    final pending = _inFlightRefresh;
+    if (pending != null) {
+      if (!force) {
+        debugPrint('⏭️ Refresco de datos globales ya en curso');
+        return;
       }
-      if (cached == null) {
-        // Arranque en frío sin caché: esperar para tener ciudades listas.
-        await _refreshAllowedCities();
-      } else if (cached.isStale) {
-        // Hay caché servible: refrescar en background sin bloquear el arranque.
-        _refreshAllowedCities();
+      // Un forzado (p. ej. tras login) no se descarta: espera al que corre y
+      // después refresca de verdad.
+      await pending;
+    }
+
+    final task = _doRefreshStale(force: force);
+    _inFlightRefresh = task;
+    try {
+      await task;
+    } finally {
+      _inFlightRefresh = null;
+    }
+  }
+
+  Future<void> _doRefreshStale({required bool force}) async {
+    if (!force && !_citiesStale && !_featuresStale && !_zonesStale &&
+        !_residentialsStale) {
+      debugPrint('✅ Datos globales vigentes, no se llama a la red');
+      return;
+    }
+
+    _isLoading = true;
+    try {
+      if (AppConstants.wasiApiToken.isEmpty) {
+        debugPrint('❌ WASI API Token no está disponible');
+        return;
       }
 
-      // Cargar características
-      debugPrint('🧩 Cargando características...');
-      _features = await apiService.getFeatures();
-      debugPrint('✅ Características cargadas: ${_features.length}');
-      if (_features.isNotEmpty) {
-        debugPrint('🔖 Primera característica: ${_features.first['name']} (${_features.first['category']})');
-      }
-      
-      // Cargar unidades residenciales + zonas
-      await _loadResidentialsAndZones(apiService);
-
-      _isInitialized = true;
-      
+      if (force || _citiesStale) await _refreshAllowedCities();
+      if (force || _featuresStale) await _refreshFeatures();
+      await _refreshResidentialsAndZones(force: force);
     } catch (e, stackTrace) {
-      debugPrint('❌ Error cargando datos globales: $e');
+      // Nunca se descartan los datos ya cargados: un fallo de red deja el
+      // último valor conocido en su lugar.
+      debugPrint('❌ Error refrescando datos globales: $e');
       debugPrint('Stack trace: $stackTrace');
-      // En caso de error, inicializar con lista vacía
-      _cities = [];
-      _features = [];
-      _residentialComplexes = [];
-      _zones = [];
-      _isInitialized = false; // Permitir reintento
     } finally {
       _isLoading = false;
     }
   }
 
-  /// Refresca los datos globales
+  /// Hidrata desde caché y espera el refresco. Para pantallas que necesitan
+  /// los catálogos ya cargados (p. ej. reintento desde filtros).
+  Future<void> initialize() async {
+    await hydrateFromCache();
+    await refreshStale();
+  }
+
+  /// Refresca todos los datos globales ignorando los TTL.
   Future<void> refresh() async {
-    _isInitialized = false;
-    await initialize();
-    await _refreshAllowedCities();
+    await hydrateFromCache();
+    await refreshStale(force: true);
   }
 
   /// Refresca las ciudades habilitadas desde el backend y actualiza el caché.
@@ -110,7 +164,9 @@ class GlobalDataService {
       final fresh = await ApiService.getAllowedCities();
       if (fresh.isNotEmpty) {
         _cities = fresh;
+        _citiesStale = false;
         await _cacheService.saveAllowedCities(fresh);
+        notifyListeners();
         debugPrint('✅ Ciudades refrescadas desde backend: ${fresh.length}');
       }
     } catch (e) {
@@ -118,43 +174,102 @@ class GlobalDataService {
     }
   }
 
-  /// Carga unidades residenciales y las zonas (barrios) de sus ciudades.
-  Future<void> _loadResidentialsAndZones(WasiApiService api) async {
+  /// Refresca las características de WASI y las persiste.
+  Future<void> _refreshFeatures() async {
+    try {
+      final fresh = await _buildWasiApi().getFeatures();
+      if (fresh.isNotEmpty) {
+        _features = fresh;
+        _featuresStale = false;
+        await _cacheService.saveFeatures(fresh);
+        notifyListeners();
+        debugPrint('✅ Características refrescadas: ${fresh.length}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Error refrescando características (se conserva caché): $e');
+    }
+  }
+
+  /// Refresca unidades residenciales y, si hace falta, las zonas (barrios) de
+  /// sus ciudades.
+  ///
+  /// Las zonas tienen un TTL mucho más largo que los residenciales, así que no
+  /// se re-descargan en cada ciclo de 10 minutos: solo si vencieron, si nunca
+  /// se cargaron, o si llegó un residencial cuyo barrio no está en el caché
+  /// (residencial nuevo en una ciudad que aún no habíamos consultado).
+  Future<void> _refreshResidentialsAndZones({required bool force}) async {
+    final needsResidentials = force || _residentialsStale;
+    if (!needsResidentials && !_zonesStale && !_hasResidentialWithUnknownZone) {
+      return;
+    }
+
     if (!await ApiService.hasSession()) {
       debugPrint('🔒 Sin sesión → se omiten residenciales y zonas');
       return;
     }
-    debugPrint('🏢 Cargando unidades residenciales...');
-    try {
-      _residentialComplexes = await ApiService.getResidentialComplexes();
-      debugPrint('✅ Unidades residenciales cargadas: ${_residentialComplexes.length}');
-    } catch (e) {
-      debugPrint('⚠️ Error cargando unidades residenciales (no bloqueante): $e');
-      _residentialComplexes = [];
+
+    if (needsResidentials) {
+      debugPrint('🏢 Refrescando unidades residenciales...');
+      try {
+        final fresh = await ApiService.getResidentialComplexes();
+        _residentialComplexes = fresh;
+        _residentialsStale = false;
+        await _cacheService.saveResidentialComplexes(fresh);
+        notifyListeners();
+        debugPrint('✅ Unidades residenciales: ${fresh.length}');
+      } catch (e) {
+        debugPrint('⚠️ Error refrescando residenciales (se conserva caché): $e');
+      }
     }
 
+    if (!force && !_zonesStale && !_hasResidentialWithUnknownZone) return;
+
     try {
+      final api = _buildWasiApi();
       final cityIds = _residentialComplexes
           .map((c) => c['id_city']?.toString())
           .whereType<String>()
           .where((id) => id.isNotEmpty)
           .toSet();
+      if (cityIds.isEmpty) return;
+
       final results = await Future.wait(cityIds.map(api.getZonesByCity));
-      _zones = results.expand((z) => z).toList();
-      debugPrint('✅ Zonas cargadas: ${_zones.length}');
+      final fresh = results.expand((z) => z).toList();
+      if (fresh.isNotEmpty) {
+        _zones = fresh;
+        _zonesStale = false;
+        await _cacheService.saveZones(fresh);
+        notifyListeners();
+        debugPrint('✅ Zonas refrescadas: ${fresh.length}');
+      }
     } catch (e) {
-      debugPrint('⚠️ Error cargando zonas (no bloqueante): $e');
-      _zones = [];
+      debugPrint('⚠️ Error refrescando zonas (se conserva caché): $e');
     }
   }
 
-  /// Recarga solo los residenciales y sus zonas (tras crear/editar/eliminar).
-  Future<void> reloadResidentials() async {
-    final api = WasiApiService(
-      apiToken: AppConstants.wasiApiToken,
-      companyId: AppConstants.wasiApiId,
-    );
-    await _loadResidentialsAndZones(api);
+  /// True si algún residencial apunta a un barrio que no está en el caché de
+  /// zonas: es el caso del residencial recién creado en una ciudad nueva.
+  bool get _hasResidentialWithUnknownZone {
+    final known = _zones.map((z) => z['id']?.toString()).toSet();
+    return _residentialComplexes.any((c) {
+      final zoneId = c['id_zone']?.toString();
+      return zoneId != null && zoneId.isNotEmpty && !known.contains(zoneId);
+    });
+  }
+
+  /// Recarga los residenciales y sus zonas (tras crear/editar/eliminar, o con
+  /// el pull-to-refresh de la pantalla de Residenciales).
+  Future<void> reloadResidentials() =>
+      _refreshResidentialsAndZones(force: true);
+
+  String _stalePartsLabel() {
+    final parts = <String>[
+      if (_citiesStale) 'ciudades',
+      if (_featuresStale) 'características',
+      if (_zonesStale) 'zonas',
+      if (_residentialsStale) 'residenciales',
+    ];
+    return parts.isEmpty ? 'nada' : parts.join(', ');
   }
 
   /// Busca una ciudad por nombre

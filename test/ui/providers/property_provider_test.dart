@@ -151,6 +151,40 @@ void main() {
       expect(provider.isCacheStale, isFalse);
     });
 
+    test('keeps the cached list when a refresh fails', () async {
+      when(mockCacheService.loadProperties())
+          .thenAnswer((_) async => cached(3));
+      final provider = await buildProvider();
+      when(mockApiService.getActiveProperties(
+        filter: anyNamed('filter'),
+        page: anyNamed('page'),
+        limit: anyNamed('limit'),
+      )).thenThrow(Exception('network down'));
+
+      await provider.loadProperties(refresh: true);
+
+      // La lista solo se reemplaza cuando llega la respuesta: vaciarla antes
+      // del await mandaba la UI al spinner y tiraba el caché ya pintado.
+      expect(provider.properties.length, 3);
+      expect(provider.error, contains('network down'));
+    });
+
+    test('hydration completes before the cache is visible', () async {
+      when(mockCacheService.loadProperties())
+          .thenAnswer((_) async => cached(2));
+      final provider = PropertyProvider(
+        apiService: mockApiService,
+        cacheService: mockCacheService,
+      );
+
+      await provider.hydration;
+
+      // Quien decide si va a la red espera esto; sin el future, la lectura de
+      // disco no alcanzaba a terminar en el frame de arranque.
+      expect(provider.properties.length, 2);
+      expect(provider.isLoadingFromCache, isFalse);
+    });
+
     test('sets error and clears loading when the API throws', () async {
       final provider = await buildProvider();
       when(mockApiService.getActiveProperties(

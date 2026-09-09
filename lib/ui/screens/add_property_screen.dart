@@ -211,6 +211,13 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     }
 
     if (mounted) setState(() => _loadingDraft = false);
+
+    // Sin bloquear el formulario: si el caché de residenciales ya pasó su TTL
+    // de 10 min, traerlo y volver a poblar el desplegable. Así el asesor ve el
+    // residencial que acabó de crear otro y no lo sube duplicado.
+    _globalData.refreshStale().then((_) {
+      if (mounted) _loadResidentialComplexes();
+    });
   }
 
   Future<void> _loadUserProfile() async {

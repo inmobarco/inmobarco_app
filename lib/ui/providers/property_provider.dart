@@ -28,8 +28,17 @@ class PropertyProvider extends ChangeNotifier {
     required CacheService cacheService,
   })  : _apiService = apiService,
        _cacheService = cacheService {
-    _loadFromCache(); // Cargar caché al inicializar
+    _hydration = _loadFromCache(); // Cargar caché al inicializar
   }
+
+  late final Future<void> _hydration;
+
+  /// Se completa cuando terminó la lectura del caché.
+  ///
+  /// Quien decida si hace falta ir a la red debe esperarlo: la lectura es E/S
+  /// asíncrona y no alcanza a terminar en el mismo frame, así que consultar
+  /// `properties.isEmpty` de una vez descartaba el caché casi siempre.
+  Future<void> get hydration => _hydration;
 
   // Getters
   List<Apartment> get properties => _properties;
@@ -79,7 +88,9 @@ class PropertyProvider extends ChangeNotifier {
     if (refresh) {
       _currentPage = 1;
       _hasMoreData = true;
-      _properties.clear();
+      // La lista NO se vacía aquí: se reemplaza cuando llega la respuesta.
+      // Vaciarla antes del await mandaba la UI al spinner y tiraba el
+      // snapshot del caché que se acababa de pintar.
     }
 
     if (_isLoading || !_hasMoreData) return;

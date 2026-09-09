@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/services/global_data_service.dart';
 import '../providers/property_provider.dart';
 import '../providers/client_provider.dart';
 import 'property_list_screen.dart';
@@ -24,18 +25,38 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const int _residentialsTabIndex = 2;
+
   late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialTab;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<PropertyProvider>();
-      if (provider.properties.isEmpty) provider.refresh();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final propertyProvider = context.read<PropertyProvider>();
+      final clientProvider = context.read<ClientProvider>();
+
       // Prefetch no bloqueante de la propiedad CRM del asesor
-      context.read<ClientProvider>().ensureAdvisorMap();
+      clientProvider.ensureAdvisorMap();
+
+      // Esperar la lectura del caché antes de decidir: así el arranque con
+      // caché vigente no dispara una descarga innecesaria.
+      await propertyProvider.hydration;
+      if (propertyProvider.properties.isEmpty || propertyProvider.isCacheStale) {
+        propertyProvider.refresh();
+      }
     });
+  }
+
+  void _onTabTapped(int index) {
+    setState(() => _currentIndex = index);
+    // Al entrar a Residenciales: refrescar si el caché venció (TTL 10 min).
+    // Con IndexedStack la pantalla no se reconstruye, así que el disparo va
+    // aquí; la lista se repinta sola porque escucha al GlobalDataService.
+    if (index == _residentialsTabIndex) {
+      context.read<GlobalDataService>().refreshStale();
+    }
   }
 
   @override
@@ -65,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: _onTabTapped,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_work), label: 'Propiedades'),

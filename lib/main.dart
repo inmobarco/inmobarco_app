@@ -46,8 +46,8 @@ void main() async {
     await cacheService.saveAppVersion(AppConstants.appVersion);
   }
 
-  // Inicializar datos globales (ciudades, etc.)
-  await globalDataService.initialize();
+  // Datos globales desde disco: sin red, para no bloquear el primer frame.
+  await globalDataService.hydrateFromCache();
 
   // Inicializar servicio de notificaciones
   await notificationService.initialize();
@@ -59,16 +59,17 @@ void main() async {
     debugPrint('Error inicializando locale: $e');
   }
 
-  // Iniciar SyncService: escucha de red + timer periódico cada 5 min +
-  // vaciado inmediato de la cola al arrancar la app.
-  syncService.startListening();
-
   runApp(InmobarcoApp(
     globalDataService: globalDataService,
     notificationService: notificationService,
     cacheService: cacheService,
     syncService: syncService,
   ));
+
+  // Ya con la UI en pantalla: refrescar los catálogos vencidos y arrancar el
+  // SyncService (escucha de red + timer cada 5 min + vaciado de la cola).
+  globalDataService.refreshStale();
+  syncService.startListening();
 }
 
 class InmobarcoApp extends StatelessWidget {
@@ -90,7 +91,8 @@ class InmobarcoApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // Servicios base (no-ChangeNotifier)
-        Provider<GlobalDataService>.value(value: globalDataService),
+        ChangeNotifierProvider<GlobalDataService>.value(
+            value: globalDataService),
         Provider<NotificationService>.value(value: notificationService),
         Provider<CacheService>.value(value: cacheService),
         Provider<SyncService>.value(value: syncService),

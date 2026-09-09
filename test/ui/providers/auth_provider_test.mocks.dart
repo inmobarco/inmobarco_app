@@ -157,6 +157,69 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<void>);
 
   @override
+  _i3.Future<void> saveFeatures(List<Map<String, dynamic>>? features) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveFeatures, [features]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?> loadFeatures() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadFeatures, []),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i3.Future<void> saveZones(List<Map<String, dynamic>>? zones) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveZones, [zones]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?> loadZones() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadZones, []),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i3.Future<void> saveResidentialComplexes(
+    List<Map<String, dynamic>>? complexes,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveResidentialComplexes, [complexes]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>
+  loadResidentialComplexes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadResidentialComplexes, []),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
   _i3.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
       (super.noSuchMethod(
             Invocation.method(#saveAllowedCities, [cities]),
