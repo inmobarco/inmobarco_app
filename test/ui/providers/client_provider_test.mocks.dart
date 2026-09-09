@@ -3,15 +3,20 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i5;
+import 'dart:async' as _i6;
+import 'dart:ui' as _i11;
 
-import 'package:inmobarco_app/data/services/cache_service.dart' as _i7;
+import 'package:flutter/material.dart' as _i13;
+import 'package:flutter/services.dart' as _i12;
+import 'package:inmobarco_app/core/services/notification_service.dart' as _i4;
+import 'package:inmobarco_app/data/services/cache_service.dart' as _i8;
+import 'package:inmobarco_app/data/services/sync_service.dart' as _i10;
 import 'package:inmobarco_app/data/services/wasi_api_service.dart' as _i2;
 import 'package:inmobarco_app/domain/models/apartment.dart' as _i3;
-import 'package:inmobarco_app/domain/models/client.dart' as _i8;
-import 'package:inmobarco_app/domain/models/property_filter.dart' as _i6;
+import 'package:inmobarco_app/domain/models/client.dart' as _i9;
+import 'package:inmobarco_app/domain/models/property_filter.dart' as _i7;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i4;
+import 'package:mockito/src/dummies.dart' as _i5;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -38,6 +43,12 @@ class _FakeApartment_1 extends _i1.SmartFake implements _i3.Apartment {
     : super(parent, parentInvocation);
 }
 
+class _FakeNotificationService_2 extends _i1.SmartFake
+    implements _i4.NotificationService {
+  _FakeNotificationService_2(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [WasiApiService].
 ///
 /// See the documentation for Mockito's code generation for more information.
@@ -50,7 +61,7 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
   String get apiToken =>
       (super.noSuchMethod(
             Invocation.getter(#apiToken),
-            returnValue: _i4.dummyValue<String>(
+            returnValue: _i5.dummyValue<String>(
               this,
               Invocation.getter(#apiToken),
             ),
@@ -61,7 +72,7 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
   String get companyId =>
       (super.noSuchMethod(
             Invocation.getter(#companyId),
-            returnValue: _i4.dummyValue<String>(
+            returnValue: _i5.dummyValue<String>(
               this,
               Invocation.getter(#companyId),
             ),
@@ -69,8 +80,8 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
           as String);
 
   @override
-  _i5.Future<List<_i3.Apartment>> getActiveProperties({
-    _i6.PropertyFilter? filter,
+  _i6.Future<List<_i3.Apartment>> getActiveProperties({
+    _i7.PropertyFilter? filter,
     int? page = 1,
     int? limit = 100,
   }) =>
@@ -80,15 +91,15 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
               #page: page,
               #limit: limit,
             }),
-            returnValue: _i5.Future<List<_i3.Apartment>>.value(
+            returnValue: _i6.Future<List<_i3.Apartment>>.value(
               <_i3.Apartment>[],
             ),
           )
-          as _i5.Future<List<_i3.Apartment>>);
+          as _i6.Future<List<_i3.Apartment>>);
 
   @override
-  _i5.Future<_i2.PropertyPage> getPropertiesPage({
-    _i6.PropertyFilter? filter,
+  _i6.Future<_i2.PropertyPage> getPropertiesPage({
+    _i7.PropertyFilter? filter,
     int? page = 1,
     int? limit = 100,
   }) =>
@@ -98,7 +109,7 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
               #page: page,
               #limit: limit,
             }),
-            returnValue: _i5.Future<_i2.PropertyPage>.value(
+            returnValue: _i6.Future<_i2.PropertyPage>.value(
               _FakePropertyPage_0(
                 this,
                 Invocation.method(#getPropertiesPage, [], {
@@ -109,32 +120,32 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
               ),
             ),
           )
-          as _i5.Future<_i2.PropertyPage>);
+          as _i6.Future<_i2.PropertyPage>);
 
   @override
-  _i5.Future<_i3.Apartment> getPropertyById(String? id) =>
+  _i6.Future<_i3.Apartment> getPropertyById(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#getPropertyById, [id]),
-            returnValue: _i5.Future<_i3.Apartment>.value(
+            returnValue: _i6.Future<_i3.Apartment>.value(
               _FakeApartment_1(this, Invocation.method(#getPropertyById, [id])),
             ),
           )
-          as _i5.Future<_i3.Apartment>);
+          as _i6.Future<_i3.Apartment>);
 
   @override
-  _i5.Future<List<Map<String, dynamic>>> getClientsByProperty(
+  _i6.Future<List<Map<String, dynamic>>> getClientsByProperty(
     String? idProperty,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#getClientsByProperty, [idProperty]),
-            returnValue: _i5.Future<List<Map<String, dynamic>>>.value(
+            returnValue: _i6.Future<List<Map<String, dynamic>>>.value(
               <Map<String, dynamic>>[],
             ),
           )
-          as _i5.Future<List<Map<String, dynamic>>>);
+          as _i6.Future<List<Map<String, dynamic>>>);
 
   @override
-  _i5.Future<String> createClient({
+  _i6.Future<String> createClient({
     required String? firstName,
     required String? cellPhone,
     String? lastName,
@@ -149,8 +160,8 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
               #email: email,
               #query: query,
             }),
-            returnValue: _i5.Future<String>.value(
-              _i4.dummyValue<String>(
+            returnValue: _i6.Future<String>.value(
+              _i5.dummyValue<String>(
                 this,
                 Invocation.method(#createClient, [], {
                   #firstName: firstName,
@@ -162,70 +173,70 @@ class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
               ),
             ),
           )
-          as _i5.Future<String>);
+          as _i6.Future<String>);
 
   @override
-  _i5.Future<void> updateClient(
+  _i6.Future<void> updateClient(
     String? idClient,
     Map<String, dynamic>? fields,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#updateClient, [idClient, fields]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> addPropertyToClient(String? idClient, String? idProperty) =>
+  _i6.Future<void> addPropertyToClient(String? idClient, String? idProperty) =>
       (super.noSuchMethod(
             Invocation.method(#addPropertyToClient, [idClient, idProperty]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>> getClientById(String? id) =>
+  _i6.Future<Map<String, dynamic>> getClientById(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#getClientById, [id]),
-            returnValue: _i5.Future<Map<String, dynamic>>.value(
+            returnValue: _i6.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i5.Future<Map<String, dynamic>>);
+          as _i6.Future<Map<String, dynamic>>);
 
   @override
-  _i5.Future<List<Map<String, dynamic>>> getFeatures() =>
+  _i6.Future<List<Map<String, dynamic>>> getFeatures() =>
       (super.noSuchMethod(
             Invocation.method(#getFeatures, []),
-            returnValue: _i5.Future<List<Map<String, dynamic>>>.value(
+            returnValue: _i6.Future<List<Map<String, dynamic>>>.value(
               <Map<String, dynamic>>[],
             ),
           )
-          as _i5.Future<List<Map<String, dynamic>>>);
+          as _i6.Future<List<Map<String, dynamic>>>);
 
   @override
-  _i5.Future<List<Map<String, dynamic>>> getZonesByCity(String? cityId) =>
+  _i6.Future<List<Map<String, dynamic>>> getZonesByCity(String? cityId) =>
       (super.noSuchMethod(
             Invocation.method(#getZonesByCity, [cityId]),
-            returnValue: _i5.Future<List<Map<String, dynamic>>>.value(
+            returnValue: _i6.Future<List<Map<String, dynamic>>>.value(
               <Map<String, dynamic>>[],
             ),
           )
-          as _i5.Future<List<Map<String, dynamic>>>);
+          as _i6.Future<List<Map<String, dynamic>>>);
 }
 
 /// A class which mocks [CacheService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockCacheService extends _i1.Mock implements _i7.CacheService {
+class MockCacheService extends _i1.Mock implements _i8.CacheService {
   MockCacheService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i5.Future<void> saveProperties(
+  _i6.Future<void> saveProperties(
     List<_i3.Apartment>? properties, {
     bool? complete = false,
   }) =>
@@ -235,346 +246,628 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
               [properties],
               {#complete: complete},
             ),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<bool> isCachedInventoryComplete() =>
+  _i6.Future<bool> isCachedInventoryComplete() =>
       (super.noSuchMethod(
             Invocation.method(#isCachedInventoryComplete, []),
-            returnValue: _i5.Future<bool>.value(false),
+            returnValue: _i6.Future<bool>.value(false),
           )
-          as _i5.Future<bool>);
+          as _i6.Future<bool>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?> loadProperties() =>
+  _i6.Future<_i8.CachedResult<List<_i3.Apartment>>?> loadProperties() =>
       (super.noSuchMethod(
             Invocation.method(#loadProperties, []),
             returnValue:
-                _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?>.value(),
+                _i6.Future<_i8.CachedResult<List<_i3.Apartment>>?>.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?>);
+          as _i6.Future<_i8.CachedResult<List<_i3.Apartment>>?>);
 
   @override
-  _i5.Future<bool> hasCachedProperties() =>
+  _i6.Future<bool> hasCachedProperties() =>
       (super.noSuchMethod(
             Invocation.method(#hasCachedProperties, []),
-            returnValue: _i5.Future<bool>.value(false),
+            returnValue: _i6.Future<bool>.value(false),
           )
-          as _i5.Future<bool>);
+          as _i6.Future<bool>);
 
   @override
-  _i5.Future<Map<String, dynamic>> getCacheInfo() =>
+  _i6.Future<Map<String, dynamic>> getCacheInfo() =>
       (super.noSuchMethod(
             Invocation.method(#getCacheInfo, []),
-            returnValue: _i5.Future<Map<String, dynamic>>.value(
+            returnValue: _i6.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i5.Future<Map<String, dynamic>>);
+          as _i6.Future<Map<String, dynamic>>);
 
   @override
-  _i5.Future<void> clearCache() =>
+  _i6.Future<void> clearCache() =>
       (super.noSuchMethod(
             Invocation.method(#clearCache, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> saveAddPropertyDraft(Map<String, dynamic>? data) =>
+  _i6.Future<void> saveAddPropertyDraft(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#saveAddPropertyDraft, [data]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>?> loadAddPropertyDraft() =>
+  _i6.Future<Map<String, dynamic>?> loadAddPropertyDraft() =>
       (super.noSuchMethod(
             Invocation.method(#loadAddPropertyDraft, []),
-            returnValue: _i5.Future<Map<String, dynamic>?>.value(),
+            returnValue: _i6.Future<Map<String, dynamic>?>.value(),
           )
-          as _i5.Future<Map<String, dynamic>?>);
+          as _i6.Future<Map<String, dynamic>?>);
 
   @override
-  _i5.Future<void> clearAddPropertyDraft() =>
+  _i6.Future<void> clearAddPropertyDraft() =>
       (super.noSuchMethod(
             Invocation.method(#clearAddPropertyDraft, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> saveUserProfile(Map<String, dynamic>? data) =>
+  _i6.Future<void> saveUserProfile(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#saveUserProfile, [data]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>?> loadUserProfile() =>
+  _i6.Future<Map<String, dynamic>?> loadUserProfile() =>
       (super.noSuchMethod(
             Invocation.method(#loadUserProfile, []),
-            returnValue: _i5.Future<Map<String, dynamic>?>.value(),
+            returnValue: _i6.Future<Map<String, dynamic>?>.value(),
           )
-          as _i5.Future<Map<String, dynamic>?>);
+          as _i6.Future<Map<String, dynamic>?>);
 
   @override
-  _i5.Future<void> clearUserProfile() =>
+  _i6.Future<void> clearUserProfile() =>
       (super.noSuchMethod(
             Invocation.method(#clearUserProfile, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> saveAuthSession(Map<String, dynamic>? data) =>
+  _i6.Future<void> saveAuthSession(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#saveAuthSession, [data]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>?> loadAuthSession() =>
+  _i6.Future<Map<String, dynamic>?> loadAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#loadAuthSession, []),
-            returnValue: _i5.Future<Map<String, dynamic>?>.value(),
+            returnValue: _i6.Future<Map<String, dynamic>?>.value(),
           )
-          as _i5.Future<Map<String, dynamic>?>);
+          as _i6.Future<Map<String, dynamic>?>);
 
   @override
-  _i5.Future<void> clearAuthSession() =>
+  _i6.Future<void> clearAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#clearAuthSession, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> savePropertyDetail(_i3.Apartment? property) =>
+  _i6.Future<void> savePropertyDetail(_i3.Apartment? property) =>
       (super.noSuchMethod(
             Invocation.method(#savePropertyDetail, [property]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<_i3.Apartment>?> loadPropertyDetail(String? id) =>
+  _i6.Future<_i8.CachedResult<_i3.Apartment>?> loadPropertyDetail(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#loadPropertyDetail, [id]),
-            returnValue: _i5.Future<_i7.CachedResult<_i3.Apartment>?>.value(),
+            returnValue: _i6.Future<_i8.CachedResult<_i3.Apartment>?>.value(),
           )
-          as _i5.Future<_i7.CachedResult<_i3.Apartment>?>);
+          as _i6.Future<_i8.CachedResult<_i3.Apartment>?>);
 
   @override
-  _i5.Future<void> prunePropertyDetails() =>
+  _i6.Future<void> prunePropertyDetails() =>
       (super.noSuchMethod(
             Invocation.method(#prunePropertyDetails, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> saveFeatures(List<Map<String, dynamic>>? features) =>
+  _i6.Future<void> saveFeatures(List<Map<String, dynamic>>? features) =>
       (super.noSuchMethod(
             Invocation.method(#saveFeatures, [features]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?> loadFeatures() =>
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?> loadFeatures() =>
       (super.noSuchMethod(
             Invocation.method(#loadFeatures, []),
             returnValue:
-                _i5.Future<
-                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
                 >.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
-  _i5.Future<void> saveZones(List<Map<String, dynamic>>? zones) =>
+  _i6.Future<void> saveZones(List<Map<String, dynamic>>? zones) =>
       (super.noSuchMethod(
             Invocation.method(#saveZones, [zones]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?> loadZones() =>
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?> loadZones() =>
       (super.noSuchMethod(
             Invocation.method(#loadZones, []),
             returnValue:
-                _i5.Future<
-                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
                 >.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
-  _i5.Future<void> saveResidentialComplexes(
+  _i6.Future<void> saveResidentialComplexes(
     List<Map<String, dynamic>>? complexes,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#saveResidentialComplexes, [complexes]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>
   loadResidentialComplexes() =>
       (super.noSuchMethod(
             Invocation.method(#loadResidentialComplexes, []),
             returnValue:
-                _i5.Future<
-                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
                 >.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
-  _i5.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
+  _i6.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
       (super.noSuchMethod(
             Invocation.method(#saveAllowedCities, [cities]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>
   loadAllowedCities() =>
       (super.noSuchMethod(
             Invocation.method(#loadAllowedCities, []),
             returnValue:
-                _i5.Future<
-                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
                 >.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
-  _i5.Future<void> saveClients(List<_i8.Client>? clients) =>
+  _i6.Future<void> saveLatestNotes(List<Map<String, dynamic>>? rows) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveLatestNotes, [rows]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?> loadLatestNotes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadLatestNotes, []),
+            returnValue:
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i6.Future<void> saveClientNotes(
+    int? idClientWasi,
+    List<Map<String, dynamic>>? notes,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveClientNotes, [idClientWasi, notes]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?> loadClientNotes(
+    int? idClientWasi,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadClientNotes, [idClientWasi]),
+            returnValue:
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i6.Future<void> saveClients(List<_i9.Client>? clients) =>
       (super.noSuchMethod(
             Invocation.method(#saveClients, [clients]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<_i8.Client>>?> loadClients() =>
+  _i6.Future<_i8.CachedResult<List<_i9.Client>>?> loadClients() =>
       (super.noSuchMethod(
             Invocation.method(#loadClients, []),
             returnValue:
-                _i5.Future<_i7.CachedResult<List<_i8.Client>>?>.value(),
+                _i6.Future<_i8.CachedResult<List<_i9.Client>>?>.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<_i8.Client>>?>);
+          as _i6.Future<_i8.CachedResult<List<_i9.Client>>?>);
 
   @override
-  _i5.Future<void> saveAdvisorMap(Map<String, dynamic>? data) =>
+  _i6.Future<void> saveAdvisorMap(Map<String, dynamic>? data) =>
       (super.noSuchMethod(
             Invocation.method(#saveAdvisorMap, [data]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>?> loadAdvisorMap() =>
+  _i6.Future<Map<String, dynamic>?> loadAdvisorMap() =>
       (super.noSuchMethod(
             Invocation.method(#loadAdvisorMap, []),
-            returnValue: _i5.Future<Map<String, dynamic>?>.value(),
+            returnValue: _i6.Future<Map<String, dynamic>?>.value(),
           )
-          as _i5.Future<Map<String, dynamic>?>);
+          as _i6.Future<Map<String, dynamic>?>);
 
   @override
-  _i5.Future<void> clearAdvisorMap() =>
+  _i6.Future<void> clearAdvisorMap() =>
       (super.noSuchMethod(
             Invocation.method(#clearAdvisorMap, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> clearClientsCache() =>
+  _i6.Future<void> clearClientsCache() =>
       (super.noSuchMethod(
             Invocation.method(#clearClientsCache, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<void> saveAppVersion(String? version) =>
+  _i6.Future<void> saveAppVersion(String? version) =>
       (super.noSuchMethod(
             Invocation.method(#saveAppVersion, [version]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<String?> getAppVersion() =>
+  _i6.Future<String?> getAppVersion() =>
       (super.noSuchMethod(
             Invocation.method(#getAppVersion, []),
-            returnValue: _i5.Future<String?>.value(),
+            returnValue: _i6.Future<String?>.value(),
           )
-          as _i5.Future<String?>);
+          as _i6.Future<String?>);
 
   @override
-  _i5.Future<void> clearAllCache() =>
+  _i6.Future<void> clearOnLogout() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearOnLogout, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> clearAllCache() =>
       (super.noSuchMethod(
             Invocation.method(#clearAllCache, []),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>> getTotalStorageInfo() =>
+  _i6.Future<Map<String, dynamic>> getTotalStorageInfo() =>
       (super.noSuchMethod(
             Invocation.method(#getTotalStorageInfo, []),
-            returnValue: _i5.Future<Map<String, dynamic>>.value(
+            returnValue: _i6.Future<Map<String, dynamic>>.value(
               <String, dynamic>{},
             ),
           )
-          as _i5.Future<Map<String, dynamic>>);
+          as _i6.Future<Map<String, dynamic>>);
 
   @override
-  _i5.Future<void> saveFilter(Map<String, dynamic>? filterData) =>
+  _i6.Future<void> saveFilter(Map<String, dynamic>? filterData) =>
       (super.noSuchMethod(
             Invocation.method(#saveFilter, [filterData]),
-            returnValue: _i5.Future<void>.value(),
-            returnValueForMissingStub: _i5.Future<void>.value(),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
           )
-          as _i5.Future<void>);
+          as _i6.Future<void>);
 
   @override
-  _i5.Future<Map<String, dynamic>?> loadFilter() =>
+  _i6.Future<Map<String, dynamic>?> loadFilter() =>
       (super.noSuchMethod(
             Invocation.method(#loadFilter, []),
-            returnValue: _i5.Future<Map<String, dynamic>?>.value(),
+            returnValue: _i6.Future<Map<String, dynamic>?>.value(),
           )
-          as _i5.Future<Map<String, dynamic>?>);
+          as _i6.Future<Map<String, dynamic>?>);
+}
+
+/// A class which mocks [SyncService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockSyncService extends _i1.Mock implements _i10.SyncService {
+  MockSyncService() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i4.NotificationService get notificationService =>
+      (super.noSuchMethod(
+            Invocation.getter(#notificationService),
+            returnValue: _FakeNotificationService_2(
+              this,
+              Invocation.getter(#notificationService),
+            ),
+          )
+          as _i4.NotificationService);
+
+  @override
+  _i6.Future<int> get pendingCount =>
+      (super.noSuchMethod(
+            Invocation.getter(#pendingCount),
+            returnValue: _i6.Future<int>.value(0),
+          )
+          as _i6.Future<int>);
+
+  @override
+  void startListening() => super.noSuchMethod(
+    Invocation.method(#startListening, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void stopListening() => super.noSuchMethod(
+    Invocation.method(#stopListening, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeAppLifecycleState(_i11.AppLifecycleState? state) =>
+      super.noSuchMethod(
+        Invocation.method(#didChangeAppLifecycleState, [state]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  _i6.Future<void> enqueue({
+    required String? action,
+    required String? localId,
+    required Map<String, dynamic>? payload,
+    String? entity = 'appointment',
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#enqueue, [], {
+              #action: action,
+              #localId: localId,
+              #payload: payload,
+              #entity: entity,
+            }),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> purgeLocalId(String? localId) =>
+      (super.noSuchMethod(
+            Invocation.method(#purgeLocalId, [localId]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> syncPendingQueue() =>
+      (super.noSuchMethod(
+            Invocation.method(#syncPendingQueue, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> resetForLogout() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetForLogout, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> fullSync() =>
+      (super.noSuchMethod(
+            Invocation.method(#fullSync, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<void> pullFromServer() =>
+      (super.noSuchMethod(
+            Invocation.method(#pullFromServer, []),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  void setOnPullCompleted(_i11.VoidCallback? callback) => super.noSuchMethod(
+    Invocation.method(#setOnPullCompleted, [callback]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void setOnCrmSynced(_i11.VoidCallback? callback) => super.noSuchMethod(
+    Invocation.method(#setOnCrmSynced, [callback]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i6.Future<bool> didPopRoute() =>
+      (super.noSuchMethod(
+            Invocation.method(#didPopRoute, []),
+            returnValue: _i6.Future<bool>.value(false),
+          )
+          as _i6.Future<bool>);
+
+  @override
+  bool handleStartBackGesture(_i12.PredictiveBackEvent? backEvent) =>
+      (super.noSuchMethod(
+            Invocation.method(#handleStartBackGesture, [backEvent]),
+            returnValue: false,
+          )
+          as bool);
+
+  @override
+  void handleUpdateBackGestureProgress(_i12.PredictiveBackEvent? backEvent) =>
+      super.noSuchMethod(
+        Invocation.method(#handleUpdateBackGestureProgress, [backEvent]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void handleCommitBackGesture() => super.noSuchMethod(
+    Invocation.method(#handleCommitBackGesture, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void handleCancelBackGesture() => super.noSuchMethod(
+    Invocation.method(#handleCancelBackGesture, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i6.Future<bool> didPushRoute(String? route) =>
+      (super.noSuchMethod(
+            Invocation.method(#didPushRoute, [route]),
+            returnValue: _i6.Future<bool>.value(false),
+          )
+          as _i6.Future<bool>);
+
+  @override
+  _i6.Future<bool> didPushRouteInformation(
+    _i13.RouteInformation? routeInformation,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#didPushRouteInformation, [routeInformation]),
+            returnValue: _i6.Future<bool>.value(false),
+          )
+          as _i6.Future<bool>);
+
+  @override
+  void didChangeMetrics() => super.noSuchMethod(
+    Invocation.method(#didChangeMetrics, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeTextScaleFactor() => super.noSuchMethod(
+    Invocation.method(#didChangeTextScaleFactor, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangePlatformBrightness() => super.noSuchMethod(
+    Invocation.method(#didChangePlatformBrightness, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeLocales(List<_i11.Locale>? locales) => super.noSuchMethod(
+    Invocation.method(#didChangeLocales, [locales]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeViewFocus(_i11.ViewFocusEvent? event) => super.noSuchMethod(
+    Invocation.method(#didChangeViewFocus, [event]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i6.Future<_i11.AppExitResponse> didRequestAppExit() =>
+      (super.noSuchMethod(
+            Invocation.method(#didRequestAppExit, []),
+            returnValue: _i6.Future<_i11.AppExitResponse>.value(
+              _i11.AppExitResponse.exit,
+            ),
+          )
+          as _i6.Future<_i11.AppExitResponse>);
+
+  @override
+  void didHaveMemoryPressure() => super.noSuchMethod(
+    Invocation.method(#didHaveMemoryPressure, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeAccessibilityFeatures() => super.noSuchMethod(
+    Invocation.method(#didChangeAccessibilityFeatures, []),
+    returnValueForMissingStub: null,
+  );
 }

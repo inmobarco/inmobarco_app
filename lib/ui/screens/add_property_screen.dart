@@ -123,7 +123,9 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   String? _userName;
 
   // ── Constants ─────────────────────────────────────────────────────────
-  static const _autoSaveInterval = Duration(seconds: 5);
+  /// Ventana de agrupación del guardado del borrador. Antes era un
+  /// `Timer.periodic` de 5 s que guardaba aunque nada hubiera cambiado.
+  static const _autoSaveDebounce = Duration(seconds: 2);
   static const Duration _cooldownDuration = Duration(seconds: 60);
   static const String _fixedUserId = '271266';
   static const String _fixedCountryId = '1';
@@ -157,13 +159,18 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
     _globalData = context.read<GlobalDataService>();
     _cacheService = context.read<CacheService>();
     _loadInitialData();
-    _startAutoSave();
+    for (final controller in _allControllers) {
+      controller.addListener(_scheduleAutoSave);
+    }
   }
 
   @override
   void dispose() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+    for (final controller in _allControllers) {
+      controller.removeListener(_scheduleAutoSave);
+    }
     _autoSaveTimer?.cancel();
     _cooldownTimer?.cancel();
     _apartmentNumberController.dispose();
@@ -192,10 +199,51 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
   // Data loading
   // ═══════════════════════════════════════════════════════════════════════
 
-  void _startAutoSave() {
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer.periodic(_autoSaveInterval, (_) => _autoSave());
+  /// Programa un guardado del borrador para dentro de [_autoSaveDebounce],
+  /// agrupando todos los cambios de esa ventana en una sola escritura.
+  ///
+  /// No reinicia el temporizador en cada cambio a propósito: escribiendo
+  /// mientras se teclea, un reinicio continuo podría posponer el guardado
+  /// indefinidamente.
+  void _scheduleAutoSave() {
+    if (_loadingDraft) return; // Restaurar el borrador no es un cambio
+    if (_autoSaveTimer?.isActive ?? false) return;
+    _autoSaveTimer = Timer(_autoSaveDebounce, _autoSave);
   }
+
+  /// Cualquier cambio de estado del formulario programa un guardado.
+  ///
+  /// Se engancha aquí, y no en cada `onChanged`, para no dejar fuera los
+  /// campos que no son de texto (desplegables, casillas, estrato, garajes):
+  /// antes los cubría el timer periódico.
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _scheduleAutoSave();
+  }
+
+  /// Todos los controladores de texto del formulario.
+  List<TextEditingController> get _allControllers => [
+        _apartmentNumberController,
+        _unitNameController,
+        _rentPriceController,
+        _salePriceController,
+        _addressController,
+        _areaController,
+        _observationsController,
+        _buildingDateController,
+        _serviceRoomController,
+        _parkingLotController,
+        _promptsController,
+        _landlordNameController,
+        _landlordPhoneController,
+        _keysController,
+        _adminMailController,
+        _adminPhoneController,
+        _lodgePhoneController,
+        _porterNameController,
+        _porterPhoneController,
+      ];
 
   Future<void> _loadInitialData() async {
     final draft = await _cacheService.loadAddPropertyDraft();
@@ -855,15 +903,15 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
         _parkingLotPhotoBytes == null) {
       return;
     }
-    final photoTuples = _buildPhotoTuples();
     final serviceRoomPhotoBase64 = _serviceRoomPhotoBytes == null
         ? null
         : base64Encode(_serviceRoomPhotoBytes!);
     final parkingLotPhotoBase64 = _parkingLotPhotoBytes == null
         ? null
         : base64Encode(_parkingLotPhotoBytes!);
+    final current = _currentData();
     final data = {
-      ..._currentData(),
+      ...current,
       '_apartment_number_text': digitsOnly(_apartmentNumberController.text),
       '_unit_name_text': _unitNameController.text,
       '_service_room_text': _serviceRoomController.text,
@@ -882,12 +930,12 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       '_fields_locked_by_complex': _fieldsLockedByComplex,
       '_selected_latitude': _selectedLatitude,
       '_selected_longitude': _selectedLongitude,
-      'photos': photoTuples,
       '_service_room_photo_file_name': _serviceRoomPhotoFileName,
       '_parking_lot_photo_file_name': _parkingLotPhotoFileName,
       '_service_room_photo_base64': serviceRoomPhotoBase64,
       '_parking_lot_photo_base64': parkingLotPhotoBase64,
     };
+    // 'photos' ya viene en _currentData(): no se vuelve a construir aquí.
     _saving = true;
     await _cacheService.saveAddPropertyDraft(data);
     _lastSaved = DateTime.now();
@@ -1126,7 +1174,7 @@ class _AddPropertyScreenState extends State<AddPropertyScreen> {
       final fallbackName = 'foto_${(i + 1).toString().padLeft(2, '0')}.jpg';
       final name =
           photo.fileName.trim().isNotEmpty ? photo.fileName.trim() : fallbackName;
-      tuples.add([base64Encode(photo.bytes), name]);
+      tuples.add([photo.base64, name]);
     }
     return tuples;
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/services/image_cache_config.dart';
 import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
@@ -209,6 +210,7 @@ class PropertyCard extends StatelessWidget {
     }
 
     return CachedNetworkImage(
+      cacheManager: ImageCacheConfig.manager,
       imageUrl: apartment.primaryImage,
       height: 200,
       width: double.infinity,

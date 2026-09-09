@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/services/api_service.dart';
 import '../../domain/models/client.dart';
 import '../../domain/models/client_note.dart';
 import '../providers/client_provider.dart';
@@ -66,16 +65,19 @@ class _ClientsScreenState extends State<ClientsScreen> {
   }
 
   Future<void> _createNew() async {
-    final created = await Navigator.push<bool>(
+    final result = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const AddClientScreen()),
     );
-    if (created == true && mounted) {
+    if (result != null && mounted) {
       // La lista ya se refrescó dentro de createClient
+      final queued = result == 'queued';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cliente creado'),
-          backgroundColor: AppColors.success,
+        SnackBar(
+          content: Text(queued
+              ? 'Sin conexión: el cliente se creará al recuperarla'
+              : 'Cliente creado'),
+          backgroundColor: queued ? AppColors.warning : AppColors.success,
         ),
       );
     }
@@ -209,16 +211,19 @@ class _ClientsScreenState extends State<ClientsScreen> {
   }
 
   Future<void> _editClient(Client client) async {
-    final updated = await Navigator.push<bool>(
+    final result = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => AddClientScreen(client: client)),
     );
-    if (updated == true && mounted) {
+    if (result != null && mounted) {
       // La lista ya se refrescó dentro de updateClient
+      final queued = result == 'queued';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cliente actualizado'),
-          backgroundColor: AppColors.success,
+        SnackBar(
+          content: Text(queued
+              ? 'Sin conexión: el cambio se enviará al recuperarla'
+              : 'Cliente actualizado'),
+          backgroundColor: queued ? AppColors.warning : AppColors.success,
         ),
       );
     }
@@ -280,7 +285,10 @@ class _ClientDetailSheetState extends State<_ClientDetailSheet> {
       _notesError = null;
     });
     try {
-      final rows = await ApiService.getClientNotes(widget.client.idClientWasi);
+      // El provider resuelve caché (15 min) y red, y cae al caché vencido si
+      // la red falla.
+      final rows =
+          await context.read<ClientProvider>().notesFor(widget.client.idClientWasi);
       if (mounted) {
         setState(() => _notes = rows.map(ClientNote.fromJson).toList());
       }
@@ -383,11 +391,14 @@ class _ClientDetailSheetState extends State<_ClientDetailSheet> {
     );
 
     if (created == true && mounted) {
-      _loadNotes();
+      final queued = context.read<ClientProvider>().lastOperationQueued;
+      if (!queued) _loadNotes();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Entrada creada'),
-          backgroundColor: AppColors.success,
+        SnackBar(
+          content: Text(queued
+              ? 'Sin conexión: la entrada se enviará al recuperarla'
+              : 'Entrada creada'),
+          backgroundColor: queued ? AppColors.warning : AppColors.success,
         ),
       );
     }

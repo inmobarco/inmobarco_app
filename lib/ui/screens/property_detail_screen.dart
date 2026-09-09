@@ -12,6 +12,7 @@ import '../../domain/models/apartment.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/encription.dart';
+import '../../core/services/image_cache_config.dart';
 import '../../data/services/webhook_service.dart';
 import '../widgets/photo_gallery.dart';
 
@@ -101,7 +102,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
 
     for (String imageUrl in imagesToPreload) {
       precacheImage(
-        CachedNetworkImageProvider(imageUrl),
+        ImageCacheConfig.provider(imageUrl),
         context,
       ).catchError((error) {
         debugPrint('Error precargando imagen: $error');
@@ -222,6 +223,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                 child: GestureDetector(
                   onTap: () => _showFullScreenImage(index),
                   child: CachedNetworkImage(
+                    cacheManager: ImageCacheConfig.manager,
                     imageUrl: apartment!.imagenes[index],
                     width: double.infinity,
                     fit: BoxFit.cover,

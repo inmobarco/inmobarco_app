@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/services/image_cache_config.dart';
 import '../../core/theme/app_colors.dart';
 
 /// Galería de imágenes en pantalla completa con PageView y zoom.
@@ -57,6 +58,7 @@ class _FullScreenImageGalleryState extends State<FullScreenImageGallery> {
             tag: 'property-image-$index',
             child: InteractiveViewer(
               child: CachedNetworkImage(
+                cacheManager: ImageCacheConfig.manager,
                 imageUrl: widget.images[index],
                 fit: BoxFit.contain,
                 placeholder: (context, url) => const Center(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/services/global_data_service.dart';
+import '../providers/auth_provider.dart';
 import '../providers/property_provider.dart';
 import '../providers/client_provider.dart';
 import 'property_list_screen.dart';
@@ -12,6 +13,7 @@ import 'calculators_screen.dart';
 import 'guides_screen.dart';
 import 'route_planner_screen.dart';
 import 'residentials_screen.dart';
+import 'login_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 
@@ -24,10 +26,53 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  static const int _residentialsTabIndex = 2;
+/// Una pestaña de la barra inferior.
+class _Tab {
+  const _Tab({
+    required this.label,
+    required this.icon,
+    required this.builder,
+    this.employeeOnly = false,
+  });
 
+  final String label;
+  final IconData icon;
+  final Widget Function() builder;
+
+  /// Solo para usuarios con sesión: sin verificar, se asume que no es
+  /// empleado de la inmobiliaria.
+  final bool employeeOnly;
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   late int _currentIndex;
+
+  /// Pestañas en orden. Las de empleado desaparecen sin sesión, así que el
+  /// índice visible se calcula sobre la lista ya filtrada.
+  static final List<_Tab> _allTabs = [
+    _Tab(
+      label: 'Propiedades',
+      icon: Icons.home_work,
+      builder: () => const PropertyListScreen(),
+    ),
+    _Tab(
+      label: 'Agenda',
+      icon: Icons.calendar_month,
+      builder: () => const CalendarScreen(),
+      employeeOnly: true,
+    ),
+    _Tab(
+      label: 'Residenciales',
+      icon: Icons.apartment,
+      builder: () => const ResidentialsScreen(),
+      employeeOnly: true,
+    ),
+    _Tab(
+      label: 'Dashboard',
+      icon: Icons.dashboard,
+      builder: () => const DashboardScreen(),
+    ),
+  ];
 
   @override
   void initState() {
@@ -49,18 +94,28 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _onTabTapped(int index) {
+  void _onTabTapped(List<_Tab> tabs, int index) {
     setState(() => _currentIndex = index);
     // Al entrar a Residenciales: refrescar si el caché venció (TTL 10 min).
     // Con IndexedStack la pantalla no se reconstruye, así que el disparo va
     // aquí; la lista se repinta sola porque escucha al GlobalDataService.
-    if (index == _residentialsTabIndex) {
+    if (tabs[index].label == 'Residenciales') {
       context.read<GlobalDataService>().refreshStale();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+    final tabs = _allTabs
+        .where((tab) => isLoggedIn || !tab.employeeOnly)
+        .toList();
+
+    // Al cerrar sesión la lista se acorta: el índice guardado puede quedar
+    // fuera de rango (cerrar sesión desde Dashboard deja el foco en Dashboard,
+    // que pasa de la posición 3 a la 1).
+    final index = _currentIndex.clamp(0, tabs.length - 1);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Inmobarco'),
@@ -74,31 +129,24 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(context),
+      drawer: _buildDrawer(context, isLoggedIn),
       body: IndexedStack(
-        index: _currentIndex,
-        children: const [
-          PropertyListScreen(),
-          CalendarScreen(),
-          ResidentialsScreen(),
-          DashboardScreen(),
-        ],
+        index: index,
+        children: [for (final tab in tabs) tab.builder()],
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
+        currentIndex: index,
+        onTap: (i) => _onTabTapped(tabs, i),
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_work), label: 'Propiedades'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Agenda'),
-          BottomNavigationBarItem(icon: Icon(Icons.apartment), label: 'Residenciales'),
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
+        items: [
+          for (final tab in tabs)
+            BottomNavigationBarItem(icon: Icon(tab.icon), label: tab.label),
         ],
       ),
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
+  Widget _buildDrawer(BuildContext context, bool isLoggedIn) {
     return Drawer(
       child: Column(
         children: [
@@ -126,34 +174,45 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: EdgeInsets.zero,
               children: [
                 const SizedBox(height: 8),
-                _drawerItem(
-                  context,
-                  icon: Icons.calculate,
-                  title: 'Calculadoras',
-                  subtitle: 'Primer canon, pago propietario, comisiones',
-                  screen: const CalculatorsScreen(),
-                ),
-                _drawerItem(
-                  context,
-                  icon: Icons.checklist,
-                  title: 'Guías',
-                  subtitle: 'Checklists de visita y captación',
-                  screen: const GuidesScreen(),
-                ),
-                _drawerItem(
-                  context,
-                  icon: Icons.route,
-                  title: 'Rutero',
-                  subtitle: 'Ruta planeada del día',
-                  screen: const RoutePlannerScreen(),
-                ),
-                _drawerItem(
-                  context,
-                  icon: Icons.people,
-                  title: 'Clientes',
-                  subtitle: 'Ver y gestionar clientes',
-                  screen: const ClientsScreen(),
-                ),
+                // Herramientas internas: solo con sesión. Sin verificar, se
+                // asume que quien usa la app no es empleado.
+                if (isLoggedIn) ...[
+                  _drawerItem(
+                    context,
+                    icon: Icons.calculate,
+                    title: 'Calculadoras',
+                    subtitle: 'Primer canon, pago propietario, comisiones',
+                    screen: const CalculatorsScreen(),
+                  ),
+                  _drawerItem(
+                    context,
+                    icon: Icons.checklist,
+                    title: 'Guías',
+                    subtitle: 'Checklists de visita y captación',
+                    screen: const GuidesScreen(),
+                  ),
+                  _drawerItem(
+                    context,
+                    icon: Icons.route,
+                    title: 'Rutero',
+                    subtitle: 'Ruta planeada del día',
+                    screen: const RoutePlannerScreen(),
+                  ),
+                  _drawerItem(
+                    context,
+                    icon: Icons.people,
+                    title: 'Clientes',
+                    subtitle: 'Ver y gestionar clientes',
+                    screen: const ClientsScreen(),
+                  ),
+                ] else
+                  _drawerItem(
+                    context,
+                    icon: Icons.login,
+                    title: 'Iniciar sesión',
+                    subtitle: 'Acceso a las herramientas del asesor',
+                    screen: const LoginScreen(),
+                  ),
                 const Divider(indent: 16, endIndent: 16),
               ],
             ),

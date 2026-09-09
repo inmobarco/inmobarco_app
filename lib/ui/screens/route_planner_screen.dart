@@ -13,6 +13,7 @@ class RoutePlannerScreen extends StatefulWidget {
 }
 
 class _RoutePlannerScreenState extends State<RoutePlannerScreen> {
+  /// Debe coincidir con la clave que borra `CacheService.clearOnLogout`.
   static const _prefsKey = 'route_planner_selected_ids';
 
   final Set<String> _selectedIds = {};

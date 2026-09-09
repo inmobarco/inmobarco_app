@@ -20,20 +20,31 @@ class WasiApiService {
   final String companyId;
   final GlobalDataService? globalDataService;
 
+  /// Cliente HTTP compartido por todas las instancias.
+  ///
+  /// El servicio se construye en media docena de sitios (providers, filtros,
+  /// alta de propiedad, alta de residencial, datos globales) y cada uno creaba
+  /// su propio `Dio`, o sea su propio pool de conexiones contra el mismo host.
+  static Dio? _sharedDio;
+
+  static Dio _dioInstance() {
+    return _sharedDio ??= Dio(BaseOptions(
+      baseUrl: AppConstants.wasiApiBaseUrl,
+      headers: const {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      connectTimeout: AppConstants.apiConnectTimeout,
+      sendTimeout: AppConstants.apiSendTimeout,
+      receiveTimeout: AppConstants.apiReceiveTimeout,
+    ));
+  }
+
   WasiApiService({
     required this.apiToken,
     required this.companyId,
     this.globalDataService,
-  }) : _dio = Dio() {
-    _dio.options.baseUrl = AppConstants.wasiApiBaseUrl;
-    _dio.options.headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    };
-    _dio.options.connectTimeout = AppConstants.apiConnectTimeout;
-    _dio.options.sendTimeout = AppConstants.apiSendTimeout;
-    _dio.options.receiveTimeout = AppConstants.apiReceiveTimeout;
-  }
+  }) : _dio = _dioInstance();
 
   /// Obtiene la lista de propiedades activas.
   Future<List<Apartment>> getActiveProperties({
@@ -509,10 +520,12 @@ class WasiApiService {
       // Extraer imágenes de las galerías
       List<String> imagenes = [];
       
-      // Imagen principal
+      // Imagen principal. En la lista se pinta una tarjeta pequeña, así que
+      // se prefiere la versión mediana: `url_big` son varios cientos de KB
+      // por propiedad, multiplicados por todo el inventario en caché.
       if (json['main_image'] != null) {
-        final mainImage = json['main_image']['url_big'] ??
-                         json['main_image']['url_medium'] ??
+        final mainImage = json['main_image']['url_medium'] ??
+                         json['main_image']['url_big'] ??
                          json['main_image']['url'] ??
                          json['main_image']['url_original'];
         if (mainImage != null) {

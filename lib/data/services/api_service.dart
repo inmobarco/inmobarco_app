@@ -95,20 +95,33 @@ class ApiService {
 
   /// Obtiene las citas del usuario autenticado.
   ///
-  /// Si se proporciona [after], solo devuelve citas cuyo `appointment_date` es
-  /// posterior a esa fecha (delta sync).
+  /// - [after] filtra por `appointment_date` posterior a esa fecha. Se usa
+  ///   para el arranque en frío: trae la agenda vigente sin arrastrar años de
+  ///   historia.
+  /// - [updatedAfter] filtra por `updated_at` posterior a esa fecha. Es el
+  ///   delta sync: trae solo lo que cambió desde el último sync, incluidas
+  ///   citas pasadas que un admin haya modificado.
+  ///
   /// Retorna la lista de mapas tal como viene del servidor.
-  static Future<List<Map<String, dynamic>>> getAppointments({DateTime? after}) async {
+  static Future<List<Map<String, dynamic>>> getAppointments({
+    DateTime? after,
+    DateTime? updatedAfter,
+  }) async {
     final dio = await getInstance();
     final Map<String, dynamic> queryParams = {};
     if (after != null) {
       queryParams['after'] = after.toUtc().toIso8601String();
     }
+    if (updatedAfter != null) {
+      queryParams['updated_after'] = updatedAfter.toUtc().toIso8601String();
+    }
     final response = await dio.get(
       '/appointments',
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
-    debugPrint('📅 GET /appointments${after != null ? '?after=${queryParams['after']}' : ''} → ${response.statusCode}');
+    debugPrint('📅 GET /appointments'
+        '${queryParams.isEmpty ? '' : '?${queryParams.entries.map((e) => '${e.key}=${e.value}').join('&')}'}'
+        ' → ${response.statusCode}');
     final List<dynamic> data = response.data as List<dynamic>;
     return data.cast<Map<String, dynamic>>();
   }

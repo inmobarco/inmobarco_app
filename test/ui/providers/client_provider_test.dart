@@ -2,11 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:inmobarco_app/data/services/cache_service.dart';
+import 'package:inmobarco_app/data/services/sync_service.dart';
 import 'package:inmobarco_app/data/services/wasi_api_service.dart';
 import 'package:inmobarco_app/domain/models/client.dart';
 import 'package:inmobarco_app/ui/providers/client_provider.dart';
 
-@GenerateMocks([WasiApiService, CacheService])
+@GenerateMocks([WasiApiService, CacheService, SyncService])
 import 'client_provider_test.mocks.dart';
 
 /// `ClientProvider` reaches the static `ApiService` for the CRM log
@@ -20,6 +21,7 @@ import 'client_provider_test.mocks.dart';
 void main() {
   late MockWasiApiService mockApiService;
   late MockCacheService mockCacheService;
+  late MockSyncService mockSyncService;
   late ClientProvider provider;
 
   const advisorPropertyId = '999';
@@ -46,11 +48,24 @@ void main() {
   setUp(() {
     mockApiService = MockWasiApiService();
     mockCacheService = MockCacheService();
+    mockSyncService = MockSyncService();
+    when(mockSyncService.setOnCrmSynced(any)).thenReturn(null);
+    when(mockSyncService.enqueue(
+      entity: anyNamed('entity'),
+      action: anyNamed('action'),
+      localId: anyNamed('localId'),
+      payload: anyNamed('payload'),
+    )).thenAnswer((_) async {});
     when(mockCacheService.saveClients(any)).thenAnswer((_) async {});
     when(mockCacheService.loadClients()).thenAnswer((_) async => null);
+    when(mockCacheService.loadLatestNotes()).thenAnswer((_) async => null);
+    when(mockCacheService.saveLatestNotes(any)).thenAnswer((_) async {});
+    when(mockCacheService.loadClientNotes(any)).thenAnswer((_) async => null);
+    when(mockCacheService.saveClientNotes(any, any)).thenAnswer((_) async {});
     provider = ClientProvider(
       apiService: mockApiService,
       cacheService: mockCacheService,
+      syncService: mockSyncService,
     );
   });
 
@@ -274,6 +289,133 @@ void main() {
         'query': 'busca apto',
         'id_client_status': 3,
       })).called(1);
+    });
+  });
+
+  group('bitácora', () {
+    test('latest notes come from cache without touching the backend',
+        () async {
+      when(mockCacheService.loadLatestNotes()).thenAnswer((_) async =>
+          CachedResult(
+            data: [
+              {'id_client_wasi': 1, 'note': 'Llamada hecha', 'note_id': 9},
+            ],
+            isStale: false,
+          ));
+
+      await provider.loadLatestNotes();
+
+      expect(provider.latestNoteFor(1)?.note, 'Llamada hecha');
+      verifyNever(mockCacheService.saveLatestNotes(any));
+    });
+
+    test('notesFor serves a fresh cache without going to the network',
+        () async {
+      when(mockCacheService.loadClientNotes(7)).thenAnswer((_) async =>
+          CachedResult(
+            data: [
+              {'id': 1, 'note': 'Visita agendada', 'note_type': 'visita'},
+            ],
+            isStale: false,
+          ));
+
+      final rows = await provider.notesFor(7);
+
+      expect(rows.single['note'], 'Visita agendada');
+      verifyNever(mockCacheService.saveClientNotes(any, any));
+    });
+
+    test('notesFor falls back to an expired cache when the backend fails',
+        () async {
+      // Sin dotenv, ApiService.getClientNotes falla al resolver la URL base.
+      when(mockCacheService.loadClientNotes(7)).thenAnswer((_) async =>
+          CachedResult(
+            data: [
+              {'id': 1, 'note': 'Nota vieja', 'note_type': 'nota'},
+            ],
+            isStale: true,
+          ));
+
+      final rows = await provider.notesFor(7);
+
+      expect(rows.single['note'], 'Nota vieja');
+    });
+
+    test('notesFor rethrows when there is no cache and the backend fails',
+        () async {
+      expect(() => provider.notesFor(7), throwsA(anything));
+    });
+  });
+
+  group('cola offline', () {
+    test('queues a client update when the connection fails', () async {
+      stubAdvisorFromCache();
+      when(mockApiService.updateClient(any, any))
+          .thenThrow(Exception('Error de conexión: connection error'));
+
+      await provider.updateClient(
+        7,
+        firstName: 'Ana',
+        lastName: 'Gómez',
+        idClientStatus: 2,
+      );
+
+      expect(provider.lastOperationQueued, isTrue);
+      verify(mockSyncService.enqueue(
+        entity: SyncService.entityClient,
+        action: 'update',
+        localId: 'client_7',
+        payload: anyNamed('payload'),
+      )).called(1);
+    });
+
+    test('a server rejection is reported, not queued', () async {
+      stubAdvisorFromCache();
+      when(mockApiService.updateClient(any, any))
+          .thenThrow(Exception('Error en respuesta de WASI: datos inválidos'));
+
+      await expectLater(
+        provider.updateClient(
+          7,
+          firstName: 'Ana',
+          lastName: 'Gómez',
+          idClientStatus: 2,
+        ),
+        throwsException,
+      );
+
+      // Reintentar no arregla un cuerpo inválido: el asesor debe enterarse.
+      expect(provider.lastOperationQueued, isFalse);
+      verifyNever(mockSyncService.enqueue(
+        entity: anyNamed('entity'),
+        action: anyNamed('action'),
+        localId: anyNamed('localId'),
+        payload: anyNamed('payload'),
+      ));
+    });
+
+    test('queues a client creation when the connection fails', () async {
+      stubAdvisorFromCache();
+      when(mockApiService.createClient(
+        firstName: anyNamed('firstName'),
+        cellPhone: anyNamed('cellPhone'),
+        lastName: anyNamed('lastName'),
+        email: anyNamed('email'),
+        query: anyNamed('query'),
+      )).thenThrow(Exception('Error de conexión: timeout'));
+
+      await provider.createClient(firstName: 'Ana', cellPhone: '3001234567');
+
+      expect(provider.lastOperationQueued, isTrue);
+      verify(mockSyncService.enqueue(
+        entity: SyncService.entityClient,
+        action: 'create',
+        localId: 'client_3001234567',
+        payload: argThat(
+          containsPair('id_property', advisorPropertyId),
+          named: 'payload',
+        ),
+      )).called(1);
     });
   });
 

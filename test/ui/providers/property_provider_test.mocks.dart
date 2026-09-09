@@ -473,6 +473,51 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
           as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
+  _i5.Future<void> saveLatestNotes(List<Map<String, dynamic>>? rows) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveLatestNotes, [rows]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?> loadLatestNotes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadLatestNotes, []),
+            returnValue:
+                _i5.Future<
+                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i5.Future<void> saveClientNotes(
+    int? idClientWasi,
+    List<Map<String, dynamic>>? notes,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveClientNotes, [idClientWasi, notes]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?> loadClientNotes(
+    int? idClientWasi,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadClientNotes, [idClientWasi]),
+            returnValue:
+                _i5.Future<
+                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
   _i5.Future<void> saveClients(List<_i8.Client>? clients) =>
       (super.noSuchMethod(
             Invocation.method(#saveClients, [clients]),
@@ -541,6 +586,15 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
             returnValue: _i5.Future<String?>.value(),
           )
           as _i5.Future<String?>);
+
+  @override
+  _i5.Future<void> clearOnLogout() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearOnLogout, []),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
 
   @override
   _i5.Future<void> clearAllCache() =>

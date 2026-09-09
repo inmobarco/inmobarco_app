@@ -282,6 +282,51 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
+  _i3.Future<void> saveLatestNotes(List<Map<String, dynamic>>? rows) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveLatestNotes, [rows]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?> loadLatestNotes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadLatestNotes, []),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
+  _i3.Future<void> saveClientNotes(
+    int? idClientWasi,
+    List<Map<String, dynamic>>? notes,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveClientNotes, [idClientWasi, notes]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?> loadClientNotes(
+    int? idClientWasi,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadClientNotes, [idClientWasi]),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
   _i3.Future<void> saveClients(List<_i5.Client>? clients) =>
       (super.noSuchMethod(
             Invocation.method(#saveClients, [clients]),
@@ -350,6 +395,15 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
             returnValue: _i3.Future<String?>.value(),
           )
           as _i3.Future<String?>);
+
+  @override
+  _i3.Future<void> clearOnLogout() =>
+      (super.noSuchMethod(
+            Invocation.method(#clearOnLogout, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
 
   @override
   _i3.Future<void> clearAllCache() =>

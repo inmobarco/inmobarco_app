@@ -6,6 +6,8 @@
 import 'dart:async' as _i4;
 import 'dart:ui' as _i5;
 
+import 'package:flutter/services.dart' as _i6;
+import 'package:flutter/widgets.dart' as _i7;
 import 'package:inmobarco_app/core/services/notification_service.dart' as _i2;
 import 'package:inmobarco_app/data/services/sync_service.dart' as _i3;
 import 'package:mockito/mockito.dart' as _i1;
@@ -71,16 +73,25 @@ class MockSyncService extends _i1.Mock implements _i3.SyncService {
   );
 
   @override
+  void didChangeAppLifecycleState(_i5.AppLifecycleState? state) =>
+      super.noSuchMethod(
+        Invocation.method(#didChangeAppLifecycleState, [state]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   _i4.Future<void> enqueue({
     required String? action,
     required String? localId,
     required Map<String, dynamic>? payload,
+    String? entity = 'appointment',
   }) =>
       (super.noSuchMethod(
             Invocation.method(#enqueue, [], {
               #action: action,
               #localId: localId,
               #payload: payload,
+              #entity: entity,
             }),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
@@ -100,6 +111,15 @@ class MockSyncService extends _i1.Mock implements _i3.SyncService {
   _i4.Future<void> syncPendingQueue() =>
       (super.noSuchMethod(
             Invocation.method(#syncPendingQueue, []),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> resetForLogout() =>
+      (super.noSuchMethod(
+            Invocation.method(#resetForLogout, []),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )
@@ -126,6 +146,117 @@ class MockSyncService extends _i1.Mock implements _i3.SyncService {
   @override
   void setOnPullCompleted(_i5.VoidCallback? callback) => super.noSuchMethod(
     Invocation.method(#setOnPullCompleted, [callback]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void setOnCrmSynced(_i5.VoidCallback? callback) => super.noSuchMethod(
+    Invocation.method(#setOnCrmSynced, [callback]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i4.Future<bool> didPopRoute() =>
+      (super.noSuchMethod(
+            Invocation.method(#didPopRoute, []),
+            returnValue: _i4.Future<bool>.value(false),
+          )
+          as _i4.Future<bool>);
+
+  @override
+  bool handleStartBackGesture(_i6.PredictiveBackEvent? backEvent) =>
+      (super.noSuchMethod(
+            Invocation.method(#handleStartBackGesture, [backEvent]),
+            returnValue: false,
+          )
+          as bool);
+
+  @override
+  void handleUpdateBackGestureProgress(_i6.PredictiveBackEvent? backEvent) =>
+      super.noSuchMethod(
+        Invocation.method(#handleUpdateBackGestureProgress, [backEvent]),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void handleCommitBackGesture() => super.noSuchMethod(
+    Invocation.method(#handleCommitBackGesture, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void handleCancelBackGesture() => super.noSuchMethod(
+    Invocation.method(#handleCancelBackGesture, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i4.Future<bool> didPushRoute(String? route) =>
+      (super.noSuchMethod(
+            Invocation.method(#didPushRoute, [route]),
+            returnValue: _i4.Future<bool>.value(false),
+          )
+          as _i4.Future<bool>);
+
+  @override
+  _i4.Future<bool> didPushRouteInformation(
+    _i7.RouteInformation? routeInformation,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#didPushRouteInformation, [routeInformation]),
+            returnValue: _i4.Future<bool>.value(false),
+          )
+          as _i4.Future<bool>);
+
+  @override
+  void didChangeMetrics() => super.noSuchMethod(
+    Invocation.method(#didChangeMetrics, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeTextScaleFactor() => super.noSuchMethod(
+    Invocation.method(#didChangeTextScaleFactor, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangePlatformBrightness() => super.noSuchMethod(
+    Invocation.method(#didChangePlatformBrightness, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeLocales(List<_i5.Locale>? locales) => super.noSuchMethod(
+    Invocation.method(#didChangeLocales, [locales]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeViewFocus(_i5.ViewFocusEvent? event) => super.noSuchMethod(
+    Invocation.method(#didChangeViewFocus, [event]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i4.Future<_i5.AppExitResponse> didRequestAppExit() =>
+      (super.noSuchMethod(
+            Invocation.method(#didRequestAppExit, []),
+            returnValue: _i4.Future<_i5.AppExitResponse>.value(
+              _i5.AppExitResponse.exit,
+            ),
+          )
+          as _i4.Future<_i5.AppExitResponse>);
+
+  @override
+  void didHaveMemoryPressure() => super.noSuchMethod(
+    Invocation.method(#didHaveMemoryPressure, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void didChangeAccessibilityFeatures() => super.noSuchMethod(
+    Invocation.method(#didChangeAccessibilityFeatures, []),
     returnValueForMissingStub: null,
   );
 }

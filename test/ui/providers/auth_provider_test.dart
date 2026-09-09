@@ -77,16 +77,26 @@ void main() {
       await provider.loadSession();
       expect(provider.isLoggedIn, isTrue);
 
-      when(mockCacheService.clearAuthSession()).thenAnswer((_) async {});
+      when(mockCacheService.clearOnLogout()).thenAnswer((_) async {});
 
       await provider.logout();
 
       expect(provider.isLoggedIn, isFalse);
       expect(provider.user, isNull);
-      verify(mockCacheService.clearAuthSession()).called(1);
-      // Los datos CRM son por asesor: no deben sobrevivir al logout.
-      verify(mockCacheService.clearClientsCache()).called(1);
-      verify(mockCacheService.clearAdvisorMap()).called(1);
+      // Un solo barrido: lo del asesor se va (clientes, bitácoras,
+      // residenciales, borrador, perfil, rutero) y se conservan propiedades,
+      // ciudades y filtros, que es lo que la app muestra sin sesión.
+      verify(mockCacheService.clearOnLogout()).called(1);
+    });
+
+    test('drops the JWT so no request goes out with a dead session', () async {
+      SharedPreferences.setMockInitialValues({'access_token': 'jwt-abc'});
+      when(mockCacheService.clearOnLogout()).thenAnswer((_) async {});
+
+      await provider.logout();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('access_token'), isNull);
     });
   });
 

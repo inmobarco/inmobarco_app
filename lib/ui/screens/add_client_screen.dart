@@ -93,7 +93,10 @@ class _AddClientScreenState extends State<AddClientScreen> {
           query: _query.text.trim(),
         );
       }
-      if (mounted) Navigator.pop(context, true);
+      // 'queued' cuando no había red y la operación quedó pendiente.
+      if (mounted) {
+        Navigator.pop(context, provider.lastOperationQueued ? 'queued' : 'ok');
+      }
     } catch (e) {
       debugPrint('Error guardando cliente: $e');
       if (mounted) {

@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'core/encription.dart';
 import 'core/services/global_data_service.dart';
+import 'core/services/image_cache_config.dart';
 import 'core/services/notification_service.dart';
 import 'data/services/cache_service.dart';
 import 'data/services/wasi_api_service.dart';
@@ -31,6 +32,9 @@ void main() async {
 
   // Inicializar encriptación
   propertyEncryption.init();
+
+  // Acotar el caché de imágenes en memoria
+  ImageCacheConfig.apply();
 
   // Crear instancias de servicios
   final cacheService = CacheService();
@@ -129,6 +133,7 @@ class InmobarcoApp extends StatelessWidget {
               companyId: AppConstants.wasiApiId,
             ),
             cacheService: cacheService,
+            syncService: syncService,
           ),
         ),
       ],

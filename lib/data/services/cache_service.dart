@@ -40,10 +40,19 @@ class CacheService {
   static const String _residentialsFileName = 'residentials_cache.json'; // Unidades residenciales
   static const String _residentialsUpdateKey = 'last_residentials_update';
   static const String _inventoryCompleteKey = 'cached_inventory_complete';
+  static const String _latestNotesFileName = 'latest_notes_cache.json'; // Última nota por cliente
+  static const String _latestNotesUpdateKey = 'last_latest_notes_update';
+  static const String _clientNotesFileName = 'client_notes_cache.json'; // Bitácora por cliente
+  static const String _clientNotesUpdateKey = 'last_client_notes_update';
+  static const String _routePlannerKey = 'route_planner_selected_ids'; // Rutero del asesor
   static const String _propertyDetailsDirName = 'property_details'; // Un archivo por propiedad abierta
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
+
+  /// TTL de la bitácora CRM. Corto: es lo que otro asesor o el propio usuario
+  /// acaba de escribir, y la consulta es liviana.
+  static const Duration _notesTtl = Duration(minutes: 15);
 
   /// TTL del detalle de una propiedad (galerías y características completas).
   static const Duration _propertyDetailTtl = Duration(hours: 24);
@@ -574,6 +583,63 @@ class CacheService {
       _readMapListCache(
           _allowedCitiesFileName, _allowedCitiesUpdateKey, _citiesTtl);
 
+  // ================== Bitácora CRM ==================
+
+  /// Guarda la última nota de cada cliente (`/crm/latest-notes`).
+  Future<void> saveLatestNotes(List<Map<String, dynamic>> rows) =>
+      _writeJsonCache(_latestNotesFileName, _latestNotesUpdateKey, rows);
+
+  /// Carga la última nota de cada cliente.
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadLatestNotes() =>
+      _readMapListCache(_latestNotesFileName, _latestNotesUpdateKey, _notesTtl);
+
+  /// Guarda la bitácora de un cliente.
+  ///
+  /// Todas las bitácoras viven en un solo archivo indexado por cliente: son
+  /// pocas por asesor y así el caché no necesita poda ni un archivo por
+  /// cliente.
+  Future<void> saveClientNotes(
+    int idClientWasi,
+    List<Map<String, dynamic>> notes,
+  ) async {
+    try {
+      final all = await _readClientNotesMap();
+      all['$idClientWasi'] = notes;
+      await _writeJsonCache(
+          _clientNotesFileName, _clientNotesUpdateKey, all);
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar la bitácora de $idClientWasi: $e');
+    }
+  }
+
+  /// Carga la bitácora de un cliente (null si nunca se guardó).
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadClientNotes(
+      int idClientWasi) async {
+    final raw = await _readJsonCache(
+        _clientNotesFileName, _clientNotesUpdateKey, _notesTtl);
+    if (raw == null) return null;
+    try {
+      final all = raw.data as Map<String, dynamic>;
+      final notes = all['$idClientWasi'];
+      if (notes is! List) return null;
+      return CachedResult(
+        data: notes.map((e) => Map<String, dynamic>.from(e as Map)).toList(),
+        isStale: raw.isStale,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Bitácora en caché con formato inesperado: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> _readClientNotesMap() async {
+    final raw = await _readJsonCache(
+        _clientNotesFileName, _clientNotesUpdateKey, _notesTtl);
+    if (raw == null) return <String, dynamic>{};
+    final data = raw.data;
+    return data is Map<String, dynamic> ? data : <String, dynamic>{};
+  }
+
   // ================== Clientes CRM ==================
 
   /// Guarda los clientes CRM (ya cruzados con WASI) en caché.
@@ -660,15 +726,26 @@ class CacheService {
     }
   }
 
-  /// Limpia el caché de clientes CRM.
+  /// Limpia el caché CRM del asesor: clientes y bitácoras.
+  ///
+  /// Todo esto es por asesor, así que se borra al cerrar sesión para que otro
+  /// en el mismo dispositivo no vea datos ajenos.
   Future<void> clearClientsCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_clientsUpdateKey);
+      await prefs.remove(_latestNotesUpdateKey);
+      await prefs.remove(_clientNotesUpdateKey);
       final dir = await getApplicationDocumentsDirectory();
-      final file = File('${dir.path}/$_clientsFileName');
-      if (await file.exists()) await file.delete();
-      debugPrint('🧹 Caché de clientes limpiado');
+      for (final name in [
+        _clientsFileName,
+        _latestNotesFileName,
+        _clientNotesFileName,
+      ]) {
+        final file = File('${dir.path}/$name');
+        if (await file.exists()) await file.delete();
+      }
+      debugPrint('🧹 Caché CRM limpiado (clientes + bitácoras)');
     } catch (e) {
       debugPrint('❌ Error limpiando caché de clientes: $e');
     }
@@ -688,6 +765,53 @@ class CacheService {
     return prefs.getString(_appVersionKey);
   }
 
+  /// Limpia todo lo que pertenece al asesor al cerrar sesión.
+  ///
+  /// Se **conserva** lo que sirve para navegar la app sin sesión: el
+  /// inventario de propiedades con su detalle, las ciudades habilitadas y el
+  /// filtro guardado. Todo lo demás es información interna o del asesor
+  /// (clientes, bitácoras, residenciales, características, borrador de
+  /// captación, perfil, rutero) y se borra.
+  Future<void> clearOnLogout() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final fileNames = [
+        _userProfileFileName,
+        _authSessionFileName,
+        _addPropertyDraftFileName,
+        _clientsFileName,
+        _latestNotesFileName,
+        _clientNotesFileName,
+        _advisorMapFileName,
+        _featuresFileName,
+        _zonesFileName,
+        _residentialsFileName,
+      ];
+      for (final name in fileNames) {
+        final file = File('${dir.path}/$name');
+        if (await file.exists()) await file.delete();
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in [
+        _clientsUpdateKey,
+        _latestNotesUpdateKey,
+        _clientNotesUpdateKey,
+        _featuresUpdateKey,
+        _zonesUpdateKey,
+        _residentialsUpdateKey,
+        _routePlannerKey,
+      ]) {
+        await prefs.remove(key);
+      }
+
+      debugPrint('🧹 Caché del asesor limpiado al cerrar sesión '
+          '(se conservan propiedades, ciudades y filtros)');
+    } catch (e) {
+      debugPrint('❌ Error limpiando el caché al cerrar sesión: $e');
+    }
+  }
+
   /// Limpia todo el caché (archivos + SharedPreferences), excepto la sesión de autenticación
   Future<void> clearAllCache() async {
     try {
@@ -703,6 +827,8 @@ class CacheService {
         _featuresFileName,
         _zonesFileName,
         _residentialsFileName,
+        _latestNotesFileName,
+        _clientNotesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -726,6 +852,8 @@ class CacheService {
       await prefs.remove(_featuresUpdateKey);
       await prefs.remove(_zonesUpdateKey);
       await prefs.remove(_residentialsUpdateKey);
+      await prefs.remove(_latestNotesUpdateKey);
+      await prefs.remove(_clientNotesUpdateKey);
 
       debugPrint('🧹 Todo el caché limpiado por cambio de versión');
     } catch (e) {
@@ -752,6 +880,8 @@ class CacheService {
         _featuresFileName,
         _zonesFileName,
         _residentialsFileName,
+        _latestNotesFileName,
+        _clientNotesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

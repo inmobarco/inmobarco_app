@@ -3,31 +3,55 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/notification_service.dart';
 import '../../domain/models/appointment.dart';
+import '../../core/constants/app_constants.dart';
 import 'api_service.dart';
 import 'appointment_store.dart';
+import 'wasi_api_service.dart';
 
 /// Servicio de sincronización entre almacenamiento local y la API.
 ///
 /// Estrategia:
 /// 1. Al abrir la app → fullSync (push local + pull servidor).
-/// 2. Mientras la app está abierta → `Timer.periodic` cada 5 min.
+/// 2. Mientras la app está **en primer plano** → `Timer.periodic` cada 5 min.
+///    En background el timer se detiene y se reanuda al volver, junto con un
+///    sync inmediato: no tiene sentido gastar red y batería sincronizando una
+///    agenda que nadie está mirando.
 /// 3. Si la red cambia de offline → online → fullSync inmediato.
-/// 4. Antes de procesar la cola se **compacta** para evitar inconsistencias
+/// 4. El pull es **delta**: `updated_after` con la marca del último sync, así
+///    que solo baja lo que cambió (incluidas citas pasadas que se hayan
+///    modificado). El primer sync del dispositivo usa `after` para traer la
+///    agenda vigente sin arrastrar historia.
+/// 5. Antes de procesar la cola se **compacta** para evitar inconsistencias
 ///    (ej. CREATE + DELETE del mismo localId se cancelan mutuamente).
-class SyncService {
+class SyncService with WidgetsBindingObserver {
   final NotificationService notificationService;
   final AppointmentStore _store;
+  WasiApiService? _wasiApi;
 
   SyncService({
     required this.notificationService,
     AppointmentStore? store,
-  }) : _store = store ?? AppointmentStore();
+    WasiApiService? wasiApi,
+  })  : _store = store ?? AppointmentStore(),
+        _wasiApi = wasiApi;
 
+  /// Entidades que puede llevar la cola.
+  static const String entityAppointment = 'appointment';
+  static const String entityClient = 'client';
+  static const String entityClientNote = 'client_note';
+
+  /// La clave conserva el nombre histórico: la cola empezó siendo solo de
+  /// citas y renombrarla dejaría atrás las operaciones ya encoladas.
   static const String _pendingQueueKey = 'appointments_pending_sync';
+  static const String _lastSyncKey = 'last_appointments_sync';
+
+  /// Solapamiento del delta: se pide desde un poco antes del último sync para
+  /// absorber la diferencia de reloj entre el dispositivo y el servidor.
+  static const Duration _deltaOverlap = Duration(minutes: 5);
 
   /// Intervalo del timer periódico.
   static const Duration _syncInterval = Duration(minutes: 5);
@@ -41,8 +65,10 @@ class SyncService {
   // Inicialización / dispose
   // ---------------------------------------------------------------------------
 
-  /// Inicia la escucha de conectividad + timer periódico + sync inmediato.
+  /// Inicia la escucha de conectividad + ciclo de vida + timer + sync.
   void startListening() {
+    WidgetsBinding.instance.addObserver(this);
+
     // --- Escucha de cambios de red ---
     _connectivitySub?.cancel();
     _connectivitySub = Connectivity().onConnectivityChanged.listen(
@@ -64,25 +90,49 @@ class SyncService {
       },
     );
 
-    // --- Timer periódico (cada 5 min mientras la app está abierta) ---
+    // --- Timer periódico (cada 5 min mientras la app esté en primer plano) ---
+    _startPeriodicTimer();
+
+    // --- Sync inmediato al arrancar ---
+    fullSync();
+
+    debugPrint('📡 SyncService: escuchando red + ciclo de vida + timer cada '
+        '${_syncInterval.inMinutes} min');
+  }
+
+  /// Detiene escucha de red, ciclo de vida y timer periódico.
+  void stopListening() {
+    WidgetsBinding.instance.removeObserver(this);
+    _connectivitySub?.cancel();
+    _connectivitySub = null;
+    _periodicTimer?.cancel();
+    _periodicTimer = null;
+  }
+
+  void _startPeriodicTimer() {
     _periodicTimer?.cancel();
     _periodicTimer = Timer.periodic(_syncInterval, (_) {
       debugPrint('⏰ Timer periódico → fullSync');
       fullSync();
     });
-
-    // --- Sync inmediato al arrancar ---
-    fullSync();
-
-    debugPrint('📡 SyncService: escuchando red + timer cada ${_syncInterval.inMinutes} min');
   }
 
-  /// Detiene escucha de red y timer periódico.
-  void stopListening() {
-    _connectivitySub?.cancel();
-    _connectivitySub = null;
-    _periodicTimer?.cancel();
-    _periodicTimer = null;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        debugPrint('▶️ App en primer plano → timer + fullSync');
+        _startPeriodicTimer();
+        fullSync();
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        debugPrint('⏸️ App en background → timer de sync detenido');
+        _periodicTimer?.cancel();
+        _periodicTimer = null;
+      case AppLifecycleState.inactive:
+        break; // Transitorio (llamada entrante, cambio de app): no tocar nada
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -94,19 +144,21 @@ class SyncService {
     required String action,
     required String localId,
     required Map<String, dynamic> payload,
+    String entity = entityAppointment,
   }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_pendingQueueKey);
       final List<dynamic> queue = raw != null ? json.decode(raw) : [];
       queue.add({
+        'entity': entity,        // 'appointment' | 'client' | 'client_note'
         'action': action,        // 'create' | 'update' | 'delete'
         'localId': localId,
         'payload': payload,
         'timestamp': DateTime.now().toIso8601String(),
       });
       await prefs.setString(_pendingQueueKey, json.encode(queue));
-      debugPrint('📋 Operación encolada ($action) para cita $localId');
+      debugPrint('📋 Operación encolada ($entity/$action) para $localId');
     } catch (e) {
       debugPrint('❌ Error al encolar operación pendiente: $e');
     }
@@ -170,14 +222,23 @@ class SyncService {
       debugPrint('🔄 Procesando ${queue.length} operaciones pendientes…');
 
       final List<Map<String, dynamic>> remaining = [];
+      var crmSynced = false;
 
       for (final item in queue) {
         final op = item as Map<String, dynamic>;
+        // Las operaciones encoladas por versiones anteriores no traen entidad.
+        final entity = op['entity'] as String? ?? entityAppointment;
         final action = op['action'] as String;
         final localId = op['localId'] as String;
         final payload = Map<String, dynamic>.from(op['payload'] as Map);
 
         try {
+          if (entity != entityAppointment) {
+            await _processCrmOperation(entity, action, payload);
+            crmSynced = true;
+            continue;
+          }
+
           switch (action) {
             case 'create':
               final response = await ApiService.createAppointment(payload);
@@ -224,6 +285,8 @@ class SyncService {
         }
       }
 
+      if (crmSynced) _onCrmSynced?.call();
+
       // Guardar solo las operaciones que siguen fallando
       if (remaining.isEmpty) {
         await prefs.remove(_pendingQueueKey);
@@ -235,6 +298,94 @@ class SyncService {
     } catch (e) {
       debugPrint('❌ Error general al procesar cola pendiente: $e');
     }
+  }
+
+  /// Limpia el estado de citas al cerrar sesión.
+  ///
+  /// Las citas son del asesor, no del dispositivo: si otro inicia sesión aquí,
+  /// no puede heredar la agenda anterior. Y la marca del delta debe irse con
+  /// ellas, porque si no el primer sync del nuevo asesor pediría solo cambios
+  /// recientes y nunca traería su agenda completa.
+  ///
+  /// Antes de borrar intenta vaciar la cola, que aún tiene el token del asesor
+  /// que se va; si no hay red, esas operaciones se pierden (es la única forma
+  /// de no enviarlas después con la sesión de otra persona).
+  Future<void> resetForLogout() async {
+    try {
+      await _withLock(_pushPendingQueue);
+    } catch (e) {
+      debugPrint('⚠️ No se pudo vaciar la cola antes del logout: $e');
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final pending = prefs.getString(_pendingQueueKey);
+      if (pending != null && pending.isNotEmpty && pending != '[]') {
+        debugPrint('⚠️ Se descartan operaciones pendientes al cerrar sesión');
+      }
+      await prefs.remove(_pendingQueueKey);
+      await prefs.remove(_lastSyncKey);
+      await _store.writeAll([]);
+      debugPrint('🧹 Estado de citas limpiado al cerrar sesión');
+    } catch (e) {
+      debugPrint('❌ Error limpiando el estado de citas: $e');
+    }
+  }
+
+  /// Ejecuta una operación de CRM encolada (clientes y bitácora).
+  ///
+  /// Lanza si falla, para que el llamador la deje en la cola y la reintente.
+  Future<void> _processCrmOperation(
+    String entity,
+    String action,
+    Map<String, dynamic> payload,
+  ) async {
+    final api = _wasiApi ??= WasiApiService(
+      apiToken: AppConstants.wasiApiToken,
+      companyId: AppConstants.wasiApiId,
+    );
+
+    if (entity == entityClient && action == 'create') {
+      final idClient = await api.createClient(
+        firstName: payload['first_name'] as String,
+        cellPhone: payload['cell_phone'] as String,
+        lastName: payload['last_name'] as String?,
+        email: payload['email'] as String?,
+        query: payload['query'] as String?,
+      );
+      final propertyId = payload['id_property'] as String?;
+      if (propertyId != null && propertyId.isNotEmpty) {
+        await api.addPropertyToClient(idClient, propertyId);
+      }
+      debugPrint('✅ Pendiente CREATE de cliente sincronizado ($idClient)');
+      return;
+    }
+
+    if (entity == entityClient && action == 'update') {
+      final idClient = payload.remove('id_client')?.toString();
+      if (idClient == null || idClient.isEmpty) {
+        throw StateError('UPDATE de cliente sin id_client');
+      }
+      await api.updateClient(idClient, payload);
+      debugPrint('✅ Pendiente UPDATE de cliente sincronizado ($idClient)');
+      return;
+    }
+
+    if (entity == entityClientNote && action == 'create') {
+      final idClient = int.tryParse(payload['id_client_wasi']?.toString() ?? '');
+      if (idClient == null) {
+        throw StateError('Nota pendiente sin id_client_wasi');
+      }
+      await ApiService.createClientNote(
+        idClient,
+        payload['note'] as String? ?? '',
+        payload['note_type'] as String? ?? 'nota',
+      );
+      debugPrint('✅ Pendiente CREATE de nota sincronizado ($idClient)');
+      return;
+    }
+
+    throw StateError('Operación desconocida en cola: $entity/$action');
   }
 
   /// Cantidad de operaciones pendientes en la cola.
@@ -265,23 +416,35 @@ class SyncService {
   /// El orden de la cola se respeta: las operaciones se procesan por `localId`
   /// y se reconstruyen en el orden original del primer item de cada grupo.
   List<Map<String, dynamic>> _compactQueue(List<Map<String, dynamic>> queue) {
-    // Agrupar por localId preservando orden de aparición
+    // Agrupar por entidad + localId preservando orden de aparición
     final Map<String, List<Map<String, dynamic>>> groups = {};
     final List<String> insertionOrder = [];
 
     for (final op in queue) {
-      final localId = op['localId'] as String;
-      if (!groups.containsKey(localId)) {
-        groups[localId] = [];
-        insertionOrder.add(localId);
+      final entity = op['entity'] as String? ?? entityAppointment;
+      final key = '$entity/${op['localId']}';
+      if (!groups.containsKey(key)) {
+        groups[key] = [];
+        insertionOrder.add(key);
       }
-      groups[localId]!.add(op);
+      groups[key]!.add(op);
     }
 
     final List<Map<String, dynamic>> compacted = [];
 
-    for (final localId in insertionOrder) {
-      final ops = groups[localId]!;
+    for (final key in insertionOrder) {
+      final ops = groups[key]!;
+      final localId = ops.first['localId'] as String;
+      final entity = ops.first['entity'] as String? ?? entityAppointment;
+
+      // Las reglas de fusión asumen payloads del mismo formato, y el de crear
+      // un cliente en WASI no tiene la forma del de actualizarlo. Fuera de
+      // las citas, la cola se procesa tal cual.
+      if (entity != entityAppointment) {
+        compacted.addAll(ops);
+        continue;
+      }
+
       final actions = ops.map((o) => o['action'] as String).toList();
 
       // ¿Contiene un DELETE?
@@ -418,12 +581,29 @@ class SyncService {
 
   Future<void> _pullFromServer() async {
     try {
-      // Delta sync: solo traer citas desde hoy a las 00:00 local
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final serverList = await ApiService.getAppointments(after: today);
-      debugPrint('📥 GET /appointments?after=${today.toUtc().toIso8601String()} '
-          '→ ${serverList.length} citas del servidor');
+      final prefs = await SharedPreferences.getInstance();
+      final lastSyncMs = prefs.getInt(_lastSyncKey);
+
+      // Marca del sync que empieza ahora. Se toma ANTES de la petición: si el
+      // servidor cambia algo mientras respondemos, entra en el próximo delta
+      // en vez de perderse.
+      final syncStartedAt = DateTime.now();
+
+      final List<Map<String, dynamic>> serverList;
+      if (lastSyncMs == null) {
+        // Primer sync del dispositivo: la agenda vigente, sin historia.
+        final today = DateTime(
+            syncStartedAt.year, syncStartedAt.month, syncStartedAt.day);
+        serverList = await ApiService.getAppointments(after: today);
+        debugPrint('📥 Sync inicial (after=hoy) → ${serverList.length} citas');
+      } else {
+        // Delta: solo lo que cambió, con solapamiento por desfase de reloj.
+        final updatedAfter =
+            DateTime.fromMillisecondsSinceEpoch(lastSyncMs).subtract(_deltaOverlap);
+        serverList = await ApiService.getAppointments(updatedAfter: updatedAfter);
+        debugPrint('📥 Delta desde ${updatedAfter.toIso8601String()} '
+            '→ ${serverList.length} citas cambiadas');
+      }
 
       // Efectos secundarios diferidos: las notificaciones se ejecutan fuera
       // del lock del store, con el merge ya persistido.
@@ -494,8 +674,9 @@ class SyncService {
         result.addAll(localWithoutServerId);
 
         // 3. Citas locales con serverId que NO vinieron en la respuesta
-        //    → con delta sync puede ser que simplemente no se incluyeron;
-        //      las mantenemos localmente para no perder datos.
+        //    → en un delta eso significa "sin cambios", así que se mantienen
+        //      tal cual. Un borrado desde el servidor llega como status
+        //      "deleted" dentro del propio delta (paso 1).
         for (final entry in localByServerId.entries) {
           if (!serverIds.contains(entry.key)) {
             result.add(entry.value);
@@ -509,6 +690,10 @@ class SyncService {
 
       debugPrint('💾 ${merged.length} citas guardadas tras merge '
           '($unsyncedCount locales sin sync)');
+
+      // La marca se guarda solo si el pull llegó completo: si algo falla, el
+      // próximo delta vuelve a pedir desde la misma fecha.
+      await prefs.setInt(_lastSyncKey, syncStartedAt.millisecondsSinceEpoch);
 
       // Notificaciones, ya fuera del lock
       for (final localId in remindersToCancel) {
@@ -539,6 +724,14 @@ class SyncService {
   /// Registra un callback para ser notificado cuando pullFromServer termina.
   void setOnPullCompleted(VoidCallback callback) {
     _onPullCompleted = callback;
+  }
+
+  VoidCallback? _onCrmSynced;
+
+  /// Registra un callback para cuando se sincroniza una operación de CRM
+  /// pendiente, y la lista de clientes deja de reflejar el estado real.
+  void setOnCrmSynced(VoidCallback callback) {
+    _onCrmSynced = callback;
   }
 
   // ---------------------------------------------------------------------------

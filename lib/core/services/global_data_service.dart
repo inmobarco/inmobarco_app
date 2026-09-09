@@ -257,6 +257,20 @@ class GlobalDataService extends ChangeNotifier {
     });
   }
 
+  /// Suelta los catálogos internos al cerrar sesión.
+  ///
+  /// Las ciudades habilitadas se conservan: sin sesión la app sigue mostrando
+  /// propiedades y su filtro por ciudad.
+  void clearEmployeeData() {
+    _features = [];
+    _residentialComplexes = [];
+    _zones = [];
+    _featuresStale = true;
+    _residentialsStale = true;
+    _zonesStale = true;
+    notifyListeners();
+  }
+
   /// Recarga los residenciales y sus zonas (tras crear/editar/eliminar, o con
   /// el pull-to-refresh de la pantalla de Residenciales).
   Future<void> reloadResidentials() =>

@@ -80,10 +80,10 @@ class AuthProvider extends ChangeNotifier {
 
   /// Cierra la sesión actual
   Future<void> logout() async {
-    await _cacheService.clearAuthSession();
-    // Datos CRM son por asesor: no dejarlos para otra cuenta
-    await _cacheService.clearClientsCache();
-    await _cacheService.clearAdvisorMap();
+    // Todo lo del asesor se va (clientes, bitácoras, residenciales,
+    // características, borrador, perfil, rutero). Se conservan propiedades,
+    // ciudades y filtros, que es lo que la app sigue mostrando sin sesión.
+    await _cacheService.clearOnLogout();
     // Limpiar el token JWT
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
