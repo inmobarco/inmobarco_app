@@ -6,6 +6,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/apartment.dart';
 import '../../domain/models/client.dart';
 
+/// Resultado de una lectura de caché: los datos y si ya superaron su TTL.
+///
+/// Los cachés no se borran al vencer: entregan el último valor conocido
+/// marcado como `isStale` para que la app pueda pintar algo de inmediato y
+/// refrescar en segundo plano. Sin red y con caché vencido, mostrar datos
+/// viejos es mejor que mostrar una pantalla vacía.
+class CachedResult<T> {
+  const CachedResult({required this.data, required this.isStale});
+
+  final T data;
+  final bool isStale;
+}
+
 class CacheService {
   static const String _propertiesKey = 'cached_properties';
   static const String _lastUpdateKey = 'last_update_timestamp';
@@ -47,8 +60,11 @@ class CacheService {
     }
   }
 
-  /// Carga las propiedades desde caché
-  Future<List<Apartment>?> loadProperties() async {
+  /// Carga las propiedades desde caché.
+  ///
+  /// Retorna null solo si no hay caché o está corrupto. Si venció el TTL, los
+  /// datos se devuelven marcados como `isStale` (last-known-good).
+  Future<CachedResult<List<Apartment>>?> loadProperties() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final fileJson = await _readPropertiesFile();
@@ -72,16 +88,10 @@ class CacheService {
         return null;
       }
 
-      // Verificar si el caché no ha expirado
       final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
       final cacheAge = DateTime.now().millisecondsSinceEpoch - lastUpdate;
       final cacheAgeHours = cacheAge / (1000 * 60 * 60);
-
-      if (cacheAgeHours > _cacheExpirationHours) {
-        debugPrint('⏰ Caché expirado (${cacheAgeHours.toStringAsFixed(1)} horas)');
-        await clearCache(); // Limpiar caché expirado
-        return null;
-      }
+      final isStale = cacheAgeHours > _cacheExpirationHours;
 
       // Ya tenemos effectiveFileJson válido aquí
       final propertiesJson = jsonDecode(effectiveFileJson) as List;
@@ -89,8 +99,9 @@ class CacheService {
           .map((json) => Apartment.fromJson(json))
           .toList();
 
-      debugPrint('📦 Propiedades cargadas desde caché: ${properties.length}');
-      return properties;
+      debugPrint('📦 Propiedades cargadas desde caché: ${properties.length}'
+          '${isStale ? ' (vencido ${cacheAgeHours.toStringAsFixed(1)} h, se refrescará)' : ''}');
+      return CachedResult(data: properties, isStale: isStale);
     } catch (e) {
       debugPrint('❌ Error cargando propiedades desde caché: $e');
       await clearCache(); // Limpiar caché corrupto
@@ -119,13 +130,14 @@ class CacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final lastUpdate = prefs.getInt(_lastUpdateKey) ?? 0;
-      final propertiesCount = await loadProperties();
+      final cached = await loadProperties();
       final fileInfo = await _getPropertiesFileInfo();
 
       return {
         'hasCache': await hasCachedProperties(),
+        'isStale': cached?.isStale ?? true,
         'lastUpdate': DateTime.fromMillisecondsSinceEpoch(lastUpdate),
-        'propertiesCount': propertiesCount?.length ?? 0,
+        'propertiesCount': cached?.data.length ?? 0,
         'cacheAgeHours': (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60 * 60),
         'filePath': fileInfo['path'],
         'fileSizeKB': fileInfo['sizeKB'],
@@ -133,6 +145,7 @@ class CacheService {
     } catch (e) {
       return {
         'hasCache': false,
+        'isStale': true,
         'lastUpdate': null,
         'propertiesCount': 0,
         'cacheAgeHours': 0,
@@ -330,10 +343,10 @@ class CacheService {
 
   /// Carga las ciudades habilitadas desde caché.
   ///
-  /// Retorna `{ 'cities': List<Map>, 'isStale': bool }`, o `null` si no hay caché.
-  /// A diferencia de las propiedades, NO borra el caché al vencer: sirve para
-  /// entregar el último valor conocido si el backend no responde.
-  Future<Map<String, dynamic>?> loadAllowedCities() async {
+  /// Retorna null si no hay caché; si venció, los datos van marcados como
+  /// `isStale` para entregar el último valor conocido cuando el backend no
+  /// responde.
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadAllowedCities() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_allowedCitiesFileName');
@@ -347,10 +360,10 @@ class CacheService {
       final lastUpdate = prefs.getInt(_allowedCitiesUpdateKey) ?? 0;
       final ageMinutes = (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60);
 
-      return {
-        'cities': cities,
-        'isStale': ageMinutes > _allowedCitiesExpirationMinutes,
-      };
+      return CachedResult(
+        data: cities,
+        isStale: ageMinutes > _allowedCitiesExpirationMinutes,
+      );
     } catch (e) {
       debugPrint('⚠️ No se pudo cargar ciudades desde caché: $e');
       return null;
@@ -374,8 +387,11 @@ class CacheService {
     }
   }
 
-  /// Carga los clientes CRM desde caché. Retorna null si no hay o expiró (TTL 6h).
-  Future<List<Client>?> loadClients() async {
+  /// Carga los clientes CRM desde caché.
+  ///
+  /// Retorna null solo si no hay caché o está corrupto; vencido el TTL de 6 h
+  /// los datos van marcados como `isStale`.
+  Future<CachedResult<List<Client>>?> loadClients() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_clientsFileName');
@@ -388,19 +404,16 @@ class CacheService {
       final lastUpdate = prefs.getInt(_clientsUpdateKey) ?? 0;
       final cacheAgeHours =
           (DateTime.now().millisecondsSinceEpoch - lastUpdate) / (1000 * 60 * 60);
-      if (cacheAgeHours > _cacheExpirationHours) {
-        debugPrint('⏰ Caché de clientes expirado (${cacheAgeHours.toStringAsFixed(1)} horas)');
-        await clearClientsCache();
-        return null;
-      }
+      final isStale = cacheAgeHours > _cacheExpirationHours;
 
       final content = await file.readAsString();
       if (content.trim().isEmpty) return null;
       final clients = (jsonDecode(content) as List)
           .map((json) => Client.fromJson(json as Map<String, dynamic>))
           .toList();
-      debugPrint('📦 Clientes cargados desde caché: ${clients.length}');
-      return clients;
+      debugPrint('📦 Clientes cargados desde caché: ${clients.length}'
+          '${isStale ? ' (vencido ${cacheAgeHours.toStringAsFixed(1)} h, se refrescará)' : ''}');
+      return CachedResult(data: clients, isStale: isStale);
     } catch (e) {
       debugPrint('❌ Error cargando clientes desde caché: $e');
       await clearClientsCache(); // Limpiar caché corrupto

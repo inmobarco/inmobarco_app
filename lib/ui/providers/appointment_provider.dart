@@ -118,7 +118,9 @@ class AppointmentProvider extends ChangeNotifier {
   Future<void> addAppointment(Appointment appointment) async {
     _appointments.add(appointment);
     notifyListeners();
-    await _repository.saveAll(_appointments);
+    // Escritura puntual, no de toda la lista: un pull en curso podría estar
+    // fusionando datos del servidor y no debe perderse ninguno de los dos.
+    await _repository.upsert(appointment);
 
     // Programar notificación de recordatorio 30 minutos antes
     await _notificationService.scheduleAppointmentReminder(appointment);
@@ -134,7 +136,7 @@ class AppointmentProvider extends ChangeNotifier {
       final updated = appointment.copyWith(updatedAt: DateTime.now());
       _appointments[index] = updated;
       notifyListeners();
-      await _repository.saveAll(_appointments);
+      await _repository.upsert(updated);
 
       // Reprogramar notificación con la nueva hora
       await _notificationService.rescheduleAppointmentReminder(updated);
@@ -154,7 +156,7 @@ class AppointmentProvider extends ChangeNotifier {
 
     _appointments.removeWhere((a) => a.id == id);
     notifyListeners();
-    await _repository.saveAll(_appointments);
+    await _repository.remove(id);
 
     if (serverId != null) {
       _repository.syncDelete(id, serverId);
@@ -193,7 +195,7 @@ class AppointmentProvider extends ChangeNotifier {
       if (index != -1) {
         _appointments[index] =
             _appointments[index].copyWith(serverId: serverId);
-        await _repository.saveAll(_appointments);
+        await _repository.setServerId(appointment.id, serverId);
         notifyListeners();
       }
     }

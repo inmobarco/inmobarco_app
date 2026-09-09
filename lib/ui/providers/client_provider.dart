@@ -102,11 +102,16 @@ class ClientProvider extends ChangeNotifier {
   Future<void> _loadInitial() async {
     try {
       final cached = await _cacheService.loadClients();
-      if (cached != null && cached.isNotEmpty) {
-        _clients = cached;
+      if (cached != null && cached.data.isNotEmpty) {
+        _clients = cached.data;
         notifyListeners();
         // Lista desde caché, pero las notas siempre frescas (query liviana)
         await loadLatestNotes();
+        // Caché vencido: se pinta de inmediato y se refresca sin bloquear.
+        if (cached.isStale) {
+          debugPrint('🔄 Clientes en caché vencidos → refrescando en background');
+          loadClients();
+        }
         return;
       }
     } catch (e) {

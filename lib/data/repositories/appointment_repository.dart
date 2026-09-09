@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/appointment.dart';
 import '../services/api_service.dart';
+import '../services/appointment_store.dart';
 import '../services/sync_service.dart';
 
 /// Repositorio que encapsula la persistencia local y la comunicación
@@ -11,16 +10,18 @@ import '../services/sync_service.dart';
 ///
 /// El [AppointmentProvider] delega aquí todo lo que no sea estado de UI.
 class AppointmentRepository {
-  static const String _storageKey = 'appointments_cache';
-
   final SyncService _syncService;
+  final AppointmentStore _store;
 
   /// Callback que se invoca cuando SyncService completa un pull del servidor
   /// y el repositorio detecta cambios en el caché.
   VoidCallback? onDataChanged;
 
-  AppointmentRepository({required SyncService syncService})
-      : _syncService = syncService {
+  AppointmentRepository({
+    required SyncService syncService,
+    AppointmentStore? store,
+  })  : _syncService = syncService,
+        _store = store ?? AppointmentStore() {
     _syncService.setOnPullCompleted(_onPullCompleted);
   }
 
@@ -29,27 +30,29 @@ class AppointmentRepository {
   // ---------------------------------------------------------------------------
 
   /// Lee todas las citas del almacenamiento local.
-  Future<List<Appointment>> getAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_storageKey);
-    if (jsonString == null) return [];
-
-    final List<dynamic> jsonList = json.decode(jsonString);
-    return jsonList
-        .map((j) => Appointment.fromJson(j as Map<String, dynamic>))
-        .toList();
-  }
+  Future<List<Appointment>> getAll() => _store.readAll();
 
   // ---------------------------------------------------------------------------
   // Escritura local
   // ---------------------------------------------------------------------------
 
-  /// Persiste la lista completa de citas en SharedPreferences.
-  Future<void> saveAll(List<Appointment> appointments) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = appointments.map((a) => a.toJson()).toList();
-    await prefs.setString(_storageKey, json.encode(jsonList));
-  }
+  /// Reemplaza la lista completa de citas.
+  ///
+  /// Preferir [upsert] / [remove] para mutaciones de una sola cita: una
+  /// escritura ciega de toda la lista puede pisar el merge de un pull que se
+  /// esté ejecutando en paralelo.
+  Future<void> saveAll(List<Appointment> appointments) =>
+      _store.writeAll(appointments);
+
+  /// Inserta o actualiza una sola cita, sin pisar el resto de la lista.
+  Future<void> upsert(Appointment appointment) => _store.upsert(appointment);
+
+  /// Elimina una sola cita del almacenamiento local.
+  Future<void> remove(String localId) => _store.remove(localId);
+
+  /// Guarda el `serverId` asignado por el backend a una cita local.
+  Future<void> setServerId(String localId, int serverId) =>
+      _store.setServerId(localId, serverId);
 
   // ---------------------------------------------------------------------------
   // Sync con API (fire-and-forget, encola si falla)

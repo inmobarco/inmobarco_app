@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/notification_service.dart';
 import '../../domain/models/appointment.dart';
 import 'api_service.dart';
+import 'appointment_store.dart';
 
 /// Servicio de sincronización entre almacenamiento local y la API.
 ///
@@ -19,18 +20,21 @@ import 'api_service.dart';
 ///    (ej. CREATE + DELETE del mismo localId se cancelan mutuamente).
 class SyncService {
   final NotificationService notificationService;
+  final AppointmentStore _store;
 
-  SyncService({required this.notificationService});
+  SyncService({
+    required this.notificationService,
+    AppointmentStore? store,
+  }) : _store = store ?? AppointmentStore();
 
   static const String _pendingQueueKey = 'appointments_pending_sync';
-  static const String _appointmentsCacheKey = 'appointments_cache';
 
   /// Intervalo del timer periódico.
   static const Duration _syncInterval = Duration(minutes: 5);
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   Timer? _periodicTimer;
-  bool _isSyncing = false;
+  bool _isBusy = false;
   bool _initialSyncDone = false;
 
   // ---------------------------------------------------------------------------
@@ -143,23 +147,16 @@ class SyncService {
   /// 2. **Compacta** para eliminar operaciones redundantes/contradictorias.
   /// 3. Ejecuta cada operación restante contra la API (en orden).
   /// 4. Las que fallan se mantienen para el siguiente ciclo.
-  Future<void> syncPendingQueue() async {
-    if (_isSyncing) return; // Evitar ejecuciones simultáneas
-    _isSyncing = true;
+  Future<void> syncPendingQueue() => _withLock(_pushPendingQueue);
 
+  Future<void> _pushPendingQueue() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_pendingQueueKey);
-      if (raw == null || raw.isEmpty) {
-        _isSyncing = false;
-        return;
-      }
+      if (raw == null || raw.isEmpty) return;
 
       List<dynamic> queue = json.decode(raw);
-      if (queue.isEmpty) {
-        _isSyncing = false;
-        return;
-      }
+      if (queue.isEmpty) return;
 
       // ── Compactar la cola antes de procesar ──
       queue = _compactQueue(queue.cast<Map<String, dynamic>>());
@@ -167,7 +164,6 @@ class SyncService {
       if (queue.isEmpty) {
         await prefs.remove(_pendingQueueKey);
         debugPrint('✅ Cola compactada quedó vacía, nada que sincronizar');
-        _isSyncing = false;
         return;
       }
 
@@ -187,7 +183,7 @@ class SyncService {
               final response = await ApiService.createAppointment(payload);
               final serverId = response['id'] as int?;
               if (serverId != null) {
-                await _updateLocalServerId(localId, serverId);
+                await _store.setServerId(localId, serverId);
               }
               debugPrint('✅ Pendiente CREATE sincronizado (serverId: $serverId)');
               break;
@@ -238,8 +234,6 @@ class SyncService {
       }
     } catch (e) {
       debugPrint('❌ Error general al procesar cola pendiente: $e');
-    } finally {
-      _isSyncing = false;
     }
   }
 
@@ -353,35 +347,6 @@ class SyncService {
   // Helpers privados
   // ---------------------------------------------------------------------------
 
-  /// Actualiza el `serverId` de una cita local después de que el backend
-  /// la creó exitosamente.
-  Future<void> _updateLocalServerId(String localId, int serverId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_appointmentsCacheKey);
-      if (raw == null) return;
-
-      final List<dynamic> list = json.decode(raw);
-      bool updated = false;
-
-      for (int i = 0; i < list.length; i++) {
-        final item = list[i] as Map<String, dynamic>;
-        if (item['id'] == localId) {
-          item['serverId'] = serverId;
-          updated = true;
-          break;
-        }
-      }
-
-      if (updated) {
-        await prefs.setString(_appointmentsCacheKey, json.encode(list));
-        debugPrint('💾 serverId $serverId guardado para cita local $localId');
-      }
-    } catch (e) {
-      debugPrint('❌ Error actualizando serverId local: $e');
-    }
-  }
-
   /// Intenta resolver el `serverId` de una cita local.
   Future<int?> _resolveServerId(
     String localId,
@@ -392,22 +357,29 @@ class SyncService {
       return payload['serverId'] as int?;
     }
 
-    // 2. Buscar en el caché local
+    // 2. Buscar en el almacenamiento local
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_appointmentsCacheKey);
-      if (raw != null) {
-        final List<dynamic> list = json.decode(raw);
-        for (final item in list) {
-          final map = item as Map<String, dynamic>;
-          if (map['id'] == localId && map['serverId'] != null) {
-            return map['serverId'] as int;
-          }
-        }
-      }
-    } catch (_) {}
+      return await _store.findServerId(localId);
+    } catch (_) {
+      return null;
+    }
+  }
 
-    return null;
+  /// Serializa las sincronizaciones: si ya hay una en curso, esta se descarta.
+  ///
+  /// Cubre push y pull, no solo la cola: el timer periódico y el evento de
+  /// conectividad pueden dispararse a la vez.
+  Future<void> _withLock(Future<void> Function() action) async {
+    if (_isBusy) {
+      debugPrint('⏭️ Sincronización ya en curso → se omite esta ejecución');
+      return;
+    }
+    _isBusy = true;
+    try {
+      await action();
+    } finally {
+      _isBusy = false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -418,8 +390,14 @@ class SyncService {
   /// 1. **Push** — vacía la cola de pendientes (local → servidor).
   /// 2. **Pull** — descarga citas del servidor y las fusiona con las locales.
   Future<void> fullSync() async {
-    await syncPendingQueue();
-    await pullFromServer();
+    if (!await ApiService.hasSession()) {
+      debugPrint('🔒 Sin sesión activa → se omite la sincronización de citas');
+      return;
+    }
+    await _withLock(() async {
+      await _pushPendingQueue();
+      await _pullFromServer();
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -436,7 +414,9 @@ class SyncService {
   ///   sincronizó, está en cola pendiente).
   /// - Cita existe solo en local con serverId → fue eliminada desde el
   ///   servidor/admin → la elimina localmente.
-  Future<void> pullFromServer() async {
+  Future<void> pullFromServer() => _withLock(_pullFromServer);
+
+  Future<void> _pullFromServer() async {
     try {
       // Delta sync: solo traer citas desde hoy a las 00:00 local
       final now = DateTime.now();
@@ -445,86 +425,103 @@ class SyncService {
       debugPrint('📥 GET /appointments?after=${today.toUtc().toIso8601String()} '
           '→ ${serverList.length} citas del servidor');
 
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_appointmentsCacheKey);
-      final List<Appointment> localList = (raw != null && raw.isNotEmpty)
-          ? (json.decode(raw) as List<dynamic>)
-              .map((j) => Appointment.fromJson(j as Map<String, dynamic>))
-              .toList()
-          : [];
+      // Efectos secundarios diferidos: las notificaciones se ejecutan fuera
+      // del lock del store, con el merge ya persistido.
+      final List<String> remindersToCancel = [];
+      final List<Appointment> remindersToSchedule = [];
+      final List<Appointment> remindersToReschedule = [];
+      int unsyncedCount = 0;
 
-      // Mapas de lookup
-      final Map<int, Appointment> localByServerId = {};
-      final List<Appointment> localWithoutServerId = [];
-      for (final a in localList) {
-        if (a.serverId != null) {
-          localByServerId[a.serverId!] = a;
-        } else {
-          localWithoutServerId.add(a);
+      // Merge atómico: leer + fusionar + escribir dentro del lock del store,
+      // para que una mutación de la UI en paralelo no se pierda.
+      final merged = await _store.update((localList) {
+        remindersToCancel.clear();
+        remindersToSchedule.clear();
+        remindersToReschedule.clear();
+
+        // Mapas de lookup
+        final Map<int, Appointment> localByServerId = {};
+        final List<Appointment> localWithoutServerId = [];
+        for (final a in localList) {
+          if (a.serverId != null) {
+            localByServerId[a.serverId!] = a;
+          } else {
+            localWithoutServerId.add(a);
+          }
         }
-      }
+        unsyncedCount = localWithoutServerId.length;
 
-      final Set<int> serverIds = {};
-      final List<Appointment> merged = [];
+        final Set<int> serverIds = {};
+        final List<Appointment> result = [];
 
-      // 1. Procesar citas del servidor
-      for (final serverJson in serverList) {
-        final sId = serverJson['id'] as int;
-        serverIds.add(sId);
+        // 1. Procesar citas del servidor
+        for (final serverJson in serverList) {
+          final sId = serverJson['id'] as int;
+          serverIds.add(sId);
 
-        // Si el servidor marca la cita como "deleted", eliminarla localmente
-        final serverStatus = (serverJson['status'] as String?)?.toLowerCase();
-        if (serverStatus == 'deleted') {
+          // Si el servidor marca la cita como "deleted", eliminarla localmente
+          final serverStatus = (serverJson['status'] as String?)?.toLowerCase();
+          if (serverStatus == 'deleted') {
+            final localMatch = localByServerId[sId];
+            if (localMatch != null) {
+              debugPrint('🗑️ Cita local ${localMatch.id} (serverId: $sId) '
+                  'eliminada: status "deleted" en servidor');
+              remindersToCancel.add(localMatch.id);
+            }
+            continue;
+          }
+
+          final serverAppointment = Appointment.fromApiJson(serverJson);
           final localMatch = localByServerId[sId];
+
           if (localMatch != null) {
-            debugPrint('🗑️ Cita local ${localMatch.id} (serverId: $sId) '
-                'eliminada: status "deleted" en servidor');
-            // Cancelar notificación de la cita eliminada
-            await notificationService.cancelAppointmentReminder(localMatch.id);
+            // Existe local → actualizar con datos del servidor (conservar id local)
+            final updatedLocal = serverAppointment.copyWith(id: localMatch.id);
+            result.add(updatedLocal);
+            // Reprogramar notificación si la fecha/hora cambió
+            if (localMatch.dateTime != serverAppointment.dateTime) {
+              remindersToReschedule.add(updatedLocal);
+            }
+          } else {
+            // Solo en servidor → agregar como nueva + programar notificación
+            result.add(serverAppointment);
+            remindersToSchedule.add(serverAppointment);
           }
-          continue;
         }
 
-        final serverAppointment = Appointment.fromApiJson(serverJson);
+        // 2. Mantener citas locales que aún no tienen serverId
+        //    (aún no se sincronizaron, probablemente en cola pendiente)
+        result.addAll(localWithoutServerId);
 
-        final localMatch = localByServerId[sId];
-        if (localMatch != null) {
-          // Existe local → actualizar con datos del servidor (conservar id local)
-          final updatedLocal = serverAppointment.copyWith(id: localMatch.id);
-          merged.add(updatedLocal);
-          // Reprogramar notificación si la fecha/hora cambió
-          if (localMatch.dateTime != serverAppointment.dateTime) {
-            await notificationService.rescheduleAppointmentReminder(updatedLocal);
-            debugPrint('🔔 Notificación reprogramada para cita ${localMatch.id}');
+        // 3. Citas locales con serverId que NO vinieron en la respuesta
+        //    → con delta sync puede ser que simplemente no se incluyeron;
+        //      las mantenemos localmente para no perder datos.
+        for (final entry in localByServerId.entries) {
+          if (!serverIds.contains(entry.key)) {
+            result.add(entry.value);
+            debugPrint('ℹ️ Cita local ${entry.value.id} (serverId: ${entry.key}) '
+                'no vino del servidor, se mantiene localmente');
           }
-        } else {
-          // Solo en servidor → agregar como nueva + programar notificación
-          merged.add(serverAppointment);
-          await notificationService.scheduleAppointmentReminder(serverAppointment);
-          debugPrint('🔔 Notificación programada para nueva cita ${serverAppointment.id}');
         }
-      }
 
-      // 2. Mantener citas locales que aún no tienen serverId
-      //    (aún no se sincronizaron, probablemente en cola pendiente)
-      merged.addAll(localWithoutServerId);
+        return result;
+      });
 
-      // 3. Citas locales con serverId que NO vinieron en la respuesta
-      //    → con delta sync puede ser que simplemente no se incluyeron;
-      //      las mantenemos localmente para no perder datos.
-      for (final entry in localByServerId.entries) {
-        if (!serverIds.contains(entry.key)) {
-          merged.add(entry.value);
-          debugPrint('ℹ️ Cita local ${entry.value.id} (serverId: ${entry.key}) '
-              'no vino del servidor, se mantiene localmente');
-        }
-      }
-
-      // Guardar el resultado
-      final jsonList = merged.map((a) => a.toJson()).toList();
-      await prefs.setString(_appointmentsCacheKey, json.encode(jsonList));
       debugPrint('💾 ${merged.length} citas guardadas tras merge '
-          '(${localWithoutServerId.length} locales sin sync)');
+          '($unsyncedCount locales sin sync)');
+
+      // Notificaciones, ya fuera del lock
+      for (final localId in remindersToCancel) {
+        await notificationService.cancelAppointmentReminder(localId);
+      }
+      for (final appointment in remindersToReschedule) {
+        await notificationService.rescheduleAppointmentReminder(appointment);
+        debugPrint('🔔 Notificación reprogramada para cita ${appointment.id}');
+      }
+      for (final appointment in remindersToSchedule) {
+        await notificationService.scheduleAppointmentReminder(appointment);
+        debugPrint('🔔 Notificación programada para nueva cita ${appointment.id}');
+      }
 
       // Notificar al callback para que el provider recargue
       _onPullCompleted?.call();

@@ -36,6 +36,9 @@ void main() {
     // Default stubs
     when(mockRepository.onDataChanged = any).thenReturn(null);
     when(mockRepository.saveAll(any)).thenAnswer((_) async {});
+    when(mockRepository.upsert(any)).thenAnswer((_) async {});
+    when(mockRepository.remove(any)).thenAnswer((_) async {});
+    when(mockRepository.setServerId(any, any)).thenAnswer((_) async {});
     when(mockRepository.syncCreate(any)).thenAnswer((_) async => null);
     when(mockRepository.syncUpdate(any)).thenAnswer((_) async {});
     when(mockRepository.syncDelete(any, any)).thenAnswer((_) async {});
@@ -89,14 +92,17 @@ void main() {
   });
 
   group('addAppointment', () {
-    test('adds to list and saves to repository', () async {
+    test('adds to list and persists just that appointment', () async {
       final apt = sampleAppointment();
 
       await provider.addAppointment(apt);
 
       expect(provider.appointments.length, 1);
       expect(provider.appointments.first.id, 'apt_1');
-      verify(mockRepository.saveAll(any)).called(1);
+      // Escritura puntual, no de la lista completa: así no pisa el merge de
+      // un pull que se esté ejecutando en paralelo.
+      verify(mockRepository.upsert(apt)).called(1);
+      verifyNever(mockRepository.saveAll(any));
     });
 
     test('schedules notification', () async {
@@ -128,8 +134,8 @@ void main() {
       await Future.delayed(Duration.zero);
 
       expect(provider.appointments.first.serverId, 42);
-      // saveAll called twice: once for add, once for serverId update
-      verify(mockRepository.saveAll(any)).called(2);
+      verify(mockRepository.setServerId('apt_1', 42)).called(1);
+      verifyNever(mockRepository.saveAll(any));
     });
   });
 
@@ -144,6 +150,7 @@ void main() {
 
       expect(provider.appointments.first.title, 'Updated');
       expect(provider.appointments.first.updatedAt, isNotNull);
+      verify(mockRepository.upsert(any)).called(1);
     });
 
     test('reschedules notification', () async {
@@ -160,12 +167,13 @@ void main() {
     test('does nothing if appointment not found', () async {
       await provider.updateAppointment(sampleAppointment(id: 'nonexistent'));
 
+      verifyNever(mockRepository.upsert(any));
       verifyNever(mockRepository.saveAll(any));
     });
   });
 
   group('deleteAppointment', () {
-    test('removes from list and saves', () async {
+    test('removes from list and deletes just that appointment', () async {
       when(mockRepository.getAll())
           .thenAnswer((_) async => [sampleAppointment(serverId: 10)]);
       await provider.loadAppointments();
@@ -174,7 +182,8 @@ void main() {
       await provider.deleteAppointment('apt_1');
 
       expect(provider.appointments, isEmpty);
-      verify(mockRepository.saveAll(any)).called(1);
+      verify(mockRepository.remove('apt_1')).called(1);
+      verifyNever(mockRepository.saveAll(any));
     });
 
     test('cancels notification', () async {

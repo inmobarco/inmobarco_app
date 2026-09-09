@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/global_data_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/services/sync_service.dart';
 import '../providers/auth_provider.dart';
+import '../providers/client_provider.dart';
 import 'home_screen.dart';
 
 /// Pantalla de inicio de sesión
@@ -38,6 +41,12 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
+      // Con sesión recién creada, reanudar lo que se omitió por falta de token:
+      // catálogos del backend, cola/pull de citas y la propiedad CRM del asesor.
+      context.read<GlobalDataService>().refresh();
+      context.read<SyncService>().fullSync();
+      context.read<ClientProvider>().ensureAdvisorMap();
+
       // Navegar al HomeScreen tab 0 y limpiar la pila de navegación
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomeScreen(initialTab: 0)),

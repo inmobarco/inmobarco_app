@@ -64,6 +64,33 @@ class MockAppointmentRepository extends _i1.Mock
           as _i4.Future<void>);
 
   @override
+  _i4.Future<void> upsert(_i5.Appointment? appointment) =>
+      (super.noSuchMethod(
+            Invocation.method(#upsert, [appointment]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> remove(String? localId) =>
+      (super.noSuchMethod(
+            Invocation.method(#remove, [localId]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
+  _i4.Future<void> setServerId(String? localId, int? serverId) =>
+      (super.noSuchMethod(
+            Invocation.method(#setServerId, [localId, serverId]),
+            returnValue: _i4.Future<void>.value(),
+            returnValueForMissingStub: _i4.Future<void>.value(),
+          )
+          as _i4.Future<void>);
+
+  @override
   _i4.Future<int?> syncCreate(_i5.Appointment? appointment) =>
       (super.noSuchMethod(
             Invocation.method(#syncCreate, [appointment]),

@@ -54,13 +54,13 @@ class GlobalDataService {
       debugPrint('🏙️ Cargando ciudades...');
       final cached = await _cacheService.loadAllowedCities();
       if (cached != null) {
-        _cities = (cached['cities'] as List).cast<Map<String, dynamic>>();
-        debugPrint('📦 Ciudades desde caché: ${_cities.length} (stale: ${cached['isStale']})');
+        _cities = cached.data;
+        debugPrint('📦 Ciudades desde caché: ${_cities.length} (stale: ${cached.isStale})');
       }
       if (cached == null) {
         // Arranque en frío sin caché: esperar para tener ciudades listas.
         await _refreshAllowedCities();
-      } else if (cached['isStale'] == true) {
+      } else if (cached.isStale) {
         // Hay caché servible: refrescar en background sin bloquear el arranque.
         _refreshAllowedCities();
       }
@@ -102,6 +102,10 @@ class GlobalDataService {
   /// Refresca las ciudades habilitadas desde el backend y actualiza el caché.
   /// Si el backend falla, conserva las ciudades ya cargadas (last-known-good).
   Future<void> _refreshAllowedCities() async {
+    if (!await ApiService.hasSession()) {
+      debugPrint('🔒 Sin sesión → se conservan las ciudades en caché');
+      return;
+    }
     try {
       final fresh = await ApiService.getAllowedCities();
       if (fresh.isNotEmpty) {
@@ -116,6 +120,10 @@ class GlobalDataService {
 
   /// Carga unidades residenciales y las zonas (barrios) de sus ciudades.
   Future<void> _loadResidentialsAndZones(WasiApiService api) async {
+    if (!await ApiService.hasSession()) {
+      debugPrint('🔒 Sin sesión → se omiten residenciales y zonas');
+      return;
+    }
     debugPrint('🏢 Cargando unidades residenciales...');
     try {
       _residentialComplexes = await ApiService.getResidentialComplexes();

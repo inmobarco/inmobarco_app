@@ -33,6 +33,9 @@ void main() {
         (i) => sampleApartment(id: '$i', reference: 'REF-$i'),
       );
 
+  CachedResult<List<Apartment>> cached(int count, {bool isStale = false}) =>
+      CachedResult(data: apartments(count), isStale: isStale);
+
   void stubApi(List<Apartment> result) {
     when(mockApiService.getActiveProperties(
       filter: anyNamed('filter'),
@@ -74,12 +77,25 @@ void main() {
 
     test('loads from cache and stops pagination', () async {
       when(mockCacheService.loadProperties())
-          .thenAnswer((_) async => apartments(3));
+          .thenAnswer((_) async => cached(3));
 
       final provider = await buildProvider();
 
       expect(provider.properties.length, 3);
       expect(provider.hasMoreData, isFalse);
+      expect(provider.isCacheStale, isFalse);
+    });
+
+    test('serves an expired cache and flags it as stale', () async {
+      when(mockCacheService.loadProperties())
+          .thenAnswer((_) async => cached(3, isStale: true));
+
+      final provider = await buildProvider();
+
+      // Last-known-good: sin red y con caché vencido se pinta lo viejo en vez
+      // de dejar la pantalla vacía.
+      expect(provider.properties.length, 3);
+      expect(provider.isCacheStale, isTrue);
     });
 
     test('survives a cache failure', () async {
@@ -123,6 +139,18 @@ void main() {
       verify(mockCacheService.saveProperties(any)).called(1);
     });
 
+    test('clears the stale flag after a successful reload', () async {
+      when(mockCacheService.loadProperties())
+          .thenAnswer((_) async => cached(3, isStale: true));
+      final provider = await buildProvider();
+      expect(provider.isCacheStale, isTrue);
+      stubApi(apartments(AppConstants.pageSize));
+
+      await provider.loadProperties(refresh: true);
+
+      expect(provider.isCacheStale, isFalse);
+    });
+
     test('sets error and clears loading when the API throws', () async {
       final provider = await buildProvider();
       when(mockApiService.getActiveProperties(
@@ -164,6 +192,27 @@ void main() {
       expect(provider.hasActiveFilters, isTrue);
       verify(mockCacheService.saveFilter(filter.toJson())).called(1);
       expect(provider.properties.length, 2);
+    });
+
+    test('does not persist filtered results as the startup snapshot', () async {
+      final provider = await buildProvider();
+      stubApi(apartments(3));
+
+      await provider.updateFilter(PropertyFilter(minCuartos: 3));
+
+      // El snapshot de arranque debe ser el inventario, no un subconjunto
+      // filtrado presentado como tal.
+      verifyNever(mockCacheService.saveProperties(any));
+    });
+
+    test('persists again once the filters are cleared', () async {
+      final provider = await buildProvider();
+      stubApi(apartments(3));
+      await provider.updateFilter(PropertyFilter(minCuartos: 3));
+
+      await provider.clearFilters();
+
+      verify(mockCacheService.saveProperties(any)).called(1);
     });
 
     test('clearFilters wipes the stored filter', () async {

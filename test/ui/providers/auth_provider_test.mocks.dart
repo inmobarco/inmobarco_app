@@ -43,12 +43,13 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<List<_i4.Apartment>?> loadProperties() =>
+  _i3.Future<_i2.CachedResult<List<_i4.Apartment>>?> loadProperties() =>
       (super.noSuchMethod(
             Invocation.method(#loadProperties, []),
-            returnValue: _i3.Future<List<_i4.Apartment>?>.value(),
+            returnValue:
+                _i3.Future<_i2.CachedResult<List<_i4.Apartment>>?>.value(),
           )
-          as _i3.Future<List<_i4.Apartment>?>);
+          as _i3.Future<_i2.CachedResult<List<_i4.Apartment>>?>);
 
   @override
   _i3.Future<bool> hasCachedProperties() =>
@@ -165,12 +166,16 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<Map<String, dynamic>?> loadAllowedCities() =>
+  _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>
+  loadAllowedCities() =>
       (super.noSuchMethod(
             Invocation.method(#loadAllowedCities, []),
-            returnValue: _i3.Future<Map<String, dynamic>?>.value(),
+            returnValue:
+                _i3.Future<
+                  _i2.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
           )
-          as _i3.Future<Map<String, dynamic>?>);
+          as _i3.Future<_i2.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
   _i3.Future<void> saveClients(List<_i5.Client>? clients) =>
@@ -182,12 +187,13 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
           as _i3.Future<void>);
 
   @override
-  _i3.Future<List<_i5.Client>?> loadClients() =>
+  _i3.Future<_i2.CachedResult<List<_i5.Client>>?> loadClients() =>
       (super.noSuchMethod(
             Invocation.method(#loadClients, []),
-            returnValue: _i3.Future<List<_i5.Client>?>.value(),
+            returnValue:
+                _i3.Future<_i2.CachedResult<List<_i5.Client>>?>.value(),
           )
-          as _i3.Future<List<_i5.Client>?>);
+          as _i3.Future<_i2.CachedResult<List<_i5.Client>>?>);
 
   @override
   _i3.Future<void> saveAdvisorMap(Map<String, dynamic>? data) =>

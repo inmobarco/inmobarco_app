@@ -17,6 +17,7 @@ class PropertyProvider extends ChangeNotifier {
   bool _hasMoreData = true;
   int _currentPage = 1;
   bool _isLoadingFromCache = false;
+  bool _isCacheStale = false;
   String _searchQuery = '';
   Timer? _searchDebounceTimer;
 
@@ -47,17 +48,23 @@ class PropertyProvider extends ChangeNotifier {
   bool get hasActiveFilters => _currentFilter.hasActiveFilters;
   bool get isLoadingFromCache => _isLoadingFromCache;
 
+  /// True si lo que hay en pantalla viene de un caché vencido y conviene
+  /// refrescar desde la API.
+  bool get isCacheStale => _isCacheStale;
+
   /// Carga propiedades desde caché al inicializar
   Future<void> _loadFromCache() async {
     _isLoadingFromCache = true;
     notifyListeners();
 
     try {
-      final cachedProperties = await _cacheService.loadProperties();
-      if (cachedProperties != null && cachedProperties.isNotEmpty) {
-        _properties = cachedProperties;
+      final cached = await _cacheService.loadProperties();
+      if (cached != null && cached.data.isNotEmpty) {
+        _properties = cached.data;
+        _isCacheStale = cached.isStale;
         _hasMoreData = false; // No intentar cargar más hasta hacer refresh
-        debugPrint('📦 ${cachedProperties.length} propiedades cargadas desde caché');
+        debugPrint('📦 ${cached.data.length} propiedades cargadas desde caché'
+            '${cached.isStale ? ' (vencido)' : ''}');
       }
     } catch (e) {
       debugPrint('❌ Error cargando caché: $e');
@@ -99,9 +106,13 @@ class PropertyProvider extends ChangeNotifier {
 
       // Guardar en caché sólo después de completar la primera página (ya en _properties) o en refresh.
       // _currentPage se incrementó, así que cuando era página 1 ahora vale 2.
-      if (_currentPage == 2) {
+      //
+      // Con filtros activos NO se persiste: el snapshot de arranque debe ser el
+      // inventario, no un subconjunto filtrado presentado como tal.
+      if (_currentPage == 2 && !_currentFilter.hasActiveFilters) {
         // Persistimos únicamente la primera página (hasta 100 propiedades) como snapshot rápido de arranque.
         await _cacheService.saveProperties(_properties.take(AppConstants.pageSize).toList());
+        _isCacheStale = false;
       }
 
       notifyListeners();

@@ -50,6 +50,17 @@ class ApiService {
     _instance = null;
   }
 
+  /// Indica si hay un token JWT guardado.
+  ///
+  /// Los endpoints de este backend requieren sesión: llamarlos sin token solo
+  /// produce 401 (o un timeout de 10 s si el servidor no responde), así que
+  /// quien sincroniza debe consultar esto antes de salir a la red.
+  static Future<bool> hasSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    return token != null && token.isNotEmpty;
+  }
+
   // ---------------------------------------------------------------------------
   // Appointments API
   // ---------------------------------------------------------------------------

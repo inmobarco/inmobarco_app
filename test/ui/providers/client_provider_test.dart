@@ -150,9 +150,12 @@ void main() {
 
   group('ensureLoaded', () {
     test('serves the cached list without touching WASI', () async {
-      when(mockCacheService.loadClients()).thenAnswer((_) async => [
-            Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
-          ]);
+      when(mockCacheService.loadClients()).thenAnswer((_) async => CachedResult(
+            data: [
+              Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
+            ],
+            isStale: false,
+          ));
 
       await provider.ensureLoaded();
 
@@ -161,9 +164,12 @@ void main() {
     });
 
     test('runs only once', () async {
-      when(mockCacheService.loadClients()).thenAnswer((_) async => [
-            Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
-          ]);
+      when(mockCacheService.loadClients()).thenAnswer((_) async => CachedResult(
+            data: [
+              Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
+            ],
+            isStale: false,
+          ));
 
       await provider.ensureLoaded();
       await provider.ensureLoaded();
@@ -171,9 +177,30 @@ void main() {
       verify(mockCacheService.loadClients()).called(1);
     });
 
+    test('paints an expired cache and refreshes in the background', () async {
+      stubAdvisorFromCache();
+      when(mockCacheService.loadClients()).thenAnswer((_) async => CachedResult(
+            data: [
+              Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
+            ],
+            isStale: true,
+          ));
+      when(mockApiService.getClientsByProperty(advisorPropertyId))
+          .thenAnswer((_) async => [
+                wasiClient(id: 2, firstName: 'Beto', lastName: 'Ruiz'),
+              ]);
+
+      await provider.ensureLoaded();
+      await pumpEventQueue();
+
+      // El caché vencido se sirve de inmediato y la red lo reemplaza después.
+      verify(mockApiService.getClientsByProperty(advisorPropertyId)).called(1);
+      expect(provider.clients.single.idClientWasi, 2);
+    });
+
     test('falls through to the network when the cache is empty', () async {
       stubAdvisorFromCache();
-      when(mockCacheService.loadClients()).thenAnswer((_) async => []);
+      when(mockCacheService.loadClients()).thenAnswer((_) async => null);
       when(mockApiService.getClientsByProperty(advisorPropertyId))
           .thenAnswer((_) async => [
                 wasiClient(id: 1, firstName: 'Ana', lastName: 'Gómez'),
@@ -252,9 +279,12 @@ void main() {
 
   group('clear', () {
     test('resets state so ensureLoaded runs again', () async {
-      when(mockCacheService.loadClients()).thenAnswer((_) async => [
-            Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
-          ]);
+      when(mockCacheService.loadClients()).thenAnswer((_) async => CachedResult(
+            data: [
+              Client(idClientWasi: 1, firstName: 'Ana', lastName: 'Gómez'),
+            ],
+            isStale: false,
+          ));
       await provider.ensureLoaded();
       expect(provider.clients, isNotEmpty);
 
