@@ -5,6 +5,15 @@ import '../../domain/models/property_filter.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/global_data_service.dart';
 
+/// Una página de resultados de `/property/search` junto al total que reporta
+/// WASI, que es lo que permite saber cuántas páginas faltan sin adivinar.
+class PropertyPage {
+  const PropertyPage({required this.items, required this.total});
+
+  final List<Apartment> items;
+  final int total;
+}
+
 class WasiApiService {
   final Dio _dio;
   final String apiToken;
@@ -26,8 +35,23 @@ class WasiApiService {
     _dio.options.receiveTimeout = AppConstants.apiReceiveTimeout;
   }
 
-  /// Obtiene la lista de propiedades activas
+  /// Obtiene la lista de propiedades activas.
   Future<List<Apartment>> getActiveProperties({
+    PropertyFilter? filter,
+    int page = 1,
+    int limit = 100,
+  }) async {
+    final result = await getPropertiesPage(
+      filter: filter,
+      page: page,
+      limit: limit,
+    );
+    return result.items;
+  }
+
+  /// Igual que [getActiveProperties] pero conservando el `total` de la
+  /// respuesta, necesario para paginar todo el inventario.
+  Future<PropertyPage> getPropertiesPage({
     PropertyFilter? filter,
     int page = 1,
     int limit = 100,
@@ -73,8 +97,11 @@ class WasiApiService {
             .map((json) => _mapWasiToApartment(json))
             .where((apartment) => apartment.id.isNotEmpty)
             .toList();
-        
-        return apartments;
+
+        return PropertyPage(
+          items: apartments,
+          total: int.tryParse(responseData['total']?.toString() ?? '') ?? 0,
+        );
       } else {
         throw Exception('Error al obtener propiedades: ${response.statusCode}');
       }
@@ -393,7 +420,11 @@ class WasiApiService {
       queryParams['min_area'] = filter.minArea!.toInt();
     }
 
-    if (filter.municipio != null && filter.municipio!.isNotEmpty && globalDataService != null) {
+    if (filter.idCity != null && filter.idCity!.isNotEmpty) {
+      queryParams['id_city'] = filter.idCity;
+    } else if (filter.municipio != null &&
+        filter.municipio!.isNotEmpty &&
+        globalDataService != null) {
       String? id = globalDataService!.cities.firstWhere(
         (city) => city['name'] == filter.municipio,
         orElse: () => {'id': null},
@@ -580,6 +611,9 @@ class WasiApiService {
         forRent: json['for_rent'] == true || json['for_rent'] == 'true',
         forSale: json['for_sale'] == true || json['for_sale'] == 'true',
         hasStoreroom: (int.tryParse(json['tv_share']?.toString() ?? '0') ?? 0) >= 1,
+        idCity: json['id_city']?.toString() ?? '',
+        idZone: json['id_zone']?.toString() ?? '',
+        idPropertyType: json['id_property_type']?.toString() ?? '',
       );
     } catch (e) {
       debugPrint('Error mapeando propiedad de WASI: $e');

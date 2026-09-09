@@ -46,6 +46,16 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
     super.dispose();
   }
 
+  /// Progreso del sync completo del inventario, para que el asesor sepa que
+  /// se están trayendo varias páginas y no una sola.
+  String _syncLabel(PropertyProvider provider) {
+    final total = provider.syncTotal;
+    if (total == null || total == 0) {
+      return 'Descargando inventario...';
+    }
+    return 'Descargando inventario... ${provider.syncedCount} de $total';
+  }
+
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - AppConstants.loadMoreThreshold) {
@@ -143,9 +153,24 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
               final isFiltering = _searchController.text.trim().isNotEmpty;
 
               if (provider.isLoading && provider.properties.isEmpty && !provider.isLoadingFromCache) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primaryColor,
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const CircularProgressIndicator(
+                        color: AppColors.primaryColor,
+                      ),
+                      if (provider.isSyncingInventory) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _syncLabel(provider),
+                          style: const TextStyle(
+                            color: AppColors.textColor2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 );
               }
@@ -158,7 +183,37 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                 return _buildEmptyWidget();
               }
 
-              return RefreshIndicator(
+              return Column(
+                children: [
+                  if (provider.isSyncingInventory)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 6),
+                      color: AppColors.primaryColor.withValues(alpha: 0.08),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            _syncLabel(provider),
+                            style: const TextStyle(
+                              color: AppColors.primaryColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: RefreshIndicator(
                 onRefresh: () => provider.refresh(),
                 color: AppColors.primaryColor,
                 child: ListView.builder(
@@ -188,6 +243,9 @@ class _PropertyListScreenState extends State<PropertyListScreen> {
                     );
                   },
                 ),
+              ),
+                  ),
+                ],
               );
             },
           ),

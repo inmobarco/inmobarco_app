@@ -39,9 +39,18 @@ class CacheService {
   static const String _zonesUpdateKey = 'last_zones_update';
   static const String _residentialsFileName = 'residentials_cache.json'; // Unidades residenciales
   static const String _residentialsUpdateKey = 'last_residentials_update';
+  static const String _inventoryCompleteKey = 'cached_inventory_complete';
+  static const String _propertyDetailsDirName = 'property_details'; // Un archivo por propiedad abierta
 
   // Tiempo de expiración del caché en horas
   static const int _cacheExpirationHours = 6;
+
+  /// TTL del detalle de una propiedad (galerías y características completas).
+  static const Duration _propertyDetailTtl = Duration(hours: 24);
+
+  /// Tope del caché de detalles: se conservan los más recientes.
+  static const int _propertyDetailsMaxEntries = 100;
+  static const Duration _propertyDetailsMaxAge = Duration(days: 30);
 
   /// TTL por catálogo, según lo seguido que cambie cada uno en la práctica.
   ///
@@ -55,8 +64,15 @@ class CacheService {
 
   CacheService();
 
-  /// Guarda las propiedades en caché
-  Future<void> saveProperties(List<Apartment> properties) async {
+  /// Guarda las propiedades en caché.
+  ///
+  /// [complete] indica que la lista es el inventario completo (todas las
+  /// páginas), no un fragmento. Sin esa marca, el provider no puede filtrar ni
+  /// buscar en local sin arriesgarse a esconder propiedades que nunca bajó.
+  Future<void> saveProperties(
+    List<Apartment> properties, {
+    bool complete = false,
+  }) async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
@@ -65,11 +81,23 @@ class CacheService {
       final jsonString = jsonEncode(propertiesJson);
       // Guardar timestamp (solo timestamp en prefs; datos en archivo)
       await prefs.setInt(_lastUpdateKey, DateTime.now().millisecondsSinceEpoch);
+      await prefs.setBool(_inventoryCompleteKey, complete);
       await _writePropertiesFile(jsonString); // Archivo es la fuente canónica
 
-      debugPrint('✅ Propiedades guardadas en caché: ${properties.length}');
+      debugPrint('✅ Propiedades guardadas en caché: ${properties.length}'
+          '${complete ? ' (inventario completo)' : ' (parcial)'}');
     } catch (e) {
       debugPrint('❌ Error guardando propiedades en caché: $e');
+    }
+  }
+
+  /// True si lo que hay en caché es el inventario completo.
+  Future<bool> isCachedInventoryComplete() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_inventoryCompleteKey) ?? false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -173,6 +201,7 @@ class CacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_lastUpdateKey);
+      await prefs.remove(_inventoryCompleteKey);
       // Borrar archivo persistente
       try {
         final dir = await getApplicationDocumentsDirectory();
@@ -337,6 +366,100 @@ class CacheService {
     } catch (e) {
       debugPrint('⚠️ No se pudo borrar sesión de autenticación: $e');
     }
+  }
+
+  // ================== Detalle de propiedad (por demanda) ==================
+
+  /// Guarda el detalle completo de una propiedad.
+  ///
+  /// Se escribe solo cuando el asesor abre esa propiedad: nunca se descargan
+  /// los detalles del inventario entero. La marca de tiempo es la del archivo,
+  /// así que no ensucia SharedPreferences con una clave por propiedad.
+  Future<void> savePropertyDetail(Apartment property) async {
+    final fileName = _propertyDetailFileName(property.id);
+    if (fileName == null) return;
+    try {
+      final dir = await _propertyDetailsDir();
+      final file = File('${dir.path}/$fileName');
+      await file.writeAsString(jsonEncode(property.toJson()), flush: true);
+      await prunePropertyDetails();
+    } catch (e) {
+      debugPrint('⚠️ No se pudo guardar el detalle de ${property.id}: $e');
+    }
+  }
+
+  /// Carga el detalle de una propiedad. `isStale` cuando pasó de 24 h.
+  Future<CachedResult<Apartment>?> loadPropertyDetail(String id) async {
+    final fileName = _propertyDetailFileName(id);
+    if (fileName == null) return null;
+    try {
+      final dir = await _propertyDetailsDir();
+      final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.trim().isEmpty) return null;
+
+      final age = DateTime.now().difference(await file.lastModified());
+      return CachedResult(
+        data: Apartment.fromJson(jsonDecode(content) as Map<String, dynamic>),
+        isStale: age > _propertyDetailTtl,
+      );
+    } catch (e) {
+      debugPrint('⚠️ No se pudo leer el detalle de $id: $e');
+      return null;
+    }
+  }
+
+  /// Acota el caché de detalles: descarta los que pasaron de 30 días y, del
+  /// resto, conserva los 100 más recientes. Es el único caché que crece con el
+  /// uso, así que necesita tope.
+  Future<void> prunePropertyDetails() async {
+    try {
+      final dir = await _propertyDetailsDir();
+      final files = await dir
+          .list()
+          .where((e) => e is File && e.path.endsWith('.json'))
+          .cast<File>()
+          .toList();
+      if (files.isEmpty) return;
+
+      final now = DateTime.now();
+      final withDates = <(File, DateTime)>[];
+      for (final file in files) {
+        final modified = await file.lastModified();
+        if (now.difference(modified) > _propertyDetailsMaxAge) {
+          await file.delete();
+        } else {
+          withDates.add((file, modified));
+        }
+      }
+
+      if (withDates.length <= _propertyDetailsMaxEntries) return;
+      withDates.sort((a, b) => b.$2.compareTo(a.$2)); // más reciente primero
+      for (final entry in withDates.skip(_propertyDetailsMaxEntries)) {
+        await entry.$1.delete();
+      }
+      debugPrint('🧹 Caché de detalles recortado a $_propertyDetailsMaxEntries');
+    } catch (e) {
+      debugPrint('⚠️ No se pudo recortar el caché de detalles: $e');
+    }
+  }
+
+  Future<Directory> _propertyDetailsDir() async {
+    final dir = await getApplicationDocumentsDirectory();
+    final detailsDir = Directory('${dir.path}/$_propertyDetailsDirName');
+    if (!await detailsDir.exists()) await detailsDir.create(recursive: true);
+    return detailsDir;
+  }
+
+  /// Nombre de archivo para un id de WASI, o null si el id no es utilizable
+  /// como nombre (evita salir del directorio de detalles).
+  String? _propertyDetailFileName(String id) {
+    if (!RegExp(r'^[A-Za-z0-9_-]{1,64}$').hasMatch(id)) {
+      debugPrint('⚠️ Id de propiedad no cacheable: "$id"');
+      return null;
+    }
+    return '$id.json';
   }
 
   // ================== Helper genérico de caché con TTL ==================
@@ -586,10 +709,17 @@ class CacheService {
         if (await file.exists()) await file.delete();
       }
 
+      // Borrar el caché de detalles completo
+      final detailsDir = Directory('${dir.path}/$_propertyDetailsDirName');
+      if (await detailsDir.exists()) {
+        await detailsDir.delete(recursive: true);
+      }
+
       // Borrar claves de SharedPreferences (excepto auth)
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_propertiesKey);
       await prefs.remove(_lastUpdateKey);
+      await prefs.remove(_inventoryCompleteKey);
       await prefs.remove(_filterKey);
       await prefs.remove(_allowedCitiesUpdateKey);
       await prefs.remove(_clientsUpdateKey);
@@ -649,6 +779,24 @@ class CacheService {
           }
         }
       }
+
+      // Detalles de propiedades (un archivo por propiedad abierta)
+      try {
+        final detailsDir = Directory('${dir.path}/$_propertyDetailsDirName');
+        if (await detailsDir.exists()) {
+          int detailBytes = 0;
+          int detailCount = 0;
+          await for (final entry in detailsDir.list()) {
+            if (entry is File) {
+              detailBytes += await entry.length();
+              detailCount++;
+            }
+          }
+          if (detailCount > 0) {
+            files['$_propertyDetailsDirName ($detailCount)'] = detailBytes;
+          }
+        }
+      } catch (_) {}
 
       final totalFileBytes = files.values.fold<int>(0, (sum, v) => sum + v);
       final totalBytes = totalFileBytes + prefsBytes;

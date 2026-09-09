@@ -6,8 +6,8 @@
 import 'dart:async' as _i5;
 
 import 'package:inmobarco_app/data/services/cache_service.dart' as _i7;
-import 'package:inmobarco_app/data/services/wasi_api_service.dart' as _i3;
-import 'package:inmobarco_app/domain/models/apartment.dart' as _i2;
+import 'package:inmobarco_app/data/services/wasi_api_service.dart' as _i2;
+import 'package:inmobarco_app/domain/models/apartment.dart' as _i3;
 import 'package:inmobarco_app/domain/models/client.dart' as _i8;
 import 'package:inmobarco_app/domain/models/property_filter.dart' as _i6;
 import 'package:mockito/mockito.dart' as _i1;
@@ -28,15 +28,20 @@ import 'package:mockito/src/dummies.dart' as _i4;
 // ignore_for_file: subtype_of_sealed_class
 // ignore_for_file: invalid_use_of_internal_member
 
-class _FakeApartment_0 extends _i1.SmartFake implements _i2.Apartment {
-  _FakeApartment_0(Object parent, Invocation parentInvocation)
+class _FakePropertyPage_0 extends _i1.SmartFake implements _i2.PropertyPage {
+  _FakePropertyPage_0(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeApartment_1 extends _i1.SmartFake implements _i3.Apartment {
+  _FakeApartment_1(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
 /// A class which mocks [WasiApiService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockWasiApiService extends _i1.Mock implements _i3.WasiApiService {
+class MockWasiApiService extends _i1.Mock implements _i2.WasiApiService {
   MockWasiApiService() {
     _i1.throwOnMissingStub(this);
   }
@@ -64,7 +69,7 @@ class MockWasiApiService extends _i1.Mock implements _i3.WasiApiService {
           as String);
 
   @override
-  _i5.Future<List<_i2.Apartment>> getActiveProperties({
+  _i5.Future<List<_i3.Apartment>> getActiveProperties({
     _i6.PropertyFilter? filter,
     int? page = 1,
     int? limit = 100,
@@ -75,21 +80,46 @@ class MockWasiApiService extends _i1.Mock implements _i3.WasiApiService {
               #page: page,
               #limit: limit,
             }),
-            returnValue: _i5.Future<List<_i2.Apartment>>.value(
-              <_i2.Apartment>[],
+            returnValue: _i5.Future<List<_i3.Apartment>>.value(
+              <_i3.Apartment>[],
             ),
           )
-          as _i5.Future<List<_i2.Apartment>>);
+          as _i5.Future<List<_i3.Apartment>>);
 
   @override
-  _i5.Future<_i2.Apartment> getPropertyById(String? id) =>
+  _i5.Future<_i2.PropertyPage> getPropertiesPage({
+    _i6.PropertyFilter? filter,
+    int? page = 1,
+    int? limit = 100,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#getPropertyById, [id]),
-            returnValue: _i5.Future<_i2.Apartment>.value(
-              _FakeApartment_0(this, Invocation.method(#getPropertyById, [id])),
+            Invocation.method(#getPropertiesPage, [], {
+              #filter: filter,
+              #page: page,
+              #limit: limit,
+            }),
+            returnValue: _i5.Future<_i2.PropertyPage>.value(
+              _FakePropertyPage_0(
+                this,
+                Invocation.method(#getPropertiesPage, [], {
+                  #filter: filter,
+                  #page: page,
+                  #limit: limit,
+                }),
+              ),
             ),
           )
-          as _i5.Future<_i2.Apartment>);
+          as _i5.Future<_i2.PropertyPage>);
+
+  @override
+  _i5.Future<_i3.Apartment> getPropertyById(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#getPropertyById, [id]),
+            returnValue: _i5.Future<_i3.Apartment>.value(
+              _FakeApartment_1(this, Invocation.method(#getPropertyById, [id])),
+            ),
+          )
+          as _i5.Future<_i3.Apartment>);
 
   @override
   _i5.Future<List<Map<String, dynamic>>> getClientsByProperty(
@@ -195,22 +225,37 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
   }
 
   @override
-  _i5.Future<void> saveProperties(List<_i2.Apartment>? properties) =>
+  _i5.Future<void> saveProperties(
+    List<_i3.Apartment>? properties, {
+    bool? complete = false,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#saveProperties, [properties]),
+            Invocation.method(
+              #saveProperties,
+              [properties],
+              {#complete: complete},
+            ),
             returnValue: _i5.Future<void>.value(),
             returnValueForMissingStub: _i5.Future<void>.value(),
           )
           as _i5.Future<void>);
 
   @override
-  _i5.Future<_i7.CachedResult<List<_i2.Apartment>>?> loadProperties() =>
+  _i5.Future<bool> isCachedInventoryComplete() =>
+      (super.noSuchMethod(
+            Invocation.method(#isCachedInventoryComplete, []),
+            returnValue: _i5.Future<bool>.value(false),
+          )
+          as _i5.Future<bool>);
+
+  @override
+  _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?> loadProperties() =>
       (super.noSuchMethod(
             Invocation.method(#loadProperties, []),
             returnValue:
-                _i5.Future<_i7.CachedResult<List<_i2.Apartment>>?>.value(),
+                _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?>.value(),
           )
-          as _i5.Future<_i7.CachedResult<List<_i2.Apartment>>?>);
+          as _i5.Future<_i7.CachedResult<List<_i3.Apartment>>?>);
 
   @override
   _i5.Future<bool> hasCachedProperties() =>
@@ -312,6 +357,32 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
   _i5.Future<void> clearAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#clearAuthSession, []),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> savePropertyDetail(_i3.Apartment? property) =>
+      (super.noSuchMethod(
+            Invocation.method(#savePropertyDetail, [property]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<_i7.CachedResult<_i3.Apartment>?> loadPropertyDetail(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadPropertyDetail, [id]),
+            returnValue: _i5.Future<_i7.CachedResult<_i3.Apartment>?>.value(),
+          )
+          as _i5.Future<_i7.CachedResult<_i3.Apartment>?>);
+
+  @override
+  _i5.Future<void> prunePropertyDetails() =>
+      (super.noSuchMethod(
+            Invocation.method(#prunePropertyDetails, []),
             returnValue: _i5.Future<void>.value(),
             returnValueForMissingStub: _i5.Future<void>.value(),
           )

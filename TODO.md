@@ -101,19 +101,38 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
 
 ---
 
-## P2 — Inventario offline completo
+## P2 — Inventario offline completo ✅
 
-- [ ] **P2.8 — Full sync del inventario**
+> Completado. `flutter analyze` limpio y `flutter test` en verde (162 tests).
+>
+> **Dos desviaciones del plan, deliberadas:**
+> 1. El inventario reutiliza `properties_cache.json` en vez de un
+>    `inventory_cache.json` aparte. Ya que el filtrado local hace que el
+>    inventario *reemplace* al snapshot de lista, dos cachés con el mismo
+>    significado sobraban; en su lugar hay una marca `complete` en prefs, que
+>    además permite reconocer un snapshot parcial escrito por una versión
+>    anterior. `getCacheInfo` y el diálogo de caché siguen funcionando igual.
+> 2. El detalle no revalida en background: con caché vigente (24 h) no va a la
+>    red, y vencido va a la red esperando la respuesta, con el caché vencido
+>    como respaldo si falla. La pantalla de detalle ya pinta la versión corta
+>    de la lista de inmediato, así que la latencia percibida está cubierta sin
+>    tener que propagar una actualización tardía a una pantalla que no escucha
+>    al provider.
+
+- [x] **P2.8 — Full sync del inventario**
   - Paginar `/property/search` hasta agotar usando el `total` que WASI ya
     devuelve y que hoy el parser descarta (<500 propiedades ⇒ ≤5 páginas), a
     `inventory_cache.json`. TTL 6 h, refresh en background con indicador,
     conservando el anterior si falla.
 
-- [ ] **P2.9 — Búsqueda y filtro locales**
-  - Filtro y búsqueda se resuelven sobre el inventario local. Requiere añadir
-    `idCity`, `idZone` e `idPropertyType` al modelo `Apartment` y al caché
-    (verificar primero si `short=true` los devuelve; si no, resolver por mapeo
-    etiqueta→id con los catálogos cacheados en P1.5).
+- [x] **P2.9 — Búsqueda y filtro locales**
+  - Filtro, búsqueda y paginación se resuelven sobre el inventario local.
+  - `Apartment` gana `idCity`, `idZone` e `idPropertyType`, y `PropertyFilter`
+    gana `idCity` y `zoneName`. El filtro compara **por id cuando ambos lados
+    lo tienen y por etiqueta cuando no**, así que funciona sin depender de que
+    la respuesta corta de WASI traiga los ids (no hizo falta verificarlo
+    contra la API). Si no hay ni id ni etiqueta para comparar, la propiedad no
+    pasa el filtro: está activo y no se puede confirmar que lo cumpla.
   - Gana precisión sobre la API: hoy `minBanos`/`minGarages` se mandan a los
     parámetros `bathrooms`/`garages` de WASI, que son coincidencia exacta y no
     mínimo; y `min_price`/`max_price` no distinguen arriendo de venta.
@@ -124,7 +143,7 @@ Estado: `[ ]` pendiente · `[~]` en curso · `[x]` hecho.
     inventario en el backend propio con `updated_after`. Cambia la fuente del
     sync, no la capa de filtrado.
 
-- [ ] **P2.10 — Caché de detalle solo por demanda**
+- [x] **P2.10 — Caché de detalle solo por demanda**
   - `property_details/{id}.json` se escribe **únicamente al abrir esa
     propiedad**, TTL 24 h, revalidación en background. Nada de descarga masiva
     de galerías.

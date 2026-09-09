@@ -711,7 +711,14 @@ class _PropertyFilterScreenState extends State<PropertyFilterScreen> {
           ? double.tryParse(_maxPriceController.text.replaceAll(',', ''))
           : null,
       municipio: _selectedCiudad,
+      idCity: _selectedCityId,
       idZone: _selectedZoneId,
+      zoneName: _selectedZoneId == null
+          ? null
+          : _zones.firstWhere(
+              (z) => z['id'] == _selectedZoneId,
+              orElse: () => const <String, dynamic>{},
+            )['name'] as String?,
       idPropertyType: _selectedPropertyTypeId,
       minArea: _minAreaController.text.isNotEmpty
           ? double.tryParse(_minAreaController.text)

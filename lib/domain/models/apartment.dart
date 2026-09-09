@@ -25,6 +25,13 @@ class Apartment {
   final bool forRent;
   final bool forSale;
 
+  /// Ids de WASI usados para filtrar sin salir a la red. Pueden venir vacíos
+  /// (la respuesta corta no siempre los trae), y en ese caso el filtro local
+  /// cae a comparar por etiqueta (`municipio`, `barrio`, `claseInmueble`).
+  final String idCity;
+  final String idZone;
+  final String idPropertyType;
+
   Apartment({
     required this.id,
     required this.titulo,
@@ -51,6 +58,9 @@ class Apartment {
     this.hasStoreroom,
     this.forRent = false,
     this.forSale = false,
+    this.idCity = '',
+    this.idZone = '',
+    this.idPropertyType = '',
   });
 
   factory Apartment.fromJson(Map<String, dynamic> json) {
@@ -83,6 +93,9 @@ class Apartment {
       hasStoreroom: json['hasStoreroom'] as bool?,
       forRent: json['forRent'] == true,
       forSale: json['forSale'] == true,
+      idCity: json['idCity']?.toString() ?? '',
+      idZone: json['idZone']?.toString() ?? '',
+      idPropertyType: json['idPropertyType']?.toString() ?? '',
     );
   }
 
@@ -136,6 +149,9 @@ class Apartment {
     bool? hasStoreroom,
     bool? forRent,
     bool? forSale,
+    String? idCity,
+    String? idZone,
+    String? idPropertyType,
   }) {
     return Apartment(
       id: id ?? this.id,
@@ -163,6 +179,9 @@ class Apartment {
       hasStoreroom: hasStoreroom ?? this.hasStoreroom,
       forRent: forRent ?? this.forRent,
       forSale: forSale ?? this.forSale,
+      idCity: idCity ?? this.idCity,
+      idZone: idZone ?? this.idZone,
+      idPropertyType: idPropertyType ?? this.idPropertyType,
     );
   }
 
@@ -195,6 +214,9 @@ class Apartment {
       'hasStoreroom': hasStoreroom,
       'forRent': forRent,
       'forSale': forSale,
+      'idCity': idCity,
+      'idZone': idZone,
+      'idPropertyType': idPropertyType,
     };
   }
 }

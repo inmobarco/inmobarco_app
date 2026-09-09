@@ -34,13 +34,28 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
   }
 
   @override
-  _i3.Future<void> saveProperties(List<_i4.Apartment>? properties) =>
+  _i3.Future<void> saveProperties(
+    List<_i4.Apartment>? properties, {
+    bool? complete = false,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#saveProperties, [properties]),
+            Invocation.method(
+              #saveProperties,
+              [properties],
+              {#complete: complete},
+            ),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
           as _i3.Future<void>);
+
+  @override
+  _i3.Future<bool> isCachedInventoryComplete() =>
+      (super.noSuchMethod(
+            Invocation.method(#isCachedInventoryComplete, []),
+            returnValue: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
 
   @override
   _i3.Future<_i2.CachedResult<List<_i4.Apartment>>?> loadProperties() =>
@@ -151,6 +166,32 @@ class MockCacheService extends _i1.Mock implements _i2.CacheService {
   _i3.Future<void> clearAuthSession() =>
       (super.noSuchMethod(
             Invocation.method(#clearAuthSession, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> savePropertyDetail(_i4.Apartment? property) =>
+      (super.noSuchMethod(
+            Invocation.method(#savePropertyDetail, [property]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<_i2.CachedResult<_i4.Apartment>?> loadPropertyDetail(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#loadPropertyDetail, [id]),
+            returnValue: _i3.Future<_i2.CachedResult<_i4.Apartment>?>.value(),
+          )
+          as _i3.Future<_i2.CachedResult<_i4.Apartment>?>);
+
+  @override
+  _i3.Future<void> prunePropertyDetails() =>
+      (super.noSuchMethod(
+            Invocation.method(#prunePropertyDetails, []),
             returnValue: _i3.Future<void>.value(),
             returnValueForMissingStub: _i3.Future<void>.value(),
           )
