@@ -44,7 +44,8 @@ class CacheService {
   static const String _latestNotesUpdateKey = 'last_latest_notes_update';
   static const String _clientNotesFileName = 'client_notes_cache.json'; // Bitácora por cliente
   static const String _clientNotesUpdateKey = 'last_client_notes_update';
-  static const String _routePlannerKey = 'route_planner_selected_ids'; // Rutero del asesor
+  static const String _advisorRoutesFileName = 'advisor_routes_cache.json'; // Rutero del asesor
+  static const String _advisorRoutesUpdateKey = 'last_advisor_routes_update';
   static const String _propertyDetailsDirName = 'property_details'; // Un archivo por propiedad abierta
 
   // Tiempo de expiración del caché en horas
@@ -53,6 +54,10 @@ class CacheService {
   /// TTL de la bitácora CRM. Corto: es lo que otro asesor o el propio usuario
   /// acaba de escribir, y la consulta es liviana.
   static const Duration _notesTtl = Duration(minutes: 15);
+
+  /// TTL del rutero. Las rutas las cambia el staff, no el asesor, así que
+  /// un día basta; el botón de refrescar cubre el caso del cambio reciente.
+  static const Duration _advisorRoutesTtl = Duration(hours: 24);
 
   /// TTL del detalle de una propiedad (galerías y características completas).
   static const Duration _propertyDetailTtl = Duration(hours: 24);
@@ -568,6 +573,18 @@ class CacheService {
       loadResidentialComplexes() => _readMapListCache(
           _residentialsFileName, _residentialsUpdateKey, _residentialsTtl);
 
+  // ================== Rutero del asesor ==================
+
+  /// Guarda las rutas del asesor (`/scheduling/routes`) tal como llegan.
+  Future<void> saveAdvisorRoutes(List<Map<String, dynamic>> days) =>
+      _writeJsonCache(_advisorRoutesFileName, _advisorRoutesUpdateKey, days);
+
+  /// Carga el rutero cacheado. Es lo que se pinta sin red: el asesor consulta
+  /// la ruta en calle, donde la cobertura no está garantizada.
+  Future<CachedResult<List<Map<String, dynamic>>>?> loadAdvisorRoutes() =>
+      _readMapListCache(
+          _advisorRoutesFileName, _advisorRoutesUpdateKey, _advisorRoutesTtl);
+
   // ================== Ciudades habilitadas ==================
 
   /// Guarda las ciudades habilitadas en caché (archivo + timestamp).
@@ -786,6 +803,7 @@ class CacheService {
         _featuresFileName,
         _zonesFileName,
         _residentialsFileName,
+        _advisorRoutesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -800,7 +818,7 @@ class CacheService {
         _featuresUpdateKey,
         _zonesUpdateKey,
         _residentialsUpdateKey,
-        _routePlannerKey,
+        _advisorRoutesUpdateKey,
       ]) {
         await prefs.remove(key);
       }
@@ -829,6 +847,7 @@ class CacheService {
         _residentialsFileName,
         _latestNotesFileName,
         _clientNotesFileName,
+        _advisorRoutesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');
@@ -854,6 +873,9 @@ class CacheService {
       await prefs.remove(_residentialsUpdateKey);
       await prefs.remove(_latestNotesUpdateKey);
       await prefs.remove(_clientNotesUpdateKey);
+      await prefs.remove(_advisorRoutesUpdateKey);
+      // Rutero local de la versión anterior: ahora las rutas vienen del backend.
+      await prefs.remove('route_planner_selected_ids');
 
       debugPrint('🧹 Todo el caché limpiado por cambio de versión');
     } catch (e) {
@@ -882,6 +904,7 @@ class CacheService {
         _residentialsFileName,
         _latestNotesFileName,
         _clientNotesFileName,
+        _advisorRoutesFileName,
       ];
       for (final name in fileNames) {
         final file = File('${dir.path}/$name');

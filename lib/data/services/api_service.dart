@@ -187,6 +187,32 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
+  // Scheduling API (solo lectura)
+  // ---------------------------------------------------------------------------
+
+  /// Obtiene las rutas de prospección del asesor autenticado.
+  ///
+  /// El `advisor_id` sale del JWT: no se puede pedir la agenda de otro asesor
+  /// por esta vía. La app solo visualiza rutas, nunca las modifica.
+  ///
+  /// Sin [dayOfWeek] trae la semana completa (lunes a sábado) agrupada por
+  /// día, que es lo que permite cachearla y cambiar de día sin volver a la red.
+  static Future<List<Map<String, dynamic>>> getAdvisorRoutes({
+    int? dayOfWeek,
+  }) async {
+    final dio = await getInstance();
+    final response = await dio.get(
+      '/scheduling/routes',
+      queryParameters: dayOfWeek != null ? {'day_of_week': dayOfWeek} : null,
+    );
+    debugPrint('🗺️ GET /scheduling/routes'
+        '${dayOfWeek == null ? '' : '?day_of_week=$dayOfWeek'}'
+        ' → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  // ---------------------------------------------------------------------------
   // CRM API
   // ---------------------------------------------------------------------------
 
