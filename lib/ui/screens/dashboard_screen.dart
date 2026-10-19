@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/services/global_data_service.dart';
-import '../../data/services/sync_service.dart';
-import '../providers/appointment_provider.dart';
 import '../providers/auth_provider.dart';
-import '../providers/client_provider.dart';
+import '../session_flow.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -85,20 +82,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     TextButton(
-                      onPressed: () async {
-                        // El orden importa: la cola se vacía con el token del
-                        // asesor que se va, así que va antes del logout.
-                        final clients = context.read<ClientProvider>();
-                        final sync = context.read<SyncService>();
-                        final appointments =
-                            context.read<AppointmentProvider>();
-                        final globalData = context.read<GlobalDataService>();
-                        clients.clear();
-                        globalData.clearEmployeeData();
-                        await sync.resetForLogout();
-                        await appointments.loadAppointments();
-                        await auth.logout();
-                      },
+                      onPressed: () => endSession(context),
                       child: const Text('Salir', style: TextStyle(color: AppColors.error)),
                     ),
                   ],

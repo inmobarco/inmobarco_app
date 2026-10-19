@@ -463,6 +463,27 @@ class MockCacheService extends _i1.Mock implements _i8.CacheService {
           as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
+  _i6.Future<void> saveAdvisorRoutes(List<Map<String, dynamic>>? days) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveAdvisorRoutes, [days]),
+            returnValue: _i6.Future<void>.value(),
+            returnValueForMissingStub: _i6.Future<void>.value(),
+          )
+          as _i6.Future<void>);
+
+  @override
+  _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>
+  loadAdvisorRoutes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadAdvisorRoutes, []),
+            returnValue:
+                _i6.Future<
+                  _i8.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i6.Future<_i8.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
   _i6.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
       (super.noSuchMethod(
             Invocation.method(#saveAllowedCities, [cities]),
@@ -728,9 +749,9 @@ class MockSyncService extends _i1.Mock implements _i10.SyncService {
           as _i6.Future<void>);
 
   @override
-  _i6.Future<void> resetForLogout() =>
+  _i6.Future<void> resetForLogout({bool? flush = true}) =>
       (super.noSuchMethod(
-            Invocation.method(#resetForLogout, []),
+            Invocation.method(#resetForLogout, [], {#flush: flush}),
             returnValue: _i6.Future<void>.value(),
             returnValueForMissingStub: _i6.Future<void>.value(),
           )

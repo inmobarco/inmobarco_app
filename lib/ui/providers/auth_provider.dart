@@ -1,20 +1,24 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../domain/models/user.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/cache_service.dart';
-import '../../data/services/api_service.dart';
+import '../../data/services/token_storage.dart';
 
 /// Provider de autenticación para gestionar el estado de sesión en toda la app
 class AuthProvider extends ChangeNotifier {
   final CacheService _cacheService;
+  final Future<void> Function(String refreshToken) _revokeSession;
 
   User? _user;
   bool _isLoading = false;
   String? _error;
 
-  AuthProvider({required CacheService cacheService})
-      : _cacheService = cacheService;
+  AuthProvider({
+    required CacheService cacheService,
+    Future<void> Function(String refreshToken)? revokeSession,
+  })  : _cacheService = cacheService,
+        _revokeSession = revokeSession ?? AuthService.logout;
 
   /// Usuario autenticado actual (null si no hay sesión)
   User? get user => _user;
@@ -34,15 +38,23 @@ class AuthProvider extends ChangeNotifier {
   /// Nombre completo del usuario
   String get fullName => _user?.fullName ?? '';
 
-  /// Carga la sesión guardada en caché al iniciar la app
+  /// Carga la sesión guardada en caché al iniciar la app.
+  ///
+  /// No sale a la red: si el access token venció, el primer request lo
+  /// renueva solo. Basta con que haya tokens guardados.
   Future<void> loadSession() async {
     try {
       final userData = await _cacheService.loadAuthSession();
-      if (userData != null) {
-        _user = User.fromJson(userData);
-        debugPrint('✅ Sesión cargada desde caché: ${_user?.username}');
-        notifyListeners();
+      if (userData == null) return;
+      if (!await TokenStorage.hasSession()) {
+        // Perfil sin tokens: no hay sesión que retomar.
+        debugPrint('🔒 Perfil guardado sin tokens → se descarta');
+        await _cacheService.clearOnLogout();
+        return;
       }
+      _user = User.fromJson(userData);
+      debugPrint('✅ Sesión cargada desde caché: ${_user?.username}');
+      notifyListeners();
     } catch (e) {
       debugPrint('❌ Error cargando sesión: $e');
     }
@@ -78,17 +90,21 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  /// Cierra la sesión actual
+  /// Cierra la sesión actual.
+  ///
+  /// Los tokens se borran primero y siempre; la revocación en el servidor va
+  /// aparte y sin esperar, para que cerrar sesión sin red no se quede colgado.
+  /// Si la sesión la terminó la API, los tokens ya no están y no hay nada que
+  /// revocar.
   Future<void> logout() async {
+    final refreshToken = await TokenStorage.refreshToken;
+    await TokenStorage.clear();
+    if (refreshToken != null) unawaited(_revokeSession(refreshToken));
+
     // Todo lo del asesor se va (clientes, bitácoras, residenciales,
     // características, borrador, perfil, rutero). Se conservan propiedades,
     // ciudades y filtros, que es lo que la app sigue mostrando sin sesión.
     await _cacheService.clearOnLogout();
-    // Limpiar el token JWT
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('access_token');
-    debugPrint('🔑 Token JWT eliminado');
-    ApiService.reset();
     _user = null;
     notifyListeners();
   }

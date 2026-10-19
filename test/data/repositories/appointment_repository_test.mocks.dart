@@ -117,9 +117,9 @@ class MockSyncService extends _i1.Mock implements _i3.SyncService {
           as _i4.Future<void>);
 
   @override
-  _i4.Future<void> resetForLogout() =>
+  _i4.Future<void> resetForLogout({bool? flush = true}) =>
       (super.noSuchMethod(
-            Invocation.method(#resetForLogout, []),
+            Invocation.method(#resetForLogout, [], {#flush: flush}),
             returnValue: _i4.Future<void>.value(),
             returnValueForMissingStub: _i4.Future<void>.value(),
           )

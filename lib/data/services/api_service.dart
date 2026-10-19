@@ -1,10 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
+import 'auth_interceptor.dart';
+import 'token_storage.dart';
 
 /// Cliente HTTP centralizado que incluye el token JWT en cada solicitud
 /// y expone métodos para interactuar con la API de Inmobarco.
+///
+/// La renovación del token vencido la hace [AuthInterceptor]: las pantallas
+/// no ven un 401 salvo que la sesión haya terminado de verdad.
 ///
 /// Uso:
 /// ```dart
@@ -16,50 +20,36 @@ class ApiService {
 
   static Dio? _instance;
 
+  /// Se llama cuando la API da la sesión por terminada (refresh vencido o
+  /// revocado, usuario inactivo), con los tokens ya borrados. Lo conecta
+  /// `main.dart` para limpiar los datos del asesor y mandar al login.
+  static VoidCallback? onSessionEnded;
+
   /// Retorna una instancia de Dio configurada con el interceptor de autenticación.
   static Future<Dio> getInstance() async {
     if (_instance != null) return _instance!;
 
-    _instance = Dio(BaseOptions(
+    final options = BaseOptions(
       baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {'Content-Type': 'application/json'},
-    ));
-
-    // Interceptor que agrega el token JWT a cada solicitud
-    _instance!.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('access_token');
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
-            debugPrint('🔑 Token JWT agregado a la solicitud: ${options.path}');
-          }
-          handler.next(options);
-        },
-      ),
     );
+    _instance = Dio(options)
+      ..interceptors.add(AuthInterceptor(
+        plainDio: Dio(options),
+        onSessionEnded: () => onSessionEnded?.call(),
+      ));
 
     return _instance!;
   }
 
-  /// Resetea la instancia (útil tras logout para forzar re-lectura del token).
-  static void reset() {
-    _instance = null;
-  }
-
-  /// Indica si hay un token JWT guardado.
+  /// Indica si hay una sesión guardada.
   ///
   /// Los endpoints de este backend requieren sesión: llamarlos sin token solo
   /// produce 401 (o un timeout de 10 s si el servidor no responde), así que
   /// quien sincroniza debe consultar esto antes de salir a la red.
-  static Future<bool> hasSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('access_token');
-    return token != null && token.isNotEmpty;
-  }
+  static Future<bool> hasSession() => TokenStorage.hasSession();
 
   // ---------------------------------------------------------------------------
   // Appointments API

@@ -10,6 +10,7 @@ import 'core/encription.dart';
 import 'core/services/global_data_service.dart';
 import 'core/services/image_cache_config.dart';
 import 'core/services/notification_service.dart';
+import 'data/services/api_service.dart';
 import 'data/services/cache_service.dart';
 import 'data/services/wasi_api_service.dart';
 import 'data/services/sync_service.dart';
@@ -19,6 +20,34 @@ import 'ui/providers/appointment_provider.dart';
 import 'ui/providers/auth_provider.dart';
 import 'ui/providers/client_provider.dart';
 import 'ui/screens/home_screen.dart';
+import 'ui/screens/login_screen.dart';
+import 'ui/session_flow.dart';
+
+final _navigatorKey = GlobalKey<NavigatorState>();
+final _messengerKey = GlobalKey<ScaffoldMessengerState>();
+bool _endingSession = false;
+
+/// La API dio la sesión por terminada (refresh vencido o revocado, usuario
+/// inactivo): se limpia lo del asesor y se manda al login.
+Future<void> _onSessionEnded() async {
+  final context = _navigatorKey.currentContext;
+  if (_endingSession || context == null) return;
+  _endingSession = true;
+  try {
+    await endSession(context, expired: true);
+    final navigator = _navigatorKey.currentState;
+    navigator?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen(initialTab: 0)),
+      (route) => false,
+    );
+    navigator?.push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    _messengerKey.currentState?.showSnackBar(const SnackBar(
+      content: Text('Tu sesión terminó. Inicia sesión de nuevo.'),
+    ));
+  } finally {
+    _endingSession = false;
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +98,8 @@ void main() async {
     cacheService: cacheService,
     syncService: syncService,
   ));
+
+  ApiService.onSessionEnded = _onSessionEnded;
 
   // Ya con la UI en pantalla: refrescar los catálogos vencidos y arrancar el
   // SyncService (escucha de red + timer cada 5 min + vaciado de la cola).
@@ -138,6 +169,8 @@ class InmobarcoApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: _navigatorKey,
+        scaffoldMessengerKey: _messengerKey,
         title: 'Inmobarco',
         theme: AppTheme.lightTheme,
         home: const HomeScreen(),

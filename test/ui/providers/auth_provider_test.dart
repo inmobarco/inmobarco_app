@@ -1,9 +1,11 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:inmobarco_app/ui/providers/auth_provider.dart';
 import 'package:inmobarco_app/data/services/cache_service.dart';
+import 'package:inmobarco_app/data/services/token_storage.dart';
 
 @GenerateMocks([CacheService])
 import 'auth_provider_test.mocks.dart';
@@ -11,11 +13,22 @@ import 'auth_provider_test.mocks.dart';
 void main() {
   late AuthProvider provider;
   late MockCacheService mockCacheService;
+  late List<String> revoked;
+
+  void givenTokens(Map<String, String> values) {
+    FlutterSecureStorage.setMockInitialValues(values);
+    TokenStorage.resetForTest();
+  }
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    givenTokens({'access_token': 'jwt-abc', 'refresh_token': 'refresh-abc'});
     mockCacheService = MockCacheService();
-    provider = AuthProvider(cacheService: mockCacheService);
+    revoked = [];
+    provider = AuthProvider(
+      cacheService: mockCacheService,
+      revokeSession: (token) async => revoked.add(token),
+    );
   });
 
   group('initial state', () {
@@ -55,6 +68,18 @@ void main() {
       expect(provider.isLoggedIn, isFalse);
     });
 
+    test('drops a cached profile that has no tokens', () async {
+      givenTokens({});
+      when(mockCacheService.loadAuthSession())
+          .thenAnswer((_) async => {'username': 'jbarco'});
+      when(mockCacheService.clearOnLogout()).thenAnswer((_) async {});
+
+      await provider.loadSession();
+
+      expect(provider.isLoggedIn, isFalse);
+      verify(mockCacheService.clearOnLogout()).called(1);
+    });
+
     test('handles cache error gracefully', () async {
       when(mockCacheService.loadAuthSession()).thenThrow(Exception('Corrupted'));
 
@@ -89,14 +114,22 @@ void main() {
       verify(mockCacheService.clearOnLogout()).called(1);
     });
 
-    test('drops the JWT so no request goes out with a dead session', () async {
-      SharedPreferences.setMockInitialValues({'access_token': 'jwt-abc'});
+    test('drops both tokens and revokes the refresh token', () async {
       when(mockCacheService.clearOnLogout()).thenAnswer((_) async {});
 
       await provider.logout();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('access_token'), isNull);
+      expect(await TokenStorage.hasSession(), isFalse);
+      expect(revoked, ['refresh-abc']);
+    });
+
+    test('a session already ended by the API has nothing to revoke', () async {
+      givenTokens({});
+      when(mockCacheService.clearOnLogout()).thenAnswer((_) async {});
+
+      await provider.logout();
+
+      expect(revoked, isEmpty);
     });
   });
 

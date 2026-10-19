@@ -452,6 +452,27 @@ class MockCacheService extends _i1.Mock implements _i7.CacheService {
           as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
 
   @override
+  _i5.Future<void> saveAdvisorRoutes(List<Map<String, dynamic>>? days) =>
+      (super.noSuchMethod(
+            Invocation.method(#saveAdvisorRoutes, [days]),
+            returnValue: _i5.Future<void>.value(),
+            returnValueForMissingStub: _i5.Future<void>.value(),
+          )
+          as _i5.Future<void>);
+
+  @override
+  _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>
+  loadAdvisorRoutes() =>
+      (super.noSuchMethod(
+            Invocation.method(#loadAdvisorRoutes, []),
+            returnValue:
+                _i5.Future<
+                  _i7.CachedResult<List<Map<String, dynamic>>>?
+                >.value(),
+          )
+          as _i5.Future<_i7.CachedResult<List<Map<String, dynamic>>>?>);
+
+  @override
   _i5.Future<void> saveAllowedCities(List<Map<String, dynamic>>? cities) =>
       (super.noSuchMethod(
             Invocation.method(#saveAllowedCities, [cities]),

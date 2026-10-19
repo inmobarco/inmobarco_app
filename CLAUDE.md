@@ -46,7 +46,7 @@ Uses the `provider` package with `ChangeNotifier`. The three main providers are 
 
 **WASI API** (`WasiApiService`) — Read-only property data from `https://api.wasi.co/v1`; uses an API token configured in `.env`.
 
-**Custom Backend** (`ApiService`) — Appointment CRUD at `http://194.163.147.243:8080`; uses JWT token stored in SharedPreferences after login.
+**Custom Backend** (`ApiService`) — Appointment CRUD at `http://194.163.147.243:8080`. Login returns an `access_token` + `refresh_token` pair, kept in `TokenStorage` (`flutter_secure_storage`, with an in-memory copy). `AuthInterceptor` (a Dio `QueuedInterceptor`) attaches the access token and, on a 401 with `detail: token_expired`, calls `POST /auth/refresh` once and retries; queued requests whose token was already rotated just retry. Refresh and retries go through a separate Dio without the interceptor. `token_invalid` / `user_inactive` / a rejected refresh clear the tokens and fire `ApiService.onSessionEnded`, which `main.dart` wires to `endSession(expired: true)` (`lib/ui/session_flow.dart`) and the login screen. Never log login/refresh responses — they contain the tokens.
 
 Credentials and API keys are stored in `assets/config/.env` (loaded via `flutter_dotenv`). Never hardcode secrets.
 
@@ -63,7 +63,7 @@ Appointments use a local queue for offline mutations; the queue is compacted bef
 
 - Properties: file-based JSON cache (via `path_provider`) with 6-hour expiration
 - Appointments: SharedPreferences-based cache
-- Auth session: persisted in SharedPreferences
+- Auth session: user profile in `auth_session.json`; tokens only in `TokenStorage` (secure storage). Android auto-backup is disabled so a restore can't bring back a profile without its Keystore keys
 
 ## Navigation
 

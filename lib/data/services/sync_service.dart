@@ -61,6 +61,10 @@ class SyncService with WidgetsBindingObserver {
   bool _isBusy = false;
   bool _initialSyncDone = false;
 
+  /// Cambia en cada cierre de sesión. Un push que empezó antes no debe
+  /// devolver a la cola las operaciones que el cierre ya descartó.
+  int _sessionGeneration = 0;
+
   // ---------------------------------------------------------------------------
   // Inicialización / dispose
   // ---------------------------------------------------------------------------
@@ -221,10 +225,15 @@ class SyncService with WidgetsBindingObserver {
 
       debugPrint('🔄 Procesando ${queue.length} operaciones pendientes…');
 
+      final generation = _sessionGeneration;
       final List<Map<String, dynamic>> remaining = [];
       var crmSynced = false;
 
       for (final item in queue) {
+        if (generation != _sessionGeneration) {
+          debugPrint('🔒 Sesión cerrada durante el push → se abandona la cola');
+          return;
+        }
         final op = item as Map<String, dynamic>;
         // Las operaciones encoladas por versiones anteriores no traen entidad.
         final entity = op['entity'] as String? ?? entityAppointment;
@@ -285,6 +294,10 @@ class SyncService with WidgetsBindingObserver {
         }
       }
 
+      if (generation != _sessionGeneration) {
+        debugPrint('🔒 Sesión cerrada durante el push → se abandona la cola');
+        return;
+      }
       if (crmSynced) _onCrmSynced?.call();
 
       // Guardar solo las operaciones que siguen fallando
@@ -307,15 +320,20 @@ class SyncService with WidgetsBindingObserver {
   /// ellas, porque si no el primer sync del nuevo asesor pediría solo cambios
   /// recientes y nunca traería su agenda completa.
   ///
-  /// Antes de borrar intenta vaciar la cola, que aún tiene el token del asesor
-  /// que se va; si no hay red, esas operaciones se pierden (es la única forma
-  /// de no enviarlas después con la sesión de otra persona).
-  Future<void> resetForLogout() async {
-    try {
-      await _withLock(_pushPendingQueue);
-    } catch (e) {
-      debugPrint('⚠️ No se pudo vaciar la cola antes del logout: $e');
+  /// Con [flush] intenta antes vaciar la cola, que aún tiene el token del
+  /// asesor que se va; si no hay red, esas operaciones se pierden (es la única
+  /// forma de no enviarlas después con la sesión de otra persona). Sin
+  /// [flush] es el cierre forzado: la API ya rechazó la sesión y no hay con
+  /// qué enviarlas.
+  Future<void> resetForLogout({bool flush = true}) async {
+    if (flush) {
+      try {
+        await _withLock(_pushPendingQueue);
+      } catch (e) {
+        debugPrint('⚠️ No se pudo vaciar la cola antes del logout: $e');
+      }
     }
+    _sessionGeneration++;
 
     try {
       final prefs = await SharedPreferences.getInstance();
