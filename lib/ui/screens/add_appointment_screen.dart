@@ -154,7 +154,7 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
             const SizedBox(height: 24),
             
             // Información del cliente
-            _buildSectionTitle('Cliente (Opcional)'),
+            _buildSectionTitle('Cliente'),
             const SizedBox(height: 12),
             
             TextFormField(
@@ -170,10 +170,20 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
             TextFormField(
               controller: _clientPhoneController,
               decoration: _inputDecoration(
-                'Teléfono',
+                'Teléfono *',
                 Icons.phone,
               ),
               keyboardType: TextInputType.phone,
+              validator: (value) {
+                final digits = value?.replaceAll(RegExp(r'\D'), '') ?? '';
+                if (digits.isEmpty) {
+                  return 'El teléfono del cliente es requerido';
+                }
+                if (digits.length < 7) {
+                  return 'Ingresa un teléfono válido';
+                }
+                return null;
+              },
             ),
             
             const SizedBox(height: 32),
@@ -500,9 +510,7 @@ class _AddAppointmentScreenState extends State<AddAppointmentScreen> {
       clientName: _clientNameController.text.trim().isNotEmpty
           ? _clientNameController.text.trim()
           : null,
-      clientPhone: _clientPhoneController.text.trim().isNotEmpty
-          ? _clientPhoneController.text.trim()
-          : null,
+      clientPhone: _clientPhoneController.text.trim(),
       outcome: _isEditing ? widget.appointment!.outcome : null,
       createdAt: _isEditing ? widget.appointment!.createdAt : DateTime.now(),
       updatedAt: _isEditing ? DateTime.now() : null,
