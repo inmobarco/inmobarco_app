@@ -5,6 +5,7 @@ void main() {
   group('User.fromJson', () {
     test('parses all fields', () {
       final user = User.fromJson({
+        'id': 7,
         'username': 'jbarco',
         'role': 'admin',
         'first_name': 'Juan',
@@ -12,6 +13,7 @@ void main() {
         'phone': '3001234567',
       });
 
+      expect(user.id, 7);
       expect(user.username, 'jbarco');
       expect(user.role, 'admin');
       expect(user.firstName, 'Juan');
@@ -22,6 +24,7 @@ void main() {
     test('handles null/missing fields with defaults', () {
       final user = User.fromJson({});
 
+      expect(user.id, isNull);
       expect(user.username, '');
       expect(user.role, '');
       expect(user.firstName, '');
@@ -33,6 +36,7 @@ void main() {
   group('User.toJson roundtrip', () {
     test('preserves all fields', () {
       final original = User.fromJson({
+        'id': 12,
         'username': 'test',
         'role': 'agent',
         'first_name': 'Ana',
@@ -43,6 +47,7 @@ void main() {
       final json = original.toJson();
       final restored = User.fromJson(json);
 
+      expect(restored.id, 12);
       expect(restored.username, original.username);
       expect(restored.role, original.role);
       expect(restored.firstName, original.firstName);
@@ -52,6 +57,16 @@ void main() {
   });
 
   group('User computed properties', () {
+    User withRole(String role) =>
+        User(username: 'u', role: role, firstName: '', lastName: '');
+
+    test('isManagerOrAdmin only for admin and manager', () {
+      expect(withRole('admin').isManagerOrAdmin, isTrue);
+      expect(withRole('manager').isManagerOrAdmin, isTrue);
+      expect(withRole('agent').isManagerOrAdmin, isFalse);
+      expect(withRole('').isManagerOrAdmin, isFalse);
+    });
+
     test('fullName combines first and last name', () {
       final user = User(
         username: 'test',

@@ -203,6 +203,71 @@ class ApiService {
   }
 
   // ---------------------------------------------------------------------------
+  // Maintenance API (solo lectura, roles admin y manager)
+  // ---------------------------------------------------------------------------
+
+  /// Lista solicitudes de mantenimiento, ordenadas por `created_at` DESC.
+  ///
+  /// [assignedUserId] y [unassigned] no se pueden combinar (la API da 422):
+  /// para ver "mías o sin responsable" se hacen dos llamadas.
+  static Future<List<Map<String, dynamic>>> getMaintenanceRequests({
+    List<String>? statuses,
+    int? assignedUserId,
+    bool unassigned = false,
+    int limit = 500,
+  }) async {
+    assert(assignedUserId == null || !unassigned);
+    final dio = await getInstance();
+    final queryParams = <String, dynamic>{
+      if (statuses != null && statuses.isNotEmpty) 'status': statuses.join(','),
+      'assigned_user_id': ?assignedUserId,
+      if (unassigned) 'unassigned': true,
+      'limit': limit,
+    };
+    final response = await dio.get(
+      '/staff/maintenance/requests',
+      queryParameters: queryParams,
+    );
+    debugPrint('🔧 GET /staff/maintenance/requests'
+        '?${queryParams.entries.map((e) => '${e.key}=${e.value}').join('&')}'
+        ' → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Detalle completo de una solicitud (incluye datos personales del
+  /// reportante que el listado omite).
+  static Future<Map<String, dynamic>> getMaintenanceRequest(int id) async {
+    final dio = await getInstance();
+    final response = await dio.get('/staff/maintenance/requests/$id');
+    debugPrint('🔧 GET /staff/maintenance/requests/$id → ${response.statusCode}');
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Adjuntos de una solicitud con URLs firmadas que caducan a los 15 min:
+  /// no se cachean, se vuelven a pedir cuando vencen.
+  static Future<List<Map<String, dynamic>>> getMaintenanceAttachments(
+      int id) async {
+    final dio = await getInstance();
+    final response =
+        await dio.get('/staff/maintenance/requests/$id/attachments');
+    debugPrint('🔧 GET /staff/maintenance/requests/$id/attachments'
+        ' → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  /// Bitácora de una solicitud, de la más antigua a la más reciente.
+  static Future<List<Map<String, dynamic>>> getMaintenanceEvents(int id) async {
+    final dio = await getInstance();
+    final response = await dio.get('/staff/maintenance/requests/$id/events');
+    debugPrint('🔧 GET /staff/maintenance/requests/$id/events'
+        ' → ${response.statusCode}');
+    final List<dynamic> data = response.data as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  // ---------------------------------------------------------------------------
   // CRM API
   // ---------------------------------------------------------------------------
 

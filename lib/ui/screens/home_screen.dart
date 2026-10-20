@@ -14,6 +14,7 @@ import 'guides_screen.dart';
 import 'route_planner_screen.dart';
 import 'residentials_screen.dart';
 import 'login_screen.dart';
+import 'maintenance_requests_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 
@@ -106,7 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = context.watch<AuthProvider>().isLoggedIn;
+    final auth = context.watch<AuthProvider>();
+    final isLoggedIn = auth.isLoggedIn;
     final tabs = _allTabs
         .where((tab) => isLoggedIn || !tab.employeeOnly)
         .toList();
@@ -129,7 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(context, isLoggedIn),
+      drawer: _buildDrawer(
+        context,
+        isLoggedIn,
+        canSeeMaintenance: auth.user?.isManagerOrAdmin ?? false,
+      ),
       body: IndexedStack(
         index: index,
         children: [for (final tab in tabs) tab.builder()],
@@ -146,7 +152,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, bool isLoggedIn) {
+  Widget _buildDrawer(
+    BuildContext context,
+    bool isLoggedIn, {
+    required bool canSeeMaintenance,
+  }) {
     return Drawer(
       child: Column(
         children: [
@@ -205,6 +215,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     subtitle: 'Ver y gestionar clientes',
                     screen: const ClientsScreen(),
                   ),
+                  if (canSeeMaintenance)
+                    _drawerItem(
+                      context,
+                      icon: Icons.handyman,
+                      title: 'Mantenimientos',
+                      subtitle: 'Solicitudes activas',
+                      screen: const MaintenanceRequestsScreen(),
+                    ),
                 ] else
                   _drawerItem(
                     context,
